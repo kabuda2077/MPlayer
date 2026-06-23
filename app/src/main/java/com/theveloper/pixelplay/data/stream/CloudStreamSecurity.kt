@@ -128,7 +128,8 @@ object CloudStreamSecurity {
     fun isSafeRemoteStreamUrl(
         url: String,
         allowedHostSuffixes: Set<String> = emptySet(),
-        allowHttpForAllowedHosts: Boolean = false
+        allowHttpForAllowedHosts: Boolean = false,
+        allowHttpWithoutHostAllowlist: Boolean = false
     ): Boolean {
         val httpUrl = url.toHttpUrlOrNull() ?: return false
         val host = httpUrl.host.lowercase()
@@ -150,7 +151,8 @@ object CloudStreamSecurity {
 
         return when (httpUrl.scheme.lowercase()) {
             "https" -> true
-            "http" -> allowHttpForAllowedHosts && allowedHostSuffixes.isNotEmpty()
+            "http" -> (allowHttpForAllowedHosts && allowedHostSuffixes.isNotEmpty()) ||
+                (allowHttpWithoutHostAllowlist && allowedHostSuffixes.isEmpty())
             else -> false
         }
     }

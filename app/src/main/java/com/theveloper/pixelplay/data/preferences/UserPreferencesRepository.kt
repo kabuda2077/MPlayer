@@ -22,6 +22,7 @@ import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.data.model.TransitionSettings
+import com.theveloper.pixelplay.data.plugin.PluginQuality
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -150,6 +151,8 @@ class UserPreferencesRepository @Inject constructor(
         val RESUME_ON_HEADSET_RECONNECT = booleanPreferencesKey("resume_on_headset_reconnect")
         val SHOW_QUEUE_HISTORY = booleanPreferencesKey("show_queue_history")
         val PLAYBACK_QUEUE_SNAPSHOT = stringPreferencesKey("playback_queue_snapshot_v1")
+        val AUDIO_SOURCE_PLUGIN_PREFERRED_QUALITY =
+            stringPreferencesKey("audio_source_plugin_preferred_quality")
         val FULL_PLAYER_SHOW_FILE_INFO = booleanPreferencesKey("full_player_show_file_info")
         val FULL_PLAYER_DELAY_ALBUM = booleanPreferencesKey("full_player_delay_album")
         val FULL_PLAYER_DELAY_METADATA = booleanPreferencesKey("full_player_delay_metadata")
@@ -374,6 +377,17 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setShowQueueHistory(show: Boolean) {
         dataStore.edit { it[PreferencesKeys.SHOW_QUEUE_HISTORY] = show }
+    }
+
+    val audioSourcePluginPreferredQualityFlow: Flow<PluginQuality> =
+        pref { preferences ->
+            preferences[PreferencesKeys.AUDIO_SOURCE_PLUGIN_PREFERRED_QUALITY]
+                ?.let { value -> PluginQuality.entries.firstOrNull { it.name == value } }
+                ?: PluginQuality.HIGH
+        }.distinctUntilChanged()
+
+    suspend fun setAudioSourcePluginPreferredQuality(quality: PluginQuality) {
+        dataStore.edit { it[PreferencesKeys.AUDIO_SOURCE_PLUGIN_PREFERRED_QUALITY] = quality.name }
     }
 
     val playbackQueueSnapshotFlow: Flow<PlaybackQueueSnapshot?> =

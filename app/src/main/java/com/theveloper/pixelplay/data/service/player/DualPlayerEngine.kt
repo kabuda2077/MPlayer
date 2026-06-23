@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mp3.Mp3Extractor
 import androidx.media3.extractor.flac.FlacExtractor
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.model.TransitionSettings
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
@@ -54,9 +55,15 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.SocketAddress
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import okhttp3.OkHttpClient
 
 import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
 import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
@@ -166,6 +173,22 @@ internal fun shouldDisableAudioOffloadOnEarlyBuffering(
         !isPostMediaItemTransition
 }
 
+private class LocalProxyBypassSelector : ProxySelector() {
+    private val delegate = getDefault()
+
+    override fun select(uri: URI?): List<Proxy> {
+        val host = uri?.host?.lowercase()
+        if (host in setOf("127.0.0.1", "localhost", "0.0.0.0", "::1", "[::1]")) {
+            return listOf(Proxy.NO_PROXY)
+        }
+        return delegate?.select(uri).orEmpty().ifEmpty { listOf(Proxy.NO_PROXY) }
+    }
+
+    override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: java.io.IOException?) {
+        delegate?.connectFailed(uri, sa, ioe)
+    }
+}
+
 /** ExoPlayer [DefaultLoadControl] buffer durations (ms) for a build of the player. */
 internal data class LoadControlBufferProfile(
     val minBufferMs: Int,
@@ -221,7 +244,8 @@ class DualPlayerEngine @Inject constructor(
     private val jellyfinStreamProxy: com.theveloper.pixelplay.data.jellyfin.JellyfinStreamProxy,
     private val gdriveStreamProxy: com.theveloper.pixelplay.data.gdrive.GDriveStreamProxy,
     private val telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager,
-    private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder
+    private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
+    private val okHttpClient: OkHttpClient
 ) {
     private companion object {
         private const val AUDIO_OFFLOAD_STALL_FALLBACK_MS = 4_000L
@@ -238,6 +262,7 @@ class DualPlayerEngine @Inject constructor(
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
         // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
         private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive")
+        private val LOCAL_PROXY_HOSTS = setOf("127.0.0.1", "localhost", "0.0.0.0", "::1")
     }
 
     data class TransitionTarget(
@@ -1099,12 +1124,22 @@ class DualPlayerEngine @Inject constructor(
         val resolver = object : ResolvingDataSource.Resolver {
             override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
                 val uri = dataSpec.uri
+                currentProxyUriForStaleLocalProxy(uri)?.let { freshUri ->
+                    Timber.tag("DualPlayerEngine").d(
+                        "resolveDataSpec: refreshed local proxy URI %s -> %s",
+                        uri,
+                        freshUri
+                    )
+                    return dataSpec.buildUpon().setUri(freshUri).build()
+                }
+
                 val scheme = uri.scheme
                 if (scheme in CLOUD_PROXY_SCHEMES) {
                     val originalUri = uri.toString()
                     val resolved = resolvedUriCache.get(originalUri)
                     if (resolved != null) {
-                        return dataSpec.buildUpon().setUri(resolved).build()
+                        val freshResolved = currentProxyUriForStaleLocalProxy(resolved) ?: resolved
+                        return dataSpec.buildUpon().setUri(freshResolved).build()
                     }
                     Timber.tag("DualPlayerEngine").d("resolveDataSpec: Cache MISS for %s — using original URI", scheme)
                 }
@@ -1112,7 +1147,11 @@ class DualPlayerEngine @Inject constructor(
             }
         }
         
-        val dataSourceFactory = DefaultDataSource.Factory(context)
+        val playerHttpClient = okHttpClient.newBuilder()
+            .proxySelector(LocalProxyBypassSelector())
+            .build()
+        val httpDataSourceFactory = OkHttpDataSource.Factory(playerHttpClient)
+        val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val resolvingFactory = ResolvingDataSource.Factory(dataSourceFactory, resolver)
         val extractorsFactory = DefaultExtractorsFactory()
             // FLAG_WORKAROUND_IGNORE_EDIT_LISTS intentionally removed: it breaks Opus files
@@ -1194,11 +1233,14 @@ class DualPlayerEngine @Inject constructor(
     }
 
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
-        val uriString = uri.toString()
-        resolvedUriCache.get(uriString)?.let { return@withContext it }
+        val canonicalUri = canonicalCloudUriFromLocalProxy(uri) ?: uri
+        val uriString = canonicalUri.toString()
+        resolvedUriCache.get(uriString)?.let { cached ->
+            return@withContext currentProxyUriForStaleLocalProxy(cached) ?: cached
+        }
 
-        val resolved: Uri? = when (uri.scheme) {
-            "telegram" -> resolveTelegramUriAsync(uri, uriString)
+        val resolved: Uri? = when (canonicalUri.scheme) {
+            "telegram" -> resolveTelegramUriAsync(canonicalUri, uriString)
             "netease" -> resolveNeteaseUriAsync(uriString)
             "qqmusic" -> resolveQqMusicUriAsync(uriString)
             "navidrome" -> resolveNavidromeUriAsync(uriString)
@@ -1212,6 +1254,39 @@ class DualPlayerEngine @Inject constructor(
             return@withContext resolved
         }
         uri
+    }
+
+    private fun canonicalCloudUriFromLocalProxy(uri: Uri): Uri? {
+        val scheme = uri.scheme ?: return null
+        if (scheme != "http" && scheme != "https") return null
+        val host = uri.host?.lowercase() ?: return null
+        if (host !in LOCAL_PROXY_HOSTS) return null
+
+        val pathSegments = uri.pathSegments
+        if (pathSegments.size < 2) return null
+        val route = pathSegments[0]
+        val id = pathSegments[1]
+        return when (route) {
+            "netease" -> id.toLongOrNull()?.let { Uri.parse("netease://$it") }
+            "qqmusic" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("qqmusic://$it") }
+            "navidrome" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("navidrome://$it") }
+            "jellyfin" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("jellyfin://$it") }
+            "gdrive" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("gdrive://$it") }
+            else -> null
+        }
+    }
+
+    private fun currentProxyUriForStaleLocalProxy(uri: Uri): Uri? {
+        val cloudUri = canonicalCloudUriFromLocalProxy(uri) ?: return null
+        val proxyUrl = when (cloudUri.scheme) {
+            "netease" -> neteaseStreamProxy.resolveNeteaseUri(cloudUri.toString())
+            "qqmusic" -> qqMusicStreamProxy.resolveQqMusicUri(cloudUri.toString())
+            "navidrome" -> navidromeStreamProxy.resolveNavidromeUri(cloudUri.toString())
+            "jellyfin" -> jellyfinStreamProxy.resolveJellyfinUri(cloudUri.toString())
+            "gdrive" -> gdriveStreamProxy.resolveGDriveUri(cloudUri.toString())
+            else -> null
+        }
+        return proxyUrl?.takeIf { it.isNotBlank() }?.toUri()
     }
 
     private suspend fun resolveTelegramUriAsync(uri: Uri, uriString: String): Uri? = withContext(Dispatchers.IO) {
@@ -1271,11 +1346,12 @@ class DualPlayerEngine @Inject constructor(
 
     suspend fun resolveMediaItem(mediaItem: MediaItem): MediaItem {
         val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
-        val scheme = uri.scheme
+        val uriToResolve = canonicalCloudUriFromLocalProxy(uri) ?: uri
+        val scheme = uriToResolve.scheme
         // Use CLOUD_PROXY_SCHEMES: http/https resolve directly via ExoPlayer and never
         // reach resolveCloudUri, so checking them wastes an IO dispatch.
         if (scheme !in CLOUD_PROXY_SCHEMES) return mediaItem
-        val resolvedUri = resolveCloudUri(uri)
+        val resolvedUri = resolveCloudUri(uriToResolve)
         return if (resolvedUri == uri) mediaItem else mediaItem.buildUpon().setUri(resolvedUri).build()
     }
 

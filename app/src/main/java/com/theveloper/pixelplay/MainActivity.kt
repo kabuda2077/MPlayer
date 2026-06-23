@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
+import com.theveloper.pixelplay.data.diagnostics.DebugThreadDumper
 
 // import androidx.compose.ui.platform.LocalView // No longer needed for this
 // import androidx.core.view.WindowInsetsCompat // No longer needed for this
@@ -89,7 +90,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.core.net.toUri
@@ -363,6 +363,11 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return
 
         when {
+            BuildConfig.DEBUG && intent.action == DebugThreadDumper.ACTION_DUMP_THREADS -> {
+                DebugThreadDumper.dumpAsync(reason = "adb_intent")
+                intent.action = null
+            }
+
             // Handle shuffle all shortcut / tile
             intent.action == MainActivityIntentContract.ACTION_SHUFFLE_ALL -> {
                 android.util.Log.d("TileDebug", "handleIntent: ACTION_SHUFFLE_ALL received")
@@ -643,6 +648,7 @@ class MainActivity : ComponentActivity() {
                 Screen.RecentlyPlayed.route,
                 Screen.DeviceCapabilities.route,
                 Screen.EasterEgg.route,
+                Screen.AudioSourcePlugins.route,
                 Screen.WordDelimiterConfig.route
             )
         }

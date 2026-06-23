@@ -1418,9 +1418,20 @@ class MusicService : MediaLibraryService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Timber.tag(TAG).e(error, "Error en el reproductor: ")
+            val currentMediaItem = mediaSession?.player?.currentMediaItem
+            val extras = currentMediaItem?.mediaMetadata?.extras
+            Timber.tag(TAG).e(
+                error,
+                "Player error: code=%s mediaId=%s uri=%s mimeType=%s title=%s contentUri=%s cause=%s",
+                error.errorCodeName,
+                currentMediaItem?.mediaId,
+                currentMediaItem?.localConfiguration?.uri,
+                currentMediaItem?.localConfiguration?.mimeType,
+                currentMediaItem?.mediaMetadata?.title,
+                extras?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI),
+                error.cause?.javaClass?.name
+            )
             serviceScope.launch {
-                val currentMediaItem = mediaSession?.player?.currentMediaItem
                 val trackTitle = currentMediaItem?.mediaMetadata?.title?.toString()
                     ?: currentMediaItem?.mediaId
                     ?: getString(R.string.common_unknown_track)
@@ -1619,8 +1630,7 @@ class MusicService : MediaLibraryService() {
         for (index in 0 until mediaItemCount) {
             val mediaItem = player.getMediaItemAt(index)
             val metadata = mediaItem.mediaMetadata
-            val uri = mediaItem.localConfiguration?.uri?.toString()
-                ?: metadata.extras?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI)
+            val uri = stablePlaybackSnapshotUri(mediaItem)
 
             if (mediaItem.mediaId.isBlank() || uri.isNullOrBlank()) {
                 continue
@@ -1674,6 +1684,38 @@ class MusicService : MediaLibraryService() {
             repeatMode = safeRepeatMode,
             shuffleEnabled = isManualShuffleEnabled,
         )
+    }
+
+    private fun stablePlaybackSnapshotUri(mediaItem: MediaItem): String? {
+        val extrasUri = mediaItem.mediaMetadata.extras
+            ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI)
+            ?.let { stableCloudUriFromLocalProxy(it) ?: it }
+        if (!extrasUri.isNullOrBlank()) return extrasUri
+
+        return mediaItem.localConfiguration?.uri
+            ?.toString()
+            ?.let { stableCloudUriFromLocalProxy(it) ?: it }
+    }
+
+    private fun stableCloudUriFromLocalProxy(uriString: String): String? {
+        val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase() ?: return null
+        if (scheme != "http" && scheme != "https") return null
+        val host = uri.host?.lowercase() ?: return null
+        if (host != "127.0.0.1" && host != "localhost" && host != "0.0.0.0" && host != "::1") return null
+
+        val segments = uri.pathSegments
+        if (segments.size < 2) return null
+        val route = segments[0]
+        val id = segments[1].takeIf { it.isNotBlank() } ?: return null
+        return when (route) {
+            "netease" -> id.toLongOrNull()?.let { "netease://$it" }
+            "qqmusic" -> "qqmusic://$id"
+            "navidrome" -> "navidrome://$id"
+            "jellyfin" -> "jellyfin://$id"
+            "gdrive" -> "gdrive://$id"
+            else -> null
+        }
     }
 
     private suspend fun restorePlaybackQueueSnapshotIfNeeded() {
@@ -1775,12 +1817,13 @@ class MusicService : MediaLibraryService() {
         MediaItemBuilder.externalControllerArtworkUri(this, snapshotItem.artworkUri)
             ?.let { metadataBuilder.setArtworkUri(it) }
 
+        val stableUri = stableCloudUriFromLocalProxy(snapshotItem.uri) ?: snapshotItem.uri
         val extras = Bundle().apply {
             putBoolean(
                 MediaItemBuilder.EXTERNAL_EXTRA_FLAG,
                 snapshotItem.mediaId.startsWith("external:")
             )
-            putString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI, snapshotItem.uri)
+            putString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI, stableUri)
             snapshotItem.albumTitle?.takeIf { it.isNotBlank() }?.let {
                 putString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM, it)
             }
@@ -1795,7 +1838,7 @@ class MusicService : MediaLibraryService() {
 
         return MediaItem.Builder()
             .setMediaId(snapshotItem.mediaId)
-            .setUri(MediaItemBuilder.playbackUri(snapshotItem.uri))
+            .setUri(MediaItemBuilder.playbackUri(stableUri))
             .setMediaMetadata(metadataBuilder.build())
             .build()
     }

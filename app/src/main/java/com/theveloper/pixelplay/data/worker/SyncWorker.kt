@@ -20,6 +20,7 @@ import com.theveloper.pixelplay.data.database.AlbumEntity
 import com.theveloper.pixelplay.data.database.ArtistEntity
 import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.NeteaseDao
+import com.theveloper.pixelplay.data.database.QqMusicDao
 import com.theveloper.pixelplay.data.database.SongArtistCrossRef
 import com.theveloper.pixelplay.data.database.SongEntity
 import com.theveloper.pixelplay.data.database.SourceType
@@ -77,6 +78,7 @@ constructor(
         private val lyricsRepository: LyricsRepository,
         private val telegramDao: TelegramDao,
         private val neteaseDao: NeteaseDao,
+        private val qqMusicDao: QqMusicDao,
         private val navidromeRepository: NavidromeRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -332,6 +334,10 @@ constructor(
                         songsToInsert.size.toLong()
                     )
 
+                    // Keep cached cloud providers projected into the unified library even when
+                    // the worker is running as a lightweight/local-only refresh.
+                    syncCachedCloudLibraries()
+
                     // Count total songs for the output
                     val totalSongs = musicDao.getSongCount().first()
                     if (!runMaintenance) {
@@ -427,13 +433,12 @@ constructor(
                     // OPT #7: Guard each source to avoid opening Room transactions when
                     // the user hasn't configured that cloud provider.
                     val hasTelegramChannels = telegramDao.getAllChannels().first().isNotEmpty()
-                    val neteaseCount = neteaseDao.getNeteaseCount()
                     // For Navidrome, we only do network sync if SYNC_THRESHOLD_MS (24h) threshold has passed.
                     val navidromeNeedsNetworkSync = navidromeRepository.isLoggedIn && 
                         (System.currentTimeMillis() - navidromeRepository.lastFullSyncTime >= NavidromeRepository.SYNC_THRESHOLD_MS)
                     
                     val needsActiveCloudSync = hasTelegramChannels ||
-                        neteaseCount > 0 ||
+                        hasCachedCloudLibrarySongs() ||
                         navidromeNeedsNetworkSync
 
                     if (needsActiveCloudSync) {
@@ -450,13 +455,7 @@ constructor(
                         Log.d(TAG, "Skipping Telegram sync — no channels configured.")
                     }
 
-                    // syncNeteaseData already has an internal isEmpty guard; a lightweight
-                    // count check here avoids even calling into the function.
-                    if (neteaseCount > 0) {
-                        syncNeteaseData()
-                    } else {
-                        Log.d(TAG, "Skipping Netease sync — no songs in local cache.")
-                    }
+                    syncCachedCloudLibraries()
 
                     if (navidromeRepository.isLoggedIn) {
                         syncNavidromeData()
@@ -1223,6 +1222,11 @@ constructor(
         private const val NETEASE_ARTIST_ID_OFFSET = 5_000_000_000_000L
         private const val NETEASE_PARENT_DIRECTORY = "/Cloud/Netease"
         private const val NETEASE_GENRE = "Netease Cloud"
+        private const val QQ_MUSIC_SONG_ID_OFFSET = 6_000_000_000_000L
+        private const val QQ_MUSIC_ALBUM_ID_OFFSET = 7_000_000_000_000L
+        private const val QQ_MUSIC_ARTIST_ID_OFFSET = 8_000_000_000_000L
+        private const val QQ_MUSIC_PARENT_DIRECTORY = "/Cloud/QQMusic"
+        private const val QQ_MUSIC_GENRE = "QQ Music"
 
         // Genre cache - shared across worker instances to avoid refetching on incremental syncs
         private const val GENRE_CACHE_TTL_MS = 60 * 60 * 1000L // 1 hour
@@ -1528,6 +1532,16 @@ constructor(
         }
     }
 
+    private suspend fun hasCachedCloudLibrarySongs(): Boolean {
+        return neteaseDao.getNeteaseCount() > 0 ||
+            qqMusicDao.getAllQqMusicSongsList().isNotEmpty()
+    }
+
+    private suspend fun syncCachedCloudLibraries() {
+        syncNeteaseData()
+        syncQqMusicData()
+    }
+
     private suspend fun syncNeteaseData() {
         Log.i(TAG, "Syncing Netease songs to main database (Unified Mode)...")
         try {
@@ -1650,7 +1664,128 @@ constructor(
         }
     }
 
+    private suspend fun syncQqMusicData() {
+        Log.i(TAG, "Syncing QQ Music songs to main database (Unified Mode)...")
+        try {
+            val qqMusicSongs = qqMusicDao.getAllQqMusicSongsList()
+            val existingUnifiedIds = musicDao.getAllQqMusicSongIds()
+
+            if (qqMusicSongs.isEmpty()) {
+                if (existingUnifiedIds.isNotEmpty()) {
+                    musicDao.clearAllQqMusicSongs()
+                }
+                Log.d(TAG, "No QQ Music songs to sync.")
+                return
+            }
+
+            val songsToInsert = ArrayList<SongEntity>(qqMusicSongs.size)
+            val artistsToInsert = LinkedHashMap<Long, ArtistEntity>()
+            val albumsToInsert = LinkedHashMap<Long, AlbumEntity>()
+            val crossRefsToInsert = mutableListOf<SongArtistCrossRef>()
+
+            qqMusicSongs.forEach { qqSong ->
+                val songId = toUnifiedQqMusicSongId(qqSong.songMid)
+                val artistNames = parseQqMusicArtistNames(qqSong.artist)
+                val primaryArtistName = artistNames.firstOrNull() ?: "Unknown Artist"
+                val primaryArtistId = toUnifiedQqMusicArtistId(primaryArtistName)
+
+                artistNames.forEachIndexed { index, artistName ->
+                    val artistId = toUnifiedQqMusicArtistId(artistName)
+                    artistsToInsert.putIfAbsent(
+                        artistId,
+                        ArtistEntity(
+                            id = artistId,
+                            name = artistName,
+                            trackCount = 0,
+                            imageUrl = null
+                        )
+                    )
+                    crossRefsToInsert.add(
+                        SongArtistCrossRef(
+                            songId = songId,
+                            artistId = artistId,
+                            isPrimary = index == 0
+                        )
+                    )
+                }
+
+                val albumId = toUnifiedQqMusicAlbumId(qqSong.albumMid.orEmpty(), qqSong.album)
+                val albumName = qqSong.album.ifBlank { "Unknown Album" }
+                albumsToInsert.putIfAbsent(
+                    albumId,
+                    AlbumEntity(
+                        id = albumId,
+                        title = albumName,
+                        artistName = primaryArtistName,
+                        artistId = primaryArtistId,
+                        songCount = 0,
+                        dateAdded = qqSong.dateAdded,
+                        year = 0,
+                        albumArtUriString = qqSong.albumArtUrl
+                    )
+                )
+
+                songsToInsert.add(
+                    SongEntity(
+                        id = songId,
+                        title = qqSong.title,
+                        artistName = qqSong.artist.ifBlank { primaryArtistName },
+                        artistId = primaryArtistId,
+                        albumArtist = null,
+                        albumName = albumName,
+                        albumId = albumId,
+                        contentUriString = "qqmusic://${qqSong.songMid}",
+                        albumArtUriString = qqSong.albumArtUrl,
+                        duration = qqSong.duration,
+                        genre = QQ_MUSIC_GENRE,
+                        filePath = "",
+                        parentDirectoryPath = QQ_MUSIC_PARENT_DIRECTORY,
+                        isFavorite = false,
+                        lyrics = null,
+                        trackNumber = 0,
+                        year = 0,
+                        dateAdded = qqSong.dateAdded.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                        mimeType = qqSong.mimeType,
+                        bitrate = qqSong.bitrate,
+                        sampleRate = null,
+                        telegramChatId = null,
+                        telegramFileId = null,
+                        sourceType = SourceType.QQMUSIC
+                    )
+                )
+            }
+
+            val albumCounts = songsToInsert.groupingBy { it.albumId }.eachCount()
+            val finalAlbums = albumsToInsert.values.map { album ->
+                album.copy(songCount = albumCounts[album.id] ?: 0)
+            }
+
+            val currentUnifiedIds = songsToInsert.map { it.id }.toSet()
+            val deletedUnifiedIds = existingUnifiedIds.filter { it !in currentUnifiedIds }
+
+            musicDao.incrementalSyncMusicData(
+                songs = songsToInsert,
+                albums = finalAlbums,
+                artists = artistsToInsert.values.toList(),
+                crossRefs = crossRefsToInsert,
+                deletedSongIds = deletedUnifiedIds
+            )
+            Log.i(TAG, "Synced ${songsToInsert.size} QQ Music songs with Unified Metadata.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to sync QQ Music data", e)
+        }
+    }
+
     private fun parseNeteaseArtistNames(rawArtist: String): List<String> {
+        if (rawArtist.isBlank()) return listOf("Unknown Artist")
+        val parsed = rawArtist.split(Regex("\\s*[,/&;+、]\\s*"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        return if (parsed.isEmpty()) listOf("Unknown Artist") else parsed
+    }
+
+    private fun parseQqMusicArtistNames(rawArtist: String): List<String> {
         if (rawArtist.isBlank()) return listOf("Unknown Artist")
         val parsed = rawArtist.split(Regex("\\s*[,/&;+、]\\s*"))
             .map { it.trim() }
@@ -1674,6 +1809,24 @@ constructor(
 
     private fun toUnifiedNeteaseArtistId(artistName: String): Long {
         return -(NETEASE_ARTIST_ID_OFFSET + artistName.lowercase().hashCode().toLong().absoluteValue)
+    }
+
+    private fun toUnifiedQqMusicSongId(mid: String): Long {
+        val hash = mid.hashCode().toLong().absoluteValue
+        return -(QQ_MUSIC_SONG_ID_OFFSET + hash)
+    }
+
+    private fun toUnifiedQqMusicAlbumId(albumMid: String, albumName: String): Long {
+        val normalized = if (albumMid.isNotBlank()) {
+            albumMid.hashCode().toLong().absoluteValue
+        } else {
+            albumName.lowercase().hashCode().toLong().absoluteValue
+        }
+        return -(QQ_MUSIC_ALBUM_ID_OFFSET + normalized)
+    }
+
+    private fun toUnifiedQqMusicArtistId(artistName: String): Long {
+        return -(QQ_MUSIC_ARTIST_ID_OFFSET + artistName.lowercase().hashCode().toLong().absoluteValue)
     }
 
     private suspend fun syncNavidromeData() {

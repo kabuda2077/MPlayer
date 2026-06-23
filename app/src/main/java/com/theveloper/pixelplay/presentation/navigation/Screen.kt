@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Library : Screen("library")
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
+    object AudioSourcePlugins : Screen("audio_source_plugins")
     object SettingsCategory : Screen("settings_category/{categoryId}") {
         fun createRoute(categoryId: String) = "settings_category/$categoryId"
     }

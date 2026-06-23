@@ -34,6 +34,9 @@ val enableComposeCompilerReports = providers.gradleProperty("pixelplay.enableCom
     .getOrElse("false")
     .toBoolean()
 
+val debugApplicationIdSuffix = providers.gradleProperty("pixelplay.debugApplicationIdSuffix")
+    .getOrElse(".debug")
+
 @Suppress("DEPRECATION")
 android {
     namespace = "com.theveloper.pixelplay"
@@ -94,7 +97,9 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            if (debugApplicationIdSuffix != "none") {
+                applicationIdSuffix = debugApplicationIdSuffix
+            }
         }
 
         release {
@@ -242,6 +247,7 @@ dependencies {
 
     // Media & Files
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.datasource.okhttp)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer.ffmpeg)
@@ -266,6 +272,7 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation(libs.quickjs.wrapper.android)
 
     // Identity & Background
     implementation(libs.androidx.work.runtime.ktx)

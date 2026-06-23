@@ -2,6 +2,10 @@ package com.theveloper.pixelplay.data.netease
 
 import com.theveloper.pixelplay.data.stream.CloudStreamProxy
 import com.theveloper.pixelplay.data.stream.CloudStreamSecurity
+import com.theveloper.pixelplay.data.plugin.PluginAudioSourceResolver
+import com.theveloper.pixelplay.data.plugin.PluginSource
+import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
+import com.theveloper.pixelplay.data.stream.ResolvedStream
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -14,17 +18,14 @@ import javax.inject.Singleton
  */
 @Singleton
 class NeteaseStreamProxy @Inject constructor(
-    private val repository: NeteaseRepository,
+    private val pluginResolver: PluginAudioSourceResolver,
+    private val playbackInfoStore: CloudStreamPlaybackInfoStore,
     okHttpClient: OkHttpClient
 ) : CloudStreamProxy<Long>(okHttpClient) {
 
-    override val allowedHostSuffixes = setOf(
-        "music.126.net",
-        "music.163.com",
-        "126.net",
-        "163.com"
-    )
-    override val cacheExpirationMs = 15L * 60 * 1000
+    override val allowedHostSuffixes = emptySet<String>()
+    override val cacheExpirationMs = 10L * 60 * 1000
+    override val allowHttpWithoutHostAllowlist = true
     override val proxyTag = "NeteaseStreamProxy"
     override val routePath = "/netease/{songId}"
     override val routeParamName = "songId"
@@ -38,8 +39,18 @@ class NeteaseStreamProxy @Inject constructor(
 
     override fun formatIdForUrl(id: Long): String = id.toString()
 
-    override suspend fun resolveStreamUrl(id: Long): String? =
-        repository.getSongUrl(id).getOrNull()
+    override fun cacheKeyFor(id: Long): String =
+        pluginResolver.cacheKey(PluginSource.NETEASE, id.toString())
+
+    override suspend fun resolveStream(id: Long): ResolvedStream =
+        pluginResolver.resolve(
+            source = PluginSource.NETEASE,
+            platformSongId = id.toString()
+        )
+
+    override fun onStreamAvailable(id: Long, stream: ResolvedStream) {
+        playbackInfoStore.update("netease://$id", stream)
+    }
 
     fun resolveNeteaseUri(uriString: String): String? = resolveUri(uriString)
 }

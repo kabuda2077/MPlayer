@@ -16,6 +16,7 @@ constraintlayoutCompose = "1.1.1"
 coreSplashscreen = "1.2.0"
 desugarJdkLibs = "2.1.5"
 duktapeAndroid = "1.4.0"
+quickjs = "2.4.0"
 foundation = "1.11.3"
 glance = "1.3.0-alpha01"
 graphicsShapes = "1.1.0"
@@ -143,6 +144,7 @@ androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltNa
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "composeMaterialIcons" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "composeMaterialIcons" }
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Session" }
+androidx-media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3Session" }
 androidx-media3-exoplayer-midi = { module = "androidx.media3:media3-exoplayer-midi", version.ref = "media3Session" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3Session" }
 androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3Transformer" }
@@ -164,6 +166,7 @@ codeview = { module = "io.github.amrdeveloper:codeview", version.ref = "codeview
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 compose-dnd = { module = "com.mohamedrejeb.dnd:compose-dnd", version.ref = "composeDnd" }
 duktape-android = { module = "com.squareup.duktape:duktape-android", version.ref = "duktapeAndroid" }
+quickjs-wrapper-android = { module = "wang.harlon.quickjs:wrapper-android", version.ref = "quickjs" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hiltAndroid" }

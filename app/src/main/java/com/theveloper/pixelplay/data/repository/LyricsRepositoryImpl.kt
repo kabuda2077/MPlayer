@@ -1156,8 +1156,9 @@ class LyricsRepositoryImpl @Inject constructor(
      * Load embedded lyrics from audio file metadata
      */
     private suspend fun loadEmbeddedLyricsFromMetadata(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        // Skip embedded lyrics for Telegram songs (not supported yet/streamed)
-        if (song.contentUriString.startsWith("telegram://") || song.contentUriString.isEmpty()) {
+        // Embedded lyrics are only available from local files/content URIs. Cloud provider
+        // schemes are resolved at playback time and cannot be copied through ContentResolver.
+        if (!isLocalMetadataReadableUri(song.contentUriString)) {
             return@withContext null
         }
 
@@ -1190,6 +1191,23 @@ class LyricsRepositoryImpl @Inject constructor(
             LogUtils.e(this@LyricsRepositoryImpl, e, "Error reading lyrics from file metadata")
             null
         }
+    }
+
+    private fun isLocalMetadataReadableUri(contentUriString: String): Boolean {
+        val normalized = contentUriString.trim().lowercase(Locale.ROOT)
+        if (normalized.isBlank()) return false
+        return !normalized.startsWith("telegram://") &&
+            !normalized.startsWith("telegram:") &&
+            !normalized.startsWith("netease://") &&
+            !normalized.startsWith("netease:") &&
+            !normalized.startsWith("qqmusic://") &&
+            !normalized.startsWith("qqmusic:") &&
+            !normalized.startsWith("gdrive://") &&
+            !normalized.startsWith("gdrive:") &&
+            !normalized.startsWith("navidrome://") &&
+            !normalized.startsWith("navidrome:") &&
+            !normalized.startsWith("jellyfin://") &&
+            !normalized.startsWith("jellyfin:")
     }
 
     private suspend fun loadStoredLyrics(

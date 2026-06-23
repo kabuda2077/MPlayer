@@ -56,6 +56,7 @@ import com.theveloper.pixelplay.presentation.screens.StatsScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsScreen
 import com.theveloper.pixelplay.presentation.screens.SettingsCategoryScreen
 import com.theveloper.pixelplay.presentation.screens.EqualizerScreen
+import com.theveloper.pixelplay.presentation.plugin.AudioSourcePluginScreen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import kotlinx.coroutines.flow.first
@@ -235,6 +236,16 @@ fun AppNavigation(
                         onOpenJellyfinDashboard = {
                             navController.navigateSafely(Screen.JellyfinDashboard.route)
                         }
+                    )
+                }
+            }
+            composable(
+                Screen.AudioSourcePlugins.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
+                    AudioSourcePluginScreen(
+                        onBack = { navController.popBackStack() },
+                        onMessage = playerViewModel::sendToast
                     )
                 }
             }

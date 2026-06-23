@@ -19,6 +19,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
@@ -38,6 +39,7 @@ import timber.log.Timber
 
 data class PlaybackAudioMetadata(
     val mediaId: String? = null,
+    val streamQuality: String? = null,
     val mimeType: String? = null,
     val bitrate: Int? = null,
     val sampleRate: Int? = null,
@@ -97,6 +99,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
     private val lyricsStateHolder: LyricsStateHolder,
     private val sleepTimerStateHolder: SleepTimerStateHolder,
     private val playbackDispatchStateHolder: PlaybackDispatchStateHolder,
+    private val cloudStreamPlaybackInfoStore: CloudStreamPlaybackInfoStore,
     @param:ApplicationContext private val context: Context,
 ) {
 
@@ -121,6 +124,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
     private val _playbackAudioMetadata = MutableStateFlow(PlaybackAudioMetadata())
     val playbackAudioMetadata: StateFlow<PlaybackAudioMetadata> = _playbackAudioMetadata.asStateFlow()
 
+    private var cloudStreamInfoJob: Job? = null
     private var lastQueueUpdateRequestId = 0L
     private var lastQueueSignature: QueueTimelineSignature? = null
     private var lastQueueUpdateJob: Job? = null
@@ -275,6 +279,34 @@ class MediaControllerSyncStateHolder @Inject constructor(
         _playbackAudioMetadata.value = PlaybackAudioMetadata(mediaId = mediaId)
     }
 
+    private fun contentUriForMediaItem(mediaItem: MediaItem?): String? =
+        mediaItem?.mediaMetadata?.extras
+            ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI)
+            ?.takeIf { it.isNotBlank() }
+
+    private fun applyCloudStreamInfoForCurrentMedia(player: Player) {
+        val mediaItem = player.currentMediaItem ?: return
+        val mediaId = mediaItem.mediaId
+        val contentUriString = contentUriForMediaItem(mediaItem) ?: return
+        val info = cloudStreamPlaybackInfoStore.infoFor(contentUriString) ?: return
+        _playbackAudioMetadata.update { current ->
+            if (current.mediaId != mediaId) return@update current
+            current.copy(
+                streamQuality = info.quality ?: current.streamQuality,
+                mimeType = current.mimeType ?: info.mimeType
+            )
+        }
+    }
+
+    private fun observeCloudStreamPlaybackInfo(player: Player) {
+        cloudStreamInfoJob?.cancel()
+        cloudStreamInfoJob = cb.scope.launch {
+            cloudStreamPlaybackInfoStore.infos.collect {
+                applyCloudStreamInfoForCurrentMedia(player)
+            }
+        }
+    }
+
     private fun extractBitDepthFromPcmEncoding(pcmEncoding: Int): Int? {
         return when (pcmEncoding) {
             C.ENCODING_PCM_8BIT -> 8
@@ -306,10 +338,13 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 .firstOrNull()
 
             val current = _playbackAudioMetadata.value.takeIf { it.mediaId == mediaId }
+            val cloudInfo = cloudStreamPlaybackInfoStore.infoFor(contentUriForMediaItem(player.currentMediaItem))
             val metadata = PlaybackAudioMetadata(
                 mediaId = mediaId,
+                streamQuality = cloudInfo?.quality ?: current?.streamQuality,
                 mimeType = selectedAudioFormat?.sampleMimeType
                     ?: selectedAudioFormat?.containerMimeType
+                    ?: cloudInfo?.mimeType
                     ?: current?.mimeType,
                 bitrate = selectedAudioFormat?.bitrate?.takeIf { it > 0 }
                     ?: current?.bitrate,
@@ -355,12 +390,15 @@ class MediaControllerSyncStateHolder @Inject constructor(
                         ?.toIntOrNull()
                         ?.takeIf { it > 0 }
                     val sampleRate = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                             ?.toIntOrNull()
                             ?.takeIf { it > 0 }
                     } else null
                     PlaybackAudioMetadata(
                         mediaId = mediaId,
+                        streamQuality = cloudStreamPlaybackInfoStore
+                            .infoFor(contentUriForMediaItem(mediaItem))
+                            ?.quality,
                         mimeType = mimeType,
                         bitrate = bitrate,
                         sampleRate = sampleRate
@@ -374,6 +412,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 val isSameMediaItem = current.mediaId == mediaId
                 if (!isSameMediaItem) return@update current
                 current.copy(
+                    streamQuality = current.streamQuality ?: probedMetadata.streamQuality,
                     mimeType = current.mimeType ?: probedMetadata.mimeType,
                     bitrate = current.bitrate ?: probedMetadata.bitrate,
                     sampleRate = current.sampleRate ?: probedMetadata.sampleRate
@@ -469,6 +508,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
         setupPlaybackListeners(playerCtrl)
         setupTransitionListeners(playerCtrl)
         setupMetadataListeners(playerCtrl)
+        observeCloudStreamPlaybackInfo(playerCtrl)
         Trace.endSection()
     }
 
@@ -480,6 +520,8 @@ class MediaControllerSyncStateHolder @Inject constructor(
 
     /** Removes and forgets every listener registered via [registerMediaControllerListener]. */
     fun clearMediaControllerPlaybackListeners(controller: MediaController?) {
+        cloudStreamInfoJob?.cancel()
+        cloudStreamInfoJob = null
         mediaControllerPlaybackListeners.forEach { listener ->
             controller?.removeListener(listener)
         }

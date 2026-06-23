@@ -430,6 +430,16 @@ interface MusicDao {
         "SELECT " + SONG_DETAIL_PROJECTION + """
         FROM songs
         LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
+        WHERE songs.content_uri_string = :contentUri
+        LIMIT 1
+        """
+    )
+    suspend fun getSongByContentUriOnce(contentUri: String): SongEntity?
+
+    @Query(
+        "SELECT " + SONG_DETAIL_PROJECTION + """
+        FROM songs
+        LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
         WHERE songs.id = :songId
         """
     )

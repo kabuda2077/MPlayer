@@ -10,15 +10,13 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,6 +38,8 @@ class DailyMixStateHolder @Inject constructor(
 ) {
     private var scope: CoroutineScope? = null
     private var updateJob: Job? = null
+    private var dailyMixRestoreJob: Job? = null
+    private var yourMixRestoreJob: Job? = null
 
     private val _dailyMixSongs = MutableStateFlow<ImmutableList<Song>>(persistentListOf())
     val dailyMixSongs: StateFlow<ImmutableList<Song>> = _dailyMixSongs.asStateFlow()
@@ -83,8 +83,6 @@ class DailyMixStateHolder @Inject constructor(
                 val yourMix = dailyMixManager.generateYourMix(allSongs, favoriteIds)
                 _yourMixSongs.value = yourMix.toImmutableList()
                 userPreferencesRepository.saveYourMixSongIds(yourMix.map { it.id })
-            } else {
-                _yourMixSongs.value = persistentListOf()
             }
         }
     }
@@ -94,33 +92,44 @@ class DailyMixStateHolder @Inject constructor(
      * instead of combining with the full allSongs flow.
      */
     fun loadPersistedDailyMix() {
-        // Load Daily Mix
-        scope?.launch {
-            val dailyMixIds = userPreferencesRepository.dailyMixSongIdsFlow.first()
-            if (dailyMixIds.isNotEmpty() && _dailyMixSongs.value.isEmpty()) {
-                val songs = withContext(Dispatchers.IO) {
-                    musicRepository.getSongsByIds(dailyMixIds).first()
-                }
-                if (songs.isNotEmpty()) {
-                    // Maintain persisted order
-                    val songMap = songs.associateBy { it.id }
-                    val orderedSongs = dailyMixIds.mapNotNull { songMap[it] }
-                    _dailyMixSongs.value = orderedSongs.toImmutableList()
-                }
-            }
-        }
+        dailyMixRestoreJob?.cancel()
+        dailyMixRestoreJob = restorePersistedDailyMix(
+            loadSongIds = { userPreferencesRepository.dailyMixSongIdsFlow.first() },
+            targetState = _dailyMixSongs
+        )
 
-        // Load Your Mix
-        scope?.launch {
-            val yourMixIds = userPreferencesRepository.yourMixSongIdsFlow.first()
-            if (yourMixIds.isNotEmpty() && _yourMixSongs.value.isEmpty()) {
-                val songs = withContext(Dispatchers.IO) {
-                    musicRepository.getSongsByIds(yourMixIds).first()
-                }
+        yourMixRestoreJob?.cancel()
+        yourMixRestoreJob = restorePersistedDailyMix(
+            loadSongIds = { userPreferencesRepository.yourMixSongIdsFlow.first() },
+            targetState = _yourMixSongs
+        )
+    }
+
+    private fun restorePersistedDailyMix(
+        loadSongIds: suspend () -> List<String>,
+        targetState: MutableStateFlow<ImmutableList<Song>>
+    ): Job? {
+        val activeScope = scope ?: return null
+        return activeScope.launch(Dispatchers.IO) {
+            val songIds = loadSongIds()
+            if (songIds.isEmpty()) {
+                targetState.value = persistentListOf()
+                return@launch
+            }
+
+            repeat(PERSISTED_MIX_RESTORE_ATTEMPTS) { attempt ->
+                val songs = musicRepository.getSongsByIds(songIds).first()
                 if (songs.isNotEmpty()) {
                     val songMap = songs.associateBy { it.id }
-                    val orderedSongs = yourMixIds.mapNotNull { songMap[it] }
-                    _yourMixSongs.value = orderedSongs.toImmutableList()
+                    val orderedSongs = songIds.mapNotNull { songMap[it] }
+                    if (orderedSongs.isNotEmpty()) {
+                        targetState.value = orderedSongs.toImmutableList()
+                        return@launch
+                    }
+                }
+
+                if (attempt < PERSISTED_MIX_RESTORE_ATTEMPTS - 1) {
+                    delay(PERSISTED_MIX_RESTORE_RETRY_DELAY_MS)
                 }
             }
         }
@@ -177,6 +186,13 @@ class DailyMixStateHolder @Inject constructor(
 
     fun onCleared() {
         updateJob?.cancel()
+        dailyMixRestoreJob?.cancel()
+        yourMixRestoreJob?.cancel()
         scope = null
+    }
+
+    private companion object {
+        const val PERSISTED_MIX_RESTORE_ATTEMPTS = 8
+        const val PERSISTED_MIX_RESTORE_RETRY_DELAY_MS = 750L
     }
 }

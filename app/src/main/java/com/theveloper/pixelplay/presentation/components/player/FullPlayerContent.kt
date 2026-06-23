@@ -116,6 +116,7 @@ import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.plugin.PluginQuality
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.CarouselStyle
 import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
@@ -525,6 +526,7 @@ fun FullPlayerContent(
         FullPlayerProgressSection(
             song = song,
             playbackMetadataMediaId = playbackAudioMetadata.mediaId,
+            playbackMetadataStreamQuality = playbackAudioMetadata.streamQuality,
             playbackMetadataMimeType = playbackAudioMetadata.mimeType,
             playbackMetadataBitrate = playbackAudioMetadata.bitrate,
             playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
@@ -1196,6 +1198,7 @@ private fun FullPlayerControlsSection(
 private fun FullPlayerProgressSection(
     song: Song,
     playbackMetadataMediaId: String?,
+    playbackMetadataStreamQuality: String?,
     playbackMetadataMimeType: String?,
     playbackMetadataBitrate: Int?,
     playbackMetadataSampleRate: Int?,
@@ -1218,6 +1221,11 @@ private fun FullPlayerProgressSection(
     } else {
         song.mimeType
     }
+    val audioStreamQuality = if (isMetadataForCurrentSong) {
+        playbackMetadataStreamQuality
+    } else {
+        null
+    }
     val audioBitrate = if (isMetadataForCurrentSong) {
         playbackMetadataBitrate ?: song.bitrate
     } else {
@@ -1235,6 +1243,7 @@ private fun FullPlayerProgressSection(
         totalDurationValue = totalDurationValue,
         songDurationHintMs = song.duration,
         audioMimeType = audioMimeType,
+        audioStreamQuality = audioStreamQuality,
         audioBitrate = audioBitrate,
         audioSampleRate = audioSampleRate,
         showAudioFileInfo = showPlayerFileInfo,
@@ -1606,21 +1615,32 @@ private fun SongMetadataDisplaySection(
     }
 }
 
-private fun formatAudioMetaLabel(mimeType: String?, bitrate: Int?, sampleRate: Int?): String? {
+private fun formatAudioMetaLabel(
+    streamQuality: String?,
+    mimeType: String?,
+    bitrate: Int?,
+    sampleRate: Int?
+): String? {
     val formatLabel = mimeTypeToFormat(mimeType)
         .takeIf { it != "-" }
         ?.uppercase(Locale.getDefault())
+    val qualityLabel = PluginQuality.displayFor(streamQuality)
+        .takeIf { it.isNotBlank() && it != "unknown" }
 
     val parts = buildList {
+        qualityLabel?.let { add(it) }
         sampleRate?.takeIf { it > 0 }?.let { add(String.format(Locale.US, "%.1f kHz", it / 1000.0)) }
         bitrate?.takeIf { it > 0 }?.let { bitrateValue ->
             val kbpsLabel = "${bitrateValue / 1000} kbps"
-            if (formatLabel != null) {
+            val shouldAppendFormat = formatLabel != null && !formatLabel.equals(qualityLabel, ignoreCase = true)
+            if (shouldAppendFormat) {
                 add("$kbpsLabel \u2022 $formatLabel")
             } else {
                 add(kbpsLabel)
             }
-        } ?: formatLabel?.let { add(it) }
+        } ?: formatLabel
+            ?.takeUnless { it.equals(qualityLabel, ignoreCase = true) }
+            ?.let { add(it) }
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u2022 ")
 }
@@ -1632,6 +1652,7 @@ private fun PlayerProgressBarSection(
     totalDurationValue: Long,
     songDurationHintMs: Long,
     audioMimeType: String?,
+    audioStreamQuality: String?,
     audioBitrate: Int?,
     audioSampleRate: Int?,
     showAudioFileInfo: Boolean,
@@ -1669,9 +1690,10 @@ private fun PlayerProgressBarSection(
         kotlin.math.abs(reportedDuration - hintDuration) <= 1500L -> reportedDuration
         else -> minOf(reportedDuration, hintDuration)
     }
-    val audioMetaLabel = remember(showAudioFileInfo, audioMimeType, audioBitrate, audioSampleRate) {
+    val audioMetaLabel = remember(showAudioFileInfo, audioStreamQuality, audioMimeType, audioBitrate, audioSampleRate) {
         if (showAudioFileInfo) {
             formatAudioMetaLabel(
+                streamQuality = audioStreamQuality,
                 mimeType = audioMimeType,
                 bitrate = audioBitrate,
                 sampleRate = audioSampleRate

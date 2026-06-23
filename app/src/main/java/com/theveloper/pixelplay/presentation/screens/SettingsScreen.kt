@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -218,7 +219,7 @@ fun SettingsScreen(
                         it != SettingsCategory.DEVICE_CAPABILITIES
                     }
 
-                    val totalItems = mainCategories.size + 3 // Device + Accounts + About
+                    val totalItems = mainCategories.size + 4 // Device + Accounts + Plugins + About
                     fun shapeFor(index: Int) =
                         when {
                             totalItems == 1 -> RoundedCornerShape(24.dp)
@@ -267,6 +268,19 @@ fun SettingsScreen(
                         icon = Icons.Rounded.AccountCircle,
                         colors = getAccountsColors(isDark),
                         onClick = { navController.navigateSafely(Screen.Accounts.route) },
+                        shape = shapeFor(itemIndex)
+                    )
+                    if (itemIndex < totalItems - 1) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    itemIndex++
+
+                    ExpressiveNavigationItem(
+                        title = "音源插件",
+                        subtitle = "导入 JS 插件接管网易云和 QQ 的播放音源解析",
+                        icon = Icons.Rounded.Extension,
+                        colors = getPluginColors(isDark),
+                        onClick = { navController.navigateSafely(Screen.AudioSourcePlugins.route) },
                         shape = shapeFor(itemIndex)
                     )
                     if (itemIndex < totalItems - 1) {
@@ -460,6 +474,14 @@ private fun getAccountsColors(isDark: Boolean): Pair<Color, Color> {
         Color(0xFF37474F) to Color(0xFFBBD9E8)
     } else {
         Color(0xFFD6EAF5) to Color(0xFF103548)
+    }
+}
+
+private fun getPluginColors(isDark: Boolean): Pair<Color, Color> {
+    return if (isDark) {
+        Color(0xFF4A4458) to Color(0xFFE8DEF8)
+    } else {
+        Color(0xFFE8DEF8) to Color(0xFF4A4458)
     }
 }
 
