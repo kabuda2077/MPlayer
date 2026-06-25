@@ -213,7 +213,8 @@ fun FullPlayerContent(
     repeatModeProvider: () -> Int,
     isShuffleEnabledProvider: () -> Boolean,
     totalDurationProvider: () -> Long,
-    lyricsProvider: () -> Lyrics? = { null }, 
+    lyricsProvider: () -> Lyrics? = { null },
+    isLoadingLyricsProvider: () -> Boolean = { false },
     // State
     isCastConnecting: Boolean = false,
     // Event Handlers
@@ -332,12 +333,11 @@ fun FullPlayerContent(
     // Lógica para el botón de Lyrics en el reproductor expandido
     val onLyricsClick = {
         val lyrics = lyricsProvider()
-        if (lyrics?.synced.isNullOrEmpty() && lyrics?.plain.isNullOrEmpty()) {
-            // Si no hay letra, mostramos el diálogo para buscar
-            showFetchLyricsDialog = true
-        } else {
-            // Si hay letra, mostramos el sheet directamente
+        val hasLyrics = !lyrics?.synced.isNullOrEmpty() || !lyrics?.plain.isNullOrEmpty()
+        if (hasLyrics || isLoadingLyricsProvider()) {
             showLyricsSheet = true
+        } else {
+            showFetchLyricsDialog = true
         }
     }
 
@@ -1621,29 +1621,65 @@ private fun formatAudioMetaLabel(
     bitrate: Int?,
     sampleRate: Int?
 ): String? {
-    val formatLabel = mimeTypeToFormat(mimeType)
-        .takeIf { it != "-" }
-        ?.uppercase(Locale.getDefault())
-    val qualityLabel = PluginQuality.displayFor(streamQuality)
+    val sampleRateLabel = sampleRate?.takeIf { it > 0 }?.let(::formatSampleRateLabel)
+    val pluginQualityLabel = PluginQuality.displayFor(streamQuality)
         .takeIf { it.isNotBlank() && it != "unknown" }
+    val qualityLabel = pluginQualityLabel ?: inferLocalQualityLabel(
+        mimeType = mimeType,
+        bitrate = bitrate,
+        sampleRate = sampleRate
+    )
 
     val parts = buildList {
+        sampleRateLabel?.let { add(it) }
         qualityLabel?.let { add(it) }
-        sampleRate?.takeIf { it > 0 }?.let { add(String.format(Locale.US, "%.1f kHz", it / 1000.0)) }
-        bitrate?.takeIf { it > 0 }?.let { bitrateValue ->
-            val kbpsLabel = "${bitrateValue / 1000} kbps"
-            val shouldAppendFormat = formatLabel != null && !formatLabel.equals(qualityLabel, ignoreCase = true)
-            if (shouldAppendFormat) {
-                add("$kbpsLabel \u2022 $formatLabel")
-            } else {
-                add(kbpsLabel)
-            }
-        } ?: formatLabel
-            ?.takeUnless { it.equals(qualityLabel, ignoreCase = true) }
-            ?.let { add(it) }
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u2022 ")
 }
+
+private fun formatSampleRateLabel(sampleRate: Int): String {
+    val khz = sampleRate / 1000.0
+    return if (sampleRate % 1000 == 0) {
+        "${khz.toInt()} kHz"
+    } else {
+        String.format(Locale.US, "%.1f kHz", khz)
+    }
+}
+
+private fun inferLocalQualityLabel(
+    mimeType: String?,
+    bitrate: Int?,
+    sampleRate: Int?
+): String? {
+    val format = mimeTypeToFormat(mimeType)
+        .takeIf { it != "-" }
+        ?.lowercase(Locale.ROOT)
+
+    return when {
+        format in LOSSLESS_AUDIO_FORMATS ->
+            if ((sampleRate ?: 0) > HI_RES_SAMPLE_RATE_THRESHOLD_HZ) {
+                PluginQuality.HIRES.displayName
+            } else {
+                PluginQuality.LOSSLESS.displayName
+            }
+
+        format in LOSSY_AUDIO_FORMATS || bitrate != null ->
+            bitrate?.takeIf { it > 0 }?.let { bitrateValue ->
+                if (bitrateValue >= HIGH_BITRATE_THRESHOLD_BPS) {
+                    PluginQuality.HIGH.displayName
+                } else {
+                    PluginQuality.LOW.displayName
+                }
+            }
+
+        else -> null
+    }
+}
+
+private const val HI_RES_SAMPLE_RATE_THRESHOLD_HZ = 48_000
+private const val HIGH_BITRATE_THRESHOLD_BPS = 256_000
+private val LOSSLESS_AUDIO_FORMATS = setOf("flac", "alac", "wav", "aiff", "ape")
+private val LOSSY_AUDIO_FORMATS = setOf("mp3", "m4a", "aac", "ogg", "opus", "wma", "amr", "evrc", "qcelp", "ima")
 
 @Composable
 private fun PlayerProgressBarSection(

@@ -48,6 +48,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import com.theveloper.pixelplay.MainCoroutineExtension
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
 import com.theveloper.pixelplay.data.telegram.TelegramCacheManager
 import com.theveloper.pixelplay.data.worker.SyncManager
 import com.theveloper.pixelplay.utils.AppShortcutManager
@@ -101,6 +102,7 @@ class PlayerViewModelTest {
     private val mockPlaylistSelectionStateHolder: PlaylistSelectionStateHolder = mockk(relaxed = true)
     private val mockMediaMapper: com.theveloper.pixelplay.data.media.MediaMapper = mockk(relaxed = true)
     private lateinit var mockMediaControllerFactory: com.theveloper.pixelplay.data.media.MediaControllerFactory
+    private val cloudStreamPlaybackInfoStore = CloudStreamPlaybackInfoStore()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -281,6 +283,7 @@ class PlayerViewModelTest {
             mockLyricsStateHolder,
             mockSleepTimerStateHolder,
             playbackDispatchStateHolder,
+            cloudStreamPlaybackInfoStore,
             mockContext
         )
         playerViewModel = PlayerViewModel(

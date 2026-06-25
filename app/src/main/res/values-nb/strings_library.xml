@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Bruk klyp- og dra-gester for å finne den perfekte innrammingen.</string>
     <string name="edit_song_action_apply_cover">Bruk coverkunst</string>
     <string name="edit_song_unable_to_load_image">Kunne ikke laste det valgte bildet</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Søk etter sangtekster på lrclib.net</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">Rediger %d sanger</string>
     <string name="batch_edit_info_message">Bare endrede felt vil bli oppdatert. La felt stå tomme for å beholde eksisterende verdier.</string>

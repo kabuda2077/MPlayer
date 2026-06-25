@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">핀치 및 드래그 제스처를 사용하여 완벽한 구도를 잡으세요.</string>
     <string name="edit_song_action_apply_cover">커버 아트 적용</string>
     <string name="edit_song_unable_to_load_image">선택한 이미지를 불러올 수 없습니다</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">lrclib.net에서 가사 검색</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">%d곡 편집</string>
     <string name="batch_edit_info_message">수정된 필드만 업데이트됩니다. 기존 값을 유지하려면 필드를 비워 두세요.</string>

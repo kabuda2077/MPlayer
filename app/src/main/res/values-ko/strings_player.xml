@@ -191,5 +191,4 @@
     <string name="lyrics_synced_badge">동기화됨</string>
     <string name="lyrics_artist_album_line">%1$s • %2$s</string>
     <string name="lyrics_provided_by">가사 제공:</string>
-    <string name="lyrics_lrclib_uri">https://lrclib.net/</string>
 </resources>

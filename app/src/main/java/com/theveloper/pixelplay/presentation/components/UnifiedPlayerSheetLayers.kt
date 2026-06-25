@@ -203,6 +203,9 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     val lyricsProvider = remember {
                         { latestInfrequentPlayerState.value.lyrics }
                     }
+                    val isLoadingLyricsProvider = remember {
+                        { latestInfrequentPlayerState.value.isLoadingLyrics }
+                    }
                     val isFavoriteProvider = remember {
                         { latestIsFavorite.value }
                     }
@@ -241,6 +244,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                         isShuffleEnabledProvider = isShuffleEnabledProvider,
                         totalDurationProvider = totalDurationProvider,
                         lyricsProvider = lyricsProvider,
+                        isLoadingLyricsProvider = isLoadingLyricsProvider,
                         isCastConnecting = isCastConnecting,
                         isFavoriteProvider = isFavoriteProvider,
                         onPlayPause = onPlayPause,
@@ -308,6 +312,7 @@ internal fun UnifiedPlayerPrewarmLayer(
                 val isShuffleEnabledProvider = remember { { latestInfrequentPlayerState.value.isShuffleEnabled } }
                 val totalDurationProvider = remember { { latestInfrequentPlayerState.value.totalDuration } }
                 val lyricsProvider = remember { { latestInfrequentPlayerState.value.lyrics } }
+                val isLoadingLyricsProvider = remember { { latestInfrequentPlayerState.value.isLoadingLyrics } }
                 val isFavoriteProvider = remember { { latestIsFavorite.value } }
                 val onPlayPause = remember(playerViewModel) { playerViewModel::playPause }
                 val onSeek = remember(playerViewModel) { playerViewModel::seekTo }
@@ -338,6 +343,7 @@ internal fun UnifiedPlayerPrewarmLayer(
                     isShuffleEnabledProvider = isShuffleEnabledProvider,
                     totalDurationProvider = totalDurationProvider,
                     lyricsProvider = lyricsProvider,
+                    isLoadingLyricsProvider = isLoadingLyricsProvider,
                     isCastConnecting = isCastConnecting,
                     isFavoriteProvider = isFavoriteProvider,
                     onShowQueueClicked = onShowQueueClicked,

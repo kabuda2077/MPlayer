@@ -210,6 +210,9 @@ class UserPreferencesRepository @Inject constructor(
         val LYRICS_SYNC_OFFSETS = stringPreferencesKey("lyrics_sync_offsets_json")
         val LYRICS_SOURCE_PREFERENCE = stringPreferencesKey("lyrics_source_preference")
         val AUTO_SCAN_LRC_FILES = booleanPreferencesKey("auto_scan_lrc_files")
+        val ENABLE_ONLINE_TTML_LYRICS = booleanPreferencesKey("enable_online_ttml_lyrics")
+        val ENABLE_QQ_LYRICS = booleanPreferencesKey("enable_qq_lyrics")
+        val LOCAL_SONGS_ALLOW_QQ_LYRICS = booleanPreferencesKey("local_songs_allow_qq_lyrics")
 
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
@@ -1093,6 +1096,27 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setAutoScanLrcFiles(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.AUTO_SCAN_LRC_FILES] = enabled }
+    }
+
+    val enableOnlineTtmlLyricsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.ENABLE_ONLINE_TTML_LYRICS] ?: true }
+
+    suspend fun setEnableOnlineTtmlLyrics(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.ENABLE_ONLINE_TTML_LYRICS] = enabled }
+    }
+
+    val enableQqLyricsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.ENABLE_QQ_LYRICS] ?: true }
+
+    suspend fun setEnableQqLyrics(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.ENABLE_QQ_LYRICS] = enabled }
+    }
+
+    val localSongsAllowQqLyricsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] ?: true }
+
+    suspend fun setLocalSongsAllowQqLyrics(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] = enabled }
     }
 
     val immersiveLyricsEnabledFlow: Flow<Boolean> =

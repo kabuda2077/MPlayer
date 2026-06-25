@@ -11,6 +11,7 @@ import org.xml.sax.InputSource
 
 internal object TtmlLyricsParser {
     private const val MAX_TTML_PARAGRAPHS = 5_000
+    private const val TTML_METADATA_NS = "http://www.w3.org/ns/ttml#metadata"
 
     fun parseToEnhancedLrc(ttmlText: String): String? {
         return runCatching {
@@ -44,9 +45,12 @@ internal object TtmlLyricsParser {
                 for (index in 0 until paragraphNodes.length) {
                     val paragraph = paragraphNodes.item(index) as? Element ?: continue
                     val beginMs = resolveParagraphStartMs(paragraph) ?: continue
-                    val serializedBody = normalizeParagraphBody(serializeChildren(paragraph))
+                    val serializedBody = normalizeParagraphBody(serializePrimaryChildren(paragraph))
                     if (serializedBody.isBlank()) continue
                     add(beginMs to "[${formatLrcTimestamp(beginMs)}]$serializedBody")
+                    collectSupplementalLines(paragraph, role = "x-translation").forEach { translation ->
+                        add(beginMs to "[${formatLrcTimestamp(beginMs)}]$translation")
+                    }
                 }
             }.sortedBy { it.first }
                 .joinToString("\n") { it.second }
@@ -89,10 +93,33 @@ internal object TtmlLyricsParser {
         return builder.toString()
     }
 
+    private fun serializePrimaryChildren(node: Node): String {
+        val builder = StringBuilder()
+        var child = node.firstChild
+        while (child != null) {
+            if (child !is Element || !isSupplementalSpan(child)) {
+                builder.append(serializePrimaryNode(child))
+            }
+            child = child.nextSibling
+        }
+        return builder.toString()
+    }
+
     private fun serializeNode(node: Node): String {
         return when (node.nodeType) {
             Node.TEXT_NODE, Node.CDATA_SECTION_NODE -> sanitizeTextFragment(node.nodeValue.orEmpty())
             Node.ELEMENT_NODE -> serializeElement(node as Element)
+            else -> ""
+        }
+    }
+
+    private fun serializePrimaryNode(node: Node): String {
+        return when (node.nodeType) {
+            Node.TEXT_NODE, Node.CDATA_SECTION_NODE -> sanitizeTextFragment(node.nodeValue.orEmpty())
+            Node.ELEMENT_NODE -> {
+                val element = node as Element
+                if (isSupplementalSpan(element)) "" else serializePrimaryElement(element)
+            }
             else -> ""
         }
     }
@@ -112,6 +139,58 @@ internal object TtmlLyricsParser {
             else -> serializeChildren(element)
         }
     }
+
+    private fun serializePrimaryElement(element: Element): String {
+        return when (localNameOf(element)) {
+            "br" -> "\n"
+            "span" -> {
+                val content = normalizeInlineText(serializePrimaryChildren(element))
+                if (content.isBlank()) {
+                    ""
+                } else {
+                    val beginMs = parseTimeExpression(element.getAttribute("begin"))
+                    if (beginMs != null) "<${formatLrcTimestamp(beginMs)}>$content" else content
+                }
+            }
+            else -> serializePrimaryChildren(element)
+        }
+    }
+
+    private fun collectSupplementalLines(paragraph: Element, role: String): List<String> {
+        val spans = paragraph.getElementsByTagNameNS("*", "span")
+        return buildList {
+            for (index in 0 until spans.length) {
+                val span = spans.item(index) as? Element ?: continue
+                if (spanRole(span) != role) continue
+                val text = normalizeParagraphBody(extractPlainText(span))
+                if (text.isNotBlank()) add(text)
+            }
+        }
+    }
+
+    private fun extractPlainText(node: Node): String {
+        val builder = StringBuilder()
+        var child = node.firstChild
+        while (child != null) {
+            when (child.nodeType) {
+                Node.TEXT_NODE, Node.CDATA_SECTION_NODE -> builder.append(sanitizeTextFragment(child.nodeValue.orEmpty()))
+                Node.ELEMENT_NODE -> {
+                    val element = child as Element
+                    if (localNameOf(element) == "br") builder.append('\n') else builder.append(extractPlainText(element))
+                }
+            }
+            child = child.nextSibling
+        }
+        return builder.toString()
+    }
+
+    private fun isSupplementalSpan(element: Element): Boolean =
+        localNameOf(element) == "span" && spanRole(element).startsWith("x-")
+
+    private fun spanRole(element: Element): String =
+        element.getAttributeNS(TTML_METADATA_NS, "role")
+            .ifBlank { element.getAttribute("ttm:role") }
+            .trim()
 
     private fun localNameOf(element: Element): String {
         return element.localName?.lowercase()

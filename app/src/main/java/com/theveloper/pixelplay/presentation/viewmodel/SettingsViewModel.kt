@@ -78,6 +78,9 @@ data class SettingsUiState(
     val folderBackGestureNavigation: Boolean = true,
     val lyricsSourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
     val autoScanLrcFiles: Boolean = false,
+    val enableOnlineTtmlLyrics: Boolean = true,
+    val enableQqLyrics: Boolean = true,
+    val localSongsAllowQqLyrics: Boolean = true,
     val blockedDirectories: Set<String> = emptySet(),
     val availableModels: List<GeminiModel> = emptyList(),
     val isLoadingModels: Boolean = false,
@@ -163,6 +166,9 @@ private sealed interface SettingsUiUpdate {
         val folderBackGestureNavigation: Boolean,
         val lyricsSourcePreference: LyricsSourcePreference,
         val autoScanLrcFiles: Boolean,
+        val enableOnlineTtmlLyrics: Boolean,
+        val enableQqLyrics: Boolean,
+        val localSongsAllowQqLyrics: Boolean,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
         val immersiveLyricsEnabled: Boolean,
@@ -556,6 +562,9 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.folderBackGestureNavigationFlow,
                 userPreferencesRepository.lyricsSourcePreferenceFlow,
                 userPreferencesRepository.autoScanLrcFilesFlow,
+                userPreferencesRepository.enableOnlineTtmlLyricsFlow,
+                userPreferencesRepository.enableQqLyricsFlow,
+                userPreferencesRepository.localSongsAllowQqLyricsFlow,
                 userPreferencesRepository.blockedDirectoriesFlow,
                 userPreferencesRepository.hapticsEnabledFlow,
                 userPreferencesRepository.immersiveLyricsEnabledFlow,
@@ -577,14 +586,17 @@ class SettingsViewModel @Inject constructor(
                     folderBackGestureNavigation = values[8] as Boolean,
                     lyricsSourcePreference = values[9] as LyricsSourcePreference,
                     autoScanLrcFiles = values[10] as Boolean,
-                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[11] as Set<String>),
-                    hapticsEnabled = values[12] as Boolean,
-                    immersiveLyricsEnabled = values[13] as Boolean,
-                    immersiveLyricsTimeout = values[14] as Long,
-                    animatedLyricsBlurEnabled = values[15] as Boolean,
-                    animatedLyricsBlurStrength = values[16] as Float,
-                    disableBlurAllOver = values[17] as Boolean,
-                    showScrollbar = values[18] as Boolean
+                    enableOnlineTtmlLyrics = values[11] as Boolean,
+                    enableQqLyrics = values[12] as Boolean,
+                    localSongsAllowQqLyrics = values[13] as Boolean,
+                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[14] as Set<String>),
+                    hapticsEnabled = values[15] as Boolean,
+                    immersiveLyricsEnabled = values[16] as Boolean,
+                    immersiveLyricsTimeout = values[17] as Long,
+                    animatedLyricsBlurEnabled = values[18] as Boolean,
+                    animatedLyricsBlurStrength = values[19] as Float,
+                    disableBlurAllOver = values[20] as Boolean,
+                    showScrollbar = values[21] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -600,6 +612,9 @@ class SettingsViewModel @Inject constructor(
                         folderBackGestureNavigation = update.folderBackGestureNavigation,
                         lyricsSourcePreference = update.lyricsSourcePreference,
                         autoScanLrcFiles = update.autoScanLrcFiles,
+                        enableOnlineTtmlLyrics = update.enableOnlineTtmlLyrics,
+                        enableQqLyrics = update.enableQqLyrics,
+                        localSongsAllowQqLyrics = update.localSongsAllowQqLyrics,
                         blockedDirectories = update.blockedDirectories,
                         hapticsEnabled = update.hapticsEnabled,
                         immersiveLyricsEnabled = update.immersiveLyricsEnabled,
@@ -917,6 +932,31 @@ class SettingsViewModel @Inject constructor(
     fun setAutoScanLrcFiles(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setAutoScanLrcFiles(enabled)
+        }
+    }
+
+    fun setEnableOnlineTtmlLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setEnableOnlineTtmlLyrics(enabled)
+        }
+    }
+
+    fun setOnlineLyricsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setEnableQqLyrics(enabled)
+            userPreferencesRepository.setEnableOnlineTtmlLyrics(enabled)
+        }
+    }
+
+    fun setEnableQqLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setEnableQqLyrics(enabled)
+        }
+    }
+
+    fun setLocalSongsAllowQqLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLocalSongsAllowQqLyrics(enabled)
         }
     }
 

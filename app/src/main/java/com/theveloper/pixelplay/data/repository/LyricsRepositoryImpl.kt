@@ -8,28 +8,27 @@ import android.provider.OpenableColumns
 import android.util.Log
 import android.util.LruCache
 import androidx.core.net.toUri
+import com.google.gson.JsonParser
 import com.google.gson.Gson
 import com.kyant.taglib.TagLib
 import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
-import com.theveloper.pixelplay.data.network.lyrics.LrcLibApiService
-import com.theveloper.pixelplay.data.network.lyrics.LrcLibResponse
+import com.theveloper.pixelplay.data.model.SyncedLine
+import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.qqmusic.QqLyricsFetcher
 import com.theveloper.pixelplay.utils.LyricsImportSecurity
 import com.theveloper.pixelplay.utils.LyricsImportValidationResult
 import com.theveloper.pixelplay.utils.LogUtils
 import com.theveloper.pixelplay.utils.LyricsUtils
-import com.theveloper.pixelplay.utils.MultiLangRomanizer
 import com.theveloper.pixelplay.utils.NetworkRetryUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -38,14 +37,16 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.text.Normalizer
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.abs
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
 
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.async
@@ -83,38 +84,22 @@ internal fun parseBestEmbeddedLyricsField(propertyMap: Map<String, Array<String>
 private data class LyricsData(
     val plainLyrics: String?,
     val syncedLyrics: String?,
-    val wordByWordLyrics: String? = null
+    val wordByWordLyrics: String? = null,
+    val structuredLyrics: String? = null
 ) {
     fun hasLyrics(): Boolean =
         !plainLyrics.isNullOrBlank() ||
             !syncedLyrics.isNullOrBlank() ||
-            !wordByWordLyrics.isNullOrBlank()
+            !wordByWordLyrics.isNullOrBlank() ||
+            !structuredLyrics.isNullOrBlank()
 }
-
-private data class RemoteSearchStrategy(
-    val name: String,
-    val request: suspend () -> Array<LrcLibResponse>?
-)
-
-private data class RemoteSearchBatch(
-    val strategyName: String,
-    val responses: List<LrcLibResponse>
-)
-
-private enum class RemoteLyricsMatchMode {
-    AUTOMATIC,
-    CANDIDATE
-}
-
-private data class RemoteLyricsMatch(
-    val response: LrcLibResponse,
-    val score: Int
-)
 
 @Singleton
 class LyricsRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val lrcLibApiService: LrcLibApiService,
+    private val neteaseRepository: NeteaseRepository,
+    private val qqLyricsFetcher: QqLyricsFetcher,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val lyricsDao: com.theveloper.pixelplay.data.database.LyricsDao,
     private val okHttpClient: OkHttpClient
 ) : LyricsRepository {
@@ -126,92 +111,13 @@ class LyricsRepositoryImpl @Inject constructor(
         // Cache sizes (matching Rhythm)
         private const val MAX_LYRICS_CACHE_SIZE = 150
         
-        // API rate limiting constants (matching Rhythm)
-        private const val LRCLIB_MIN_DELAY = 100L
-        private const val MAX_CALLS_PER_MINUTE = 30
-        private const val AMLLDB_NCM_LYRICS_BASE_URL = "https://amlldb.bikonoo.com/lyrics/ncm-lyrics/"
+        private const val AMLLDB_BASE_URL = "https://amlldb.bikonoo.com"
+        private const val AMLLDB_SEARCH_URL = "$AMLLDB_BASE_URL/api/search-lyrics"
         private const val NETWORK_RETRY_ATTEMPTS = 3
         private const val NETWORK_RETRY_INITIAL_DELAY_MS = 500L
-
-        private val BRACKETED_QUALIFIER_REGEX = Regex("""[\(\[\{\uFF08\uFF3B\uFF5B\u3010\u300E\u300C\u3014\u3008\u300A]([^)\]\}\uFF09\uFF3D\uFF5D\u3011\u300F\u300D\u3015\u3009\u300B]*)[\)\]\}\uFF09\uFF3D\uFF5D\u3011\u300F\u300D\u3015\u3009\u300B]""")
-        private val FEATURE_QUALIFIER_REGEX = Regex("""\b(feat(?:uring)?|ft)\.?\b""", RegexOption.IGNORE_CASE)
-        private val TITLE_SEPARATOR_REGEX = Regex("""\s*[-\u2013\u2014:\uFF0D\u00B7\u30FB]\s*""")
-        private val TIMING_VARIANT_KEYWORDS = setOf(
-            "remix",
-            "mix",
-            "mashup",
-            "bootleg",
-            "edit",
-            "extended",
-            "radio",
-            "club",
-            "vip",
-            "dub",
-            "live",
-            "acoustic",
-            "unplugged",
-            "sped",
-            "slowed",
-            "nightcore",
-            "instrumental",
-            "karaoke",
-            "cover",
-            "demo",
-            "version",
-            "rework",
-            "flip",
-            "refix",
-            "opening",
-            "ending",
-            "op",
-            "ed",
-            "theme",
-            "tv",
-            "size",
-            "ver",
-            "full",
-            "movie",
-            "ost",
-            "soundtrack",
-            "background",
-            "bgm",
-            "short",
-            "long",
-            "reprise",
-            "intro",
-            "outro",
-            "medley",
-            "bonus"
-        )
-        private val TITLE_DROP_QUALIFIERS = setOf(
-            "explicit",
-            "clean",
-            "mono",
-            "stereo",
-            "official audio",
-            "official video",
-            "hi-res",
-            "high-res",
-            "mqa"
-        )
-        private val UNKNOWN_ARTISTS = setOf(
-            "",
-            "<unknown>",
-            "unknown",
-            "unknown artist",
-            "various artists",
-            "various"
-        )
-        private val ARTIST_CONNECTOR_TOKENS = setOf(
-            "feat",
-            "featuring",
-            "ft",
-            "and",
-            "with",
-            "x",
-            "vs",
-            "the"
-        )
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private val NETEASE_YRC_LINE_REGEX = Regex("""^\[(\d+),(\d+)](.*)$""")
+        private val NETEASE_YRC_WORD_REGEX = Regex("""(.*?)\((\d+),(\d+)\)""")
     }
 
     // Repository scope for background tasks
@@ -220,60 +126,8 @@ class LyricsRepositoryImpl @Inject constructor(
     // Thread-safe LRU cache to avoid race conditions across concurrent lyrics requests.
     private val lyricsCache = LruCache<String, Lyrics>(MAX_LYRICS_CACHE_SIZE)
 
-    // Thread-safe rate limiting state.
-    private val lastApiCalls = ConcurrentHashMap<String, Long>()
-    private val apiCallCounts = ConcurrentHashMap<String, RateLimitWindow>()
-
     // Gson for JSON cache
     private val gson = Gson()
-
-    /**
-     * Executes multiple remote search strategies in parallel and returns the first non-empty result set.
-     * This keeps search responsive while preserving the existing "first useful strategy wins" behavior.
-     */
-    private suspend fun runSearchStrategiesFast(
-        strategies: List<RemoteSearchStrategy>
-    ): List<LrcLibResponse> = coroutineScope {
-        if (strategies.isEmpty()) return@coroutineScope emptyList()
-
-        val channel = Channel<RemoteSearchBatch>(capacity = strategies.size)
-        val jobs = strategies.map { strategy ->
-            launch {
-                val responses = runCatching {
-                    withNetworkRetry(operationName = "lrclib_strategy:${strategy.name}") {
-                        strategy.request()
-                    }
-                }.getOrElse { error ->
-                    Log.d(
-                        TAG,
-                        "Strategy ${strategy.name} failed after retries: ${error.message}"
-                    )
-                    null
-                }
-                    ?.toList()
-                    .orEmpty()
-                channel.trySend(
-                    RemoteSearchBatch(
-                        strategyName = strategy.name,
-                        responses = responses
-                    )
-                )
-            }
-        }
-
-        repeat(strategies.size) {
-            val batch = channel.receive()
-            if (batch.responses.isNotEmpty()) {
-                Log.d(TAG, "Fast search hit from strategy: ${batch.strategyName} (${batch.responses.size} results)")
-                jobs.forEach { it.cancel() }
-                channel.close()
-                return@coroutineScope batch.responses.distinctBy { it.id }
-            }
-        }
-
-        channel.close()
-        emptyList()
-    }
 
     private suspend fun <T> withNetworkRetry(
         operationName: String,
@@ -297,65 +151,10 @@ class LyricsRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun Int.isRetryableHttpStatusCode(): Boolean {
-        return this == 429 || this in 500..599
-    }
+    private fun Int.isRetryableHttpStatusCode(): Boolean = this == 429 || this in 500..599
 
     /**
-     * Calculate delay needed before next API call (matching Rhythm)
-     */
-    private data class RateLimitWindow(
-        val windowStartMillis: Long,
-        val count: Int
-    )
-
-    private fun calculateApiDelay(apiName: String, currentTime: Long): Long {
-        val lastCall = lastApiCalls[apiName] ?: 0L
-        val minDelay = when (apiName.lowercase()) {
-            "lrclib" -> LRCLIB_MIN_DELAY
-            else -> 250L
-        }
-
-        val timeSinceLastCall = currentTime - lastCall
-        if (timeSinceLastCall < minDelay) {
-            return minDelay - timeSinceLastCall
-        }
-
-        // Check if we're making too many calls in the current fixed 60s window
-        val window = apiCallCounts[apiName]
-        val callsInLastMinute = if (window != null && (currentTime - window.windowStartMillis) < 60000L) {
-            window.count
-        } else {
-            0
-        }
-        if (callsInLastMinute >= MAX_CALLS_PER_MINUTE) {
-            // Exponential backoff
-            return minDelay * 2
-        }
-
-        return 0L
-    }
-
-    /**
-     * Update last API call timestamp (matching Rhythm)
-     */
-    private fun updateLastApiCall(apiName: String, timestamp: Long) {
-        lastApiCalls[apiName] = timestamp
-
-        val currentWindow = apiCallCounts[apiName]
-        val updatedWindow = if (currentWindow == null || (timestamp - currentWindow.windowStartMillis) >= 60000L) {
-            RateLimitWindow(
-                windowStartMillis = timestamp,
-                count = 1
-            )
-        } else {
-            currentWindow.copy(count = currentWindow.count + 1)
-        }
-        apiCallCounts[apiName] = updatedWindow
-    }
-
-    /**
-     * Main lyrics fetching method with source preference support (matching Rhythm)
+     * Main lyrics fetching method with source preference support.
      */
     override suspend fun getLyrics(
         song: Song,
@@ -363,94 +162,110 @@ class LyricsRepositoryImpl @Inject constructor(
         forceRefresh: Boolean
     ): Lyrics? = withContext(Dispatchers.IO) {
         val cacheKey = generateCacheKey(song.id)
-        val isNeteaseTrack = isNeteaseSong(song)
-        
-        Log.d(TAG, "===== FETCH LYRICS START: ${song.displayArtist} - ${song.title} (forceRefresh=$forceRefresh, source=$sourcePreference) =====")
+        val bypassMemoryCache = forceRefresh || isNeteaseSong(song)
 
-        // Check in-memory cache unless force refresh (early return - matching Rhythm)
-        if (!forceRefresh && !isNeteaseTrack) {
+        Log.d(
+            TAG,
+            "===== FETCH LYRICS START: ${song.displayArtist} - ${song.title} " +
+                "(forceRefresh=$forceRefresh, source=$sourcePreference) ====="
+        )
+
+        if (!bypassMemoryCache) {
             lyricsCache.get(cacheKey)?.let { cached ->
                 Log.d(TAG, "===== RETURNING IN-MEMORY CACHED LYRICS =====")
                 return@withContext cached
             }
-            Log.d(TAG, "===== NO IN-MEMORY CACHE HIT, proceeding to fetch =====")
-        } else if (!forceRefresh && isNeteaseTrack) {
-            Log.d(TAG, "===== BYPASSING IN-MEMORY CACHE FOR NETEASE TRACK =====")
-        } else {
-            Log.d(TAG, "===== FORCE REFRESH - BYPASSING IN-MEMORY CACHE =====")
         }
 
         if (!forceRefresh) {
             loadStoredLyrics(song, cacheKey, includeMemoryCache = false)?.let { stored ->
-                lyricsCache.put(cacheKey, stored.first)
+                val enhancedStoredLyrics = if (!stored.first.areFromRemote) {
+                    maybeEnhanceLyricsWithQqWordLevel(song, stored.first)
+                } else {
+                    stored.first
+                }
+                lyricsCache.put(cacheKey, enhancedStoredLyrics)
                 Log.d(TAG, "===== RETURNING STORED LYRICS WITHOUT REMOTE FETCH =====")
-                return@withContext stored.first
+                return@withContext enhancedStoredLyrics
             }
         }
 
-        // Define source fetchers (matching Rhythm pattern)
-        val fetchFromLocal: suspend () -> Lyrics? = {
-            findLocalLyricsFile(song)
+        val sourceFetchers = when {
+            isLikelyLocalSong(song) -> listOf(
+                "Embedded" to suspend { loadEmbeddedLyricsFromMetadata(song) },
+                "Local" to suspend { findLocalLyricsFile(song) },
+                "Remote" to suspend { fetchLyricsFromRemoteSource(song)?.lyrics }
+            )
+
+            else -> listOf(
+                "Remote" to suspend { fetchLyricsFromRemoteSource(song)?.lyrics }
+            )
         }
 
-        val fetchFromEmbedded: suspend () -> Lyrics? = {
-            loadEmbeddedLyricsFromMetadata(song)
-        }
-
-        val fetchFromAPI: suspend () -> Lyrics? = {
-            fetchLyricsFromAPI(song)
-        }
-
-        // Try sources in order based on preference, with fallback (matching Rhythm)
-        val sourceFetchers = when (sourcePreference) {
-            LyricsSourcePreference.API_FIRST -> listOf(fetchFromAPI, fetchFromEmbedded, fetchFromLocal)
-            LyricsSourcePreference.EMBEDDED_FIRST -> listOf(fetchFromEmbedded, fetchFromAPI, fetchFromLocal)
-            LyricsSourcePreference.LOCAL_FIRST -> listOf(fetchFromLocal, fetchFromEmbedded, fetchFromAPI)
-        }
-
-        // Try each source in order until we find lyrics (early return on success)
-        for ((index, fetcher) in sourceFetchers.withIndex()) {
+        for ((sourceName, fetcher) in sourceFetchers) {
             try {
-                val lyrics = fetcher()
+                var lyrics = fetcher()
+                if (lyrics != null && sourceName != "Remote") {
+                    lyrics = maybeEnhanceLyricsWithQqWordLevel(song, lyrics)
+                }
                 if (lyrics != null && lyrics.isValid()) {
-                    val sourceName = when (index) {
-                        0 -> when (sourcePreference) {
-                            LyricsSourcePreference.API_FIRST -> "API"
-                            LyricsSourcePreference.EMBEDDED_FIRST -> "Embedded"
-                            LyricsSourcePreference.LOCAL_FIRST -> "Local"
-                        }
-                        1 -> when (sourcePreference) {
-                            LyricsSourcePreference.API_FIRST -> "Embedded"
-                            LyricsSourcePreference.EMBEDDED_FIRST -> "API"
-                            LyricsSourcePreference.LOCAL_FIRST -> "Embedded"
-                        }
-                        else -> when (sourcePreference) {
-                            LyricsSourcePreference.API_FIRST -> "Local"
-                            LyricsSourcePreference.EMBEDDED_FIRST -> "Local"
-                            LyricsSourcePreference.LOCAL_FIRST -> "API"
-                        }
-                    }
-                    Log.d(TAG, "Found lyrics from $sourceName for: ${song.displayArtist} - ${song.title}")
-                    
-                    // Cache the result
                     lyricsCache.put(cacheKey, lyrics)
-                    
-                    // Save to JSON disk cache if from API
-                    if (sourceName == "API") {
-                        saveLocalLyricsJson(song, lyrics)
-                    }
-                    
+                    Log.d(TAG, "Found lyrics from $sourceName for: ${song.displayArtist} - ${song.title}")
                     return@withContext lyrics
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Error fetching from source ${index + 1}: ${e.message}")
-                // Continue to next source
+                Log.w(TAG, "Error fetching lyrics from $sourceName: ${e.message}")
             }
         }
 
-        // No lyrics found from any source
         Log.d(TAG, "No lyrics found from any source for: ${song.displayArtist} - ${song.title}")
-        return@withContext null
+        null
+    }
+
+    private suspend fun maybeEnhanceLyricsWithQqWordLevel(song: Song, baseLyrics: Lyrics): Lyrics {
+        if (baseLyrics.synced.isNullOrEmpty()) return baseLyrics
+        if (baseLyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() }) return baseLyrics
+
+        val options = loadRemoteLyricsOptions()
+        val shouldTryQq = options.enableQqLyrics && isNeteaseSong(song)
+        if (!shouldTryQq) return baseLyrics
+
+        val qqPayload = fetchQqRemoteLyrics(song) ?: return baseLyrics
+        val baseSourceTag = when {
+            isLikelyLocalSong(song) -> "local"
+            isNeteaseSong(song) -> "embedded"
+            else -> "embedded"
+        }
+        val baseDescriptor = lyricsDescriptor(
+            sourceTag = baseSourceTag,
+            lyrics = baseLyrics,
+            matchType = "id",
+            exactPlatformMatch = true
+        )
+        val qqDescriptor = lyricsDescriptor(
+            sourceTag = qqPayload.sourceTag,
+            lyrics = qqPayload.lyrics,
+            matchType = "fuzzy",
+            durationDiffMs = extractDurationDiffMs(qqPayload.rawLyrics),
+            exactPlatformMatch = false
+        )
+        val unified = buildUnifiedLyricsResult(
+            song = song,
+            primary = baseDescriptor to (baseLyrics to lyricsToRawContent(baseLyrics).orEmpty()),
+            wordLevel = qqDescriptor to (qqPayload.lyrics to qqPayload.rawLyrics)
+        )
+        val merged = unified?.lyrics
+        if (merged != null && merged.synced.orEmpty().any { !it.words.isNullOrEmpty() }) {
+            Timber.d(
+                "Lyrics[Enhance] applied QQ word-level fallback for %s - %s (primary=%s wordLevel=%s)",
+                song.displayArtist,
+                song.title,
+                unified.primarySource?.sourceTag ?: baseSourceTag,
+                unified.wordLevelSource?.sourceTag ?: qqPayload.sourceTag
+            )
+            return merged.copy(areFromRemote = baseLyrics.areFromRemote || qqPayload.lyrics.areFromRemote)
+        }
+        return baseLyrics
     }
 
     override suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>? = withContext(Dispatchers.IO) {
@@ -460,415 +275,597 @@ class LyricsRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Fetches lyrics from LRCLIB API with rate limiting (matching Rhythm)
-     */
-    private suspend fun fetchLyricsFromAPI(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        val isNetease = isNeteaseSong(song)
+    private data class RemoteLyricsOptions(
+        val enableOnlineTtmlLyrics: Boolean,
+        val enableQqLyrics: Boolean
+    )
 
-        if (isNetease) {
-            val amlLyrics = fetchFromAmlldb(song)
-            if (amlLyrics != null) {
-                Log.d(TAG, "===== LOADED WORD-BY-WORD LYRICS FROM AMLLDB =====")
-                return@withContext amlLyrics
-            }
-            Log.d(TAG, "AMLLDB unavailable for Netease song, falling back to cache/LRCLIB")
-        }
+    private data class RemoteLyricsPayload(
+        val lyrics: Lyrics,
+        val rawLyrics: String,
+        val sourceTag: String
+    )
 
-        // Check JSON disk cache first (matching Rhythm)
-        val cachedJson = loadLocalLyricsJson(song)
-        if (cachedJson != null) {
-            Log.d(TAG, "===== LOADED LYRICS FROM JSON DISK CACHE =====")
-            return@withContext cachedJson
-        }
-
-        // Apply rate limiting
-        val currentTime = System.currentTimeMillis()
-        val delayNeeded = calculateApiDelay("lrclib", currentTime)
-        if (delayNeeded > 0) {
-            Log.d(TAG, "Rate limiting: waiting ${delayNeeded}ms before API call")
-            delay(delayNeeded)
-        }
-        updateLastApiCall("lrclib", System.currentTimeMillis())
-
-        try {
-            val cleanArtist = song.displayArtist.trim().replace(BRACKETED_QUALIFIER_REGEX, "").trim()
-            val cleanTitle = song.title.trim().replace(BRACKETED_QUALIFIER_REGEX, "").trim()
-            val simplifiedArtist = cleanArtist.split(" feat.", " ft.", " featuring", " & ", " , ").first().trim()
-            val simplifiedTitle = cleanTitle.split(" feat.", " ft.", " featuring", " (").first().trim()
-            val useSimplifiedStrategy =
-                simplifiedArtist != cleanArtist || simplifiedTitle != cleanTitle
-
-            val searchStrategies = buildList {
-                add(
-                    RemoteSearchStrategy("track+artist") {
-                        lrcLibApiService.searchLyrics(trackName = cleanTitle, artistName = cleanArtist)
-                    }
-                )
-                add(
-                    RemoteSearchStrategy("combined_query") {
-                        lrcLibApiService.searchLyrics(query = "$cleanArtist $cleanTitle")
-                    }
-                )
-                if (useSimplifiedStrategy) {
-                    add(
-                        RemoteSearchStrategy("simplified_track+artist") {
-                            lrcLibApiService.searchLyrics(trackName = simplifiedTitle, artistName = simplifiedArtist)
-                        }
-                    )
-                }
-
-                // Romanized search strategy for non-Latin titles
-                if (MultiLangRomanizer.isScriptThatNeedsRomanization(cleanTitle)) {
-                    val romanTitle = romanizeForMatch(cleanTitle)
-                    if (romanTitle != cleanTitle) {
-                        add(RemoteSearchStrategy("romanized_track") {
-                            lrcLibApiService.searchLyrics(trackName = romanTitle, artistName = cleanArtist)
-                        })
-                    }
-                }
-                
-                // Smart title cleanup strategy (removes leading digits/spaces and truncates at -, (, ))
-                val smartTitle = cleanTitleSmart(cleanTitle)
-                if (smartTitle != cleanTitle && smartTitle.isNotBlank()) {
-                    Log.d(TAG, "Adding smart search strategy for: '$smartTitle' (orig: '$cleanTitle')")
-                    add(RemoteSearchStrategy("smart_track_only") {
-                        lrcLibApiService.searchLyrics(trackName = smartTitle)
-                    })
-                }
-            }
-
-            var results = runSearchStrategiesFast(searchStrategies)
-
-            // Strategy 4: Aggressive fallback - remove artist and trim title at separators
-            if (results.isEmpty()) {
-                 // Include common CJK/Unicode separators: \uFF0D (fullwidth hyphen-minus), \u00B7 (middle dot), \u30FB (katakana middle dot)
-                 val separators = charArrayOf('-', ',', '(', ')', ':', '\uFF0D', '\u00B7', '\u30FB')
-                 val index = cleanTitle.indexOfAny(separators)
-                 if (index != -1) {
-                     val superCleanTitle = cleanTitle.substring(0, index).trim()
-                     if (superCleanTitle.isNotEmpty()) {
-                          Log.d(TAG, "Strategy 4: Searching with super simplified title: '$superCleanTitle' (no artist)")
-                          val fallbackResults = runCatching {
-                                withNetworkRetry(operationName = "lrclib_super_clean_search") {
-                                    lrcLibApiService.searchLyrics(trackName = superCleanTitle)
-                                }
-                          }.getOrNull()
-                          if (!fallbackResults.isNullOrEmpty()) {
-                              results = fallbackResults.toList()
-                          }
-                     }
-                 }
-            }
-
-            if (results.isEmpty()) {
-                Log.d(TAG, "No results from LRCLIB API")
-                return@withContext null
-            }
-
-            val bestMatch = rankRemoteLyricsMatches(
-                song = song,
-                responses = results,
-                mode = RemoteLyricsMatchMode.AUTOMATIC
-            ).firstOrNull()?.response
-
-            if (bestMatch != null) {
-                val rawLyrics = bestMatch.syncedLyrics ?: bestMatch.plainLyrics
-                if (!rawLyrics.isNullOrBlank()) {
-                    val parsedLyrics = LyricsUtils.parseLyrics(rawLyrics).copy(areFromRemote = true)
-                    if (parsedLyrics.isValid()) {
-                        Log.d(TAG, "LRCLIB lyrics found - Synced: ${!bestMatch.syncedLyrics.isNullOrBlank()}, Plain: ${!bestMatch.plainLyrics.isNullOrBlank()}")
-                        
-                        // Save to database
-                        try {
-                            lyricsDao.insert(
-                                com.theveloper.pixelplay.data.database.LyricsEntity(
-                                    songId = song.id.toLong(),
-                                    content = rawLyrics,
-                                    isSynced = !bestMatch.syncedLyrics.isNullOrBlank(),
-                                    source = "remote"
-                                )
-                            )
-                        } catch (e: NumberFormatException) {
-                            Log.w(TAG, "Skipping database save for non-numeric song ID: ${song.id} (possible streaming or external source). Lyrics will be cached in JSON.")
-                        }
-                        
-                        return@withContext parsedLyrics
-                    }
-                }
-            }
-
-            return@withContext null
-        } catch (e: Exception) {
-            Log.e(TAG, "LRCLIB lyrics fetch failed: ${e.message}", e)
-            return@withContext null
-        }
+    private data class RemoteLyricsCandidate(
+        val descriptor: LyricsSourceDescriptor,
+        val lyrics: Lyrics,
+        val rawLyrics: String
+    ) {
+        fun asMergeCandidate(): Pair<LyricsSourceDescriptor, Pair<Lyrics, String>> =
+            descriptor to (lyrics to rawLyrics)
     }
 
-    private fun hasLyrics(response: LrcLibResponse): Boolean =
-        !response.plainLyrics.isNullOrBlank() || !response.syncedLyrics.isNullOrBlank()
+    private data class LyricsCapabilities(
+        val hasWordLevel: Boolean,
+        val hasTranslation: Boolean,
+        val hasRoman: Boolean
+    )
 
-    private fun hasSyncedLyrics(response: LrcLibResponse): Boolean =
-        !response.syncedLyrics.isNullOrBlank()
+    private data class LyricsSourceDescriptor(
+        val sourceTag: String,
+        val matchType: String,
+        val durationDiffMs: Long? = null,
+        val exactPlatformMatch: Boolean = false,
+        val capabilities: LyricsCapabilities
+    )
 
-    private fun rankRemoteLyricsMatches(
+    private data class UnifiedLyricsResult(
+        val lyrics: Lyrics,
+        val primarySource: LyricsSourceDescriptor?,
+        val wordLevelSource: LyricsSourceDescriptor?,
+        val rawContents: Map<String, String>
+    )
+
+    private suspend fun loadRemoteLyricsOptions(): RemoteLyricsOptions {
+        val enableOnlineLyrics = userPreferencesRepository.enableQqLyricsFlow.first()
+        return RemoteLyricsOptions(
+            enableOnlineTtmlLyrics = enableOnlineLyrics && userPreferencesRepository.enableOnlineTtmlLyricsFlow.first(),
+            enableQqLyrics = enableOnlineLyrics
+        )
+    }
+
+    private suspend fun fetchLyricsFromRemoteSource(song: Song): RemoteLyricsPayload? = withContext(Dispatchers.IO) {
+        val options = loadRemoteLyricsOptions()
+        logLyricsRequest(song, options)
+        if (!options.enableQqLyrics) return@withContext null
+
+        val payload = when {
+            isNeteaseSong(song) -> fetchNeteaseRemoteLyrics(song, options)
+            shouldUseQqLyrics(song, options) -> fetchQqRemoteLyrics(song)
+            else -> null
+        } ?: return@withContext null
+
+        persistRemoteLyrics(song, payload)
+        payload
+    }
+
+    private suspend fun fetchNeteaseRemoteLyrics(
         song: Song,
-        responses: List<LrcLibResponse>,
-        mode: RemoteLyricsMatchMode
-    ): List<RemoteLyricsMatch> {
-        val songDurationSeconds = song.duration / 1000.0
-        if (songDurationSeconds <= 0.0) return emptyList()
-
-        return responses
-            .mapNotNull { response ->
-                val score = remoteLyricsMatchScore(
-                    song = song,
-                    response = response,
-                    mode = mode,
-                    songDurationSeconds = songDurationSeconds
-                ) ?: return@mapNotNull null
-                RemoteLyricsMatch(response, score)
+        options: RemoteLyricsOptions
+    ): RemoteLyricsPayload? = withContext(Dispatchers.IO) {
+        val remoteCandidates = coroutineScope {
+            val ttmlDeferred = if (options.enableOnlineTtmlLyrics) {
+                async { fetchAmlldbRemoteCandidate(song) }
+            } else {
+                null
             }
-            .sortedWith(
-                compareByDescending<RemoteLyricsMatch> { it.score }
-                    .thenByDescending { hasSyncedLyrics(it.response) }
-                    .thenBy { abs(it.response.duration - songDurationSeconds) }
-            )
-    }
-
-    private fun remoteLyricsMatchScore(
-        song: Song,
-        response: LrcLibResponse,
-        mode: RemoteLyricsMatchMode,
-        songDurationSeconds: Double
-    ): Int? {
-        if (!hasLyrics(response) || response.duration <= 0.0) return null
-        if (!variantDescriptorsCompatible(song, response)) return null
-
-        val hasSynced = hasSyncedLyrics(response)
-        val durationTolerance = remoteDurationToleranceSeconds(songDurationSeconds, hasSynced, mode)
-        val durationDiff = abs(response.duration - songDurationSeconds)
-        if (durationDiff > durationTolerance) return null
-
-        val titleScore = titleMatchScore(song.title, response.name, mode) ?: return null
-        val artistScore = artistMatchScore(song.displayArtist, response.artistName)
-        if (!isUnknownArtist(song.displayArtist) && artistScore == null) return null
-
-        val durationScore = (durationTolerance - durationDiff).coerceAtLeast(0.0).toInt()
-        val syncedScore = if (hasSynced) 10 else 0
-        return titleScore + (artistScore ?: 0) + durationScore + syncedScore
-    }
-
-    private fun remoteDurationToleranceSeconds(
-        songDurationSeconds: Double,
-        hasSyncedLyrics: Boolean,
-        mode: RemoteLyricsMatchMode
-    ): Double {
-        return when (mode) {
-            RemoteLyricsMatchMode.AUTOMATIC -> {
-                if (hasSyncedLyrics) {
-                    (songDurationSeconds * 0.02).coerceIn(5.0, 8.0)
-                } else {
-                    (songDurationSeconds * 0.04).coerceIn(8.0, 15.0)
-                }
+            val officialDeferred = async { fetchNeteaseOfficialCandidate(song) }
+            val qqDeferred = if (options.enableQqLyrics) {
+                async { fetchQqRemoteCandidate(song) }
+            } else {
+                null
             }
-            RemoteLyricsMatchMode.CANDIDATE -> 15.0
-        }
-    }
 
-    private fun titleMatchScore(songTitle: String, responseTitle: String, mode: RemoteLyricsMatchMode): Int? {
-        val songBase = baseTitleForMatching(songTitle)
-        val responseBase = baseTitleForMatching(responseTitle)
-        if (songBase.isBlank() || responseBase.isBlank()) return null
-
-        if (songBase == responseBase) return 70
-
-        // Attempt Romanized match for non-Latin scripts
-        if (MultiLangRomanizer.isScriptThatNeedsRomanization(songBase) || 
-            MultiLangRomanizer.isScriptThatNeedsRomanization(responseBase)) {
-            val songRoman = normalizeForMatch(romanizeForMatch(songBase))
-            val responseRoman = normalizeForMatch(romanizeForMatch(responseBase))
-            if (songRoman == responseRoman && songRoman.isNotBlank()) return 65
+            listOfNotNull(
+                ttmlDeferred?.await(),
+                officialDeferred.await(),
+                qqDeferred?.await()
+            ).map { it.asMergeCandidate() }
         }
 
-        val songTokens = matchTokens(songBase)
-        val responseTokens = matchTokens(responseBase)
-        if (songTokens.isEmpty() || responseTokens.isEmpty()) return null
+        val merged = mergeRemoteLyricsCandidates(song, remoteCandidates)
+            ?: return@withContext null
 
-        if (songTokens.size == 1 || responseTokens.size == 1) {
-            if (songTokens == responseTokens) return 60
-            
-            // Fuzzy match for single token CJK: if one contains the other
-            val s1 = songBase.replace(" ", "")
-            val s2 = responseBase.replace(" ", "")
-            if (s1.isNotBlank() && s2.isNotBlank()) {
-                if (s1.contains(s2) || s2.contains(s1)) return 55
-            }
-            
+        return@withContext buildRemoteLyricsPayload(merged)
+    }
+
+    private suspend fun fetchAmlldbRemoteCandidate(song: Song): RemoteLyricsCandidate? {
+        val amlLyrics = fetchFromAmlldb(song)
+        if (amlLyrics == null) {
+            Timber.d("Lyrics[TTML] miss for %s - %s", song.displayArtist, song.title)
             return null
         }
 
-        if (containsWholePhrase(responseBase, songBase) || containsWholePhrase(songBase, responseBase)) {
-            return if (mode == RemoteLyricsMatchMode.AUTOMATIC) 58 else 54
-        }
-
-        val overlap = songTokens.intersect(responseTokens).size
-        val songCoverage = overlap.toDouble() / songTokens.size
-        val responseCoverage = overlap.toDouble() / responseTokens.size
-        val requiredSongCoverage = if (mode == RemoteLyricsMatchMode.AUTOMATIC) 0.85 else 0.75
-        val requiredResponseCoverage = if (mode == RemoteLyricsMatchMode.AUTOMATIC) 0.70 else 0.55
-
-        return if (songCoverage >= requiredSongCoverage && responseCoverage >= requiredResponseCoverage) {
-            45
-        } else {
-            null
-        }
+        val rawLyrics = lyricsToRawContent(amlLyrics) ?: return null
+        val lyrics = amlLyrics.copy(areFromRemote = true)
+        Timber.d("Lyrics[TTML] hit for %s - %s", song.displayArtist, song.title)
+        return RemoteLyricsCandidate(
+            descriptor = lyricsDescriptor(
+                sourceTag = "amll_ttml",
+                lyrics = lyrics,
+                matchType = "id",
+                exactPlatformMatch = true
+            ),
+            lyrics = lyrics,
+            rawLyrics = rawLyrics
+        )
     }
 
-    private fun artistMatchScore(songArtist: String, responseArtist: String): Int? {
-        if (isUnknownArtist(songArtist)) return 0
+    private suspend fun fetchNeteaseOfficialCandidate(song: Song): RemoteLyricsCandidate? {
+        val songId = resolveNeteaseSongId(song) ?: return null
+        val officialRawLyrics = withNetworkRetry(operationName = "netease_official_lyrics:$songId") {
+            neteaseRepository.getLyricsPayload(songId).getOrNull()
+        }?.takeIf { raw -> raw.isNotBlank() }
 
-        val songBase = normalizeForMatch(songArtist)
-        val responseBase = normalizeForMatch(responseArtist)
-        if (songBase.isBlank() || responseBase.isBlank()) return null
-
-        if (songBase == responseBase) return 30
-        
-        // Attempt Romanized match
-        if (MultiLangRomanizer.isScriptThatNeedsRomanization(songBase) || 
-            MultiLangRomanizer.isScriptThatNeedsRomanization(responseBase)) {
-            val songRoman = normalizeForMatch(romanizeForMatch(songBase))
-            val responseRoman = normalizeForMatch(romanizeForMatch(responseBase))
-            if (songRoman == responseRoman && songRoman.isNotBlank()) return 28
+        val officialLyrics = officialRawLyrics?.let(::parseNeteaseLyricsPayload)
+        if (officialLyrics == null) {
+            Timber.d("Lyrics[Official] miss for %s - %s", song.displayArtist, song.title)
+            return null
         }
 
-        if (containsWholePhrase(responseBase, songBase) || containsWholePhrase(songBase, responseBase)) {
-            return 22
-        }
-
-        val songTokens = artistTokens(songBase)
-        val responseTokens = artistTokens(responseBase)
-        if (songTokens.isEmpty() || responseTokens.isEmpty()) return null
-
-        val overlap = songTokens.intersect(responseTokens).size
-        val smallerArtistCoverage = overlap.toDouble() / minOf(songTokens.size, responseTokens.size)
-        return if (smallerArtistCoverage >= 0.5) 12 else null
+        Timber.d(
+            "Lyrics[Official] hit for %s - %s (wordLevel=%s, translation=%s, roman=%s)",
+            song.displayArtist,
+            song.title,
+            officialLyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() },
+            officialLyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() },
+            officialLyrics.synced.orEmpty().any { !it.romanization.isNullOrBlank() }
+        )
+        return RemoteLyricsCandidate(
+            descriptor = lyricsDescriptor(
+                sourceTag = "netease_official",
+                lyrics = officialLyrics,
+                matchType = "id",
+                exactPlatformMatch = true
+            ),
+            lyrics = officialLyrics,
+            rawLyrics = officialRawLyrics
+        )
     }
 
-    private fun variantDescriptorsCompatible(song: Song, response: LrcLibResponse): Boolean {
-        val songVariants = timingVariantTokens(song.title) + timingVariantTokensFromFileName(song)
-        val responseVariants = timingVariantTokens(response.name)
-
-        if (songVariants.isEmpty()) {
-            return responseVariants.isEmpty()
-        }
-
-        return responseVariants == songVariants
+    private suspend fun fetchQqRemoteCandidate(song: Song): RemoteLyricsCandidate? {
+        val payload = fetchQqRemoteLyrics(song) ?: return null
+        return RemoteLyricsCandidate(
+            descriptor = lyricsDescriptor(
+                sourceTag = payload.sourceTag,
+                lyrics = payload.lyrics,
+                matchType = "fuzzy",
+                durationDiffMs = extractDurationDiffMs(payload.rawLyrics),
+                exactPlatformMatch = false
+            ),
+            lyrics = payload.lyrics,
+            rawLyrics = payload.rawLyrics
+        )
     }
 
-    private fun baseTitleForMatching(title: String): String {
-        var base = title.replace(Regex("""^\s*\d{1,3}\s*[\._-]\s+"""), "")
-
-        base = BRACKETED_QUALIFIER_REGEX.replace(base) { match ->
-            val qualifier = match.groupValues.getOrNull(1).orEmpty()
-            if (shouldDropTitleQualifier(qualifier)) " " else " $qualifier "
+    private suspend fun fetchQqRemoteLyrics(song: Song): RemoteLyricsPayload? = withContext(Dispatchers.IO) {
+        val result = qqLyricsFetcher.fetch(song) ?: run {
+            Timber.d("Lyrics[QQ] miss for %s - %s", song.displayArtist, song.title)
+            return@withContext null
         }
-
-        var parts = TITLE_SEPARATOR_REGEX.split(base)
-        while (parts.size > 1 && shouldDropTitleQualifier(parts.last())) {
-            parts = parts.dropLast(1)
-        }
-
-        return normalizeForMatch(parts.joinToString(" "))
+        val descriptor = LyricsSourceDescriptor(
+            sourceTag = result.metadata.sourceTag,
+            matchType = result.metadata.matchType,
+            durationDiffMs = result.metadata.durationDiffMs,
+            exactPlatformMatch = result.metadata.exactPlatformMatch,
+            capabilities = LyricsCapabilities(
+                hasWordLevel = result.metadata.hasWordLevel,
+                hasTranslation = result.metadata.hasTranslation,
+                hasRoman = result.metadata.hasRomanization
+            )
+        )
+        logLyricsSourceHit(song, descriptor)
+        buildRemoteLyricsPayload(
+            UnifiedLyricsResult(
+                lyrics = result.lyrics.copy(areFromRemote = true),
+                primarySource = descriptor,
+                wordLevelSource = descriptor.takeIf { descriptor.capabilities.hasWordLevel },
+                rawContents = mapOf(descriptor.sourceTag to result.rawLyrics)
+            )
+        )
     }
 
-    private fun shouldDropTitleQualifier(value: String): Boolean {
-        val normalized = normalizeForMatch(value)
-        if (normalized.isBlank()) return true
-        return FEATURE_QUALIFIER_REGEX.containsMatchIn(value) ||
-            timingVariantTokens(value).isNotEmpty() ||
-            normalized in TITLE_DROP_QUALIFIERS
-    }
+    private fun mergeRemoteLyricsCandidates(
+        song: Song,
+        candidates: List<Pair<LyricsSourceDescriptor, Pair<Lyrics, String>>>
+    ): UnifiedLyricsResult? {
+        if (candidates.isEmpty()) return null
 
-    private fun timingVariantTokens(value: String): Set<String> {
-        val normalized = normalizeForMatch(value)
-        if (normalized.isBlank()) return emptySet()
+        var primary: Pair<LyricsSourceDescriptor, Pair<Lyrics, String>>? = null
+        var wordLevel: Pair<LyricsSourceDescriptor, Pair<Lyrics, String>>? = null
+        val rawContents = linkedMapOf<String, String>()
 
-        val tokens = matchTokens(normalized)
-        val variants = tokens
-            .filter { it in TIMING_VARIANT_KEYWORDS }
-            .toMutableSet()
-
-        if (Regex("""\bmash\s+up\b""").containsMatchIn(normalized)) {
-            variants += "mashup"
-        }
-        if ("versus" in tokens || "vs" in tokens) {
-            variants += "mashup"
+        candidates.forEach { candidate ->
+            rawContents.putIfAbsent(candidate.first.sourceTag, candidate.second.second)
         }
 
-        return variants
+        primary = candidates.firstOrNull { it.first.sourceTag == "netease_official" }
+            ?: candidates.firstOrNull { it.first.sourceTag == "qq_lrc" || it.first.sourceTag == "qq_qrc" }
+            ?: candidates.firstOrNull()
+
+        wordLevel = candidates.firstOrNull { it.first.sourceTag == "amll_ttml" && it.first.capabilities.hasWordLevel }
+            ?: candidates.firstOrNull { it.first.sourceTag == "netease_official" && it.first.capabilities.hasWordLevel }
+            ?: candidates.firstOrNull { it.first.sourceTag == "qq_qrc" && it.first.capabilities.hasWordLevel }
+            ?: candidates.firstOrNull { it.first.capabilities.hasWordLevel }
+
+        return buildUnifiedLyricsResult(song, primary, wordLevel, rawContents)
     }
 
-    private fun timingVariantTokensFromFileName(song: Song): Set<String> {
-        val fileName = songFileName(song)
-        if (fileName.isBlank()) return emptySet()
+    private fun buildUnifiedLyricsResult(
+        song: Song,
+        primary: Pair<LyricsSourceDescriptor, Pair<Lyrics, String>>?,
+        wordLevel: Pair<LyricsSourceDescriptor, Pair<Lyrics, String>>?,
+        existingRawContents: Map<String, String> = emptyMap()
+    ): UnifiedLyricsResult? {
+        val rawContents = linkedMapOf<String, String>()
+        existingRawContents.forEach { (key, value) ->
+            if (value.isNotBlank()) rawContents.putIfAbsent(key, value)
+        }
+        primary?.let { (descriptor, payload) ->
+            if (payload.second.isNotBlank()) rawContents.putIfAbsent(descriptor.sourceTag, payload.second)
+        }
+        wordLevel?.let { (descriptor, payload) ->
+            if (payload.second.isNotBlank()) rawContents.putIfAbsent(descriptor.sourceTag, payload.second)
+        }
 
-        val variants = BRACKETED_QUALIFIER_REGEX
-            .findAll(fileName)
-            .flatMap { match -> timingVariantTokens(match.groupValues.getOrNull(1).orEmpty()) }
-            .toMutableSet()
+        val mergedLyrics = mergeLyricsPayloads(
+            primaryLyrics = primary?.second?.first,
+            wordLevelLyrics = wordLevel?.second?.first
+        ) ?: return null
 
-        val titleBase = baseTitleForMatching(song.title)
-        if (titleBase.isBlank()) return variants
+        logLyricsMergeSummary(song, primary?.first, wordLevel?.first, mergedLyrics)
 
-        TITLE_SEPARATOR_REGEX.split(fileName).forEach { part ->
-            val normalizedPart = normalizeForMatch(part)
-            if (normalizedPart.startsWith("$titleBase ")) {
-                variants += timingVariantTokens(normalizedPart.removePrefix(titleBase).trim())
+        return UnifiedLyricsResult(
+            lyrics = mergedLyrics.copy(areFromRemote = true),
+            primarySource = primary?.first,
+            wordLevelSource = wordLevel?.first,
+            rawContents = rawContents
+        )
+    }
+
+    private fun mergeLyricsPayloads(
+        primaryLyrics: Lyrics?,
+        wordLevelLyrics: Lyrics?
+    ): Lyrics? {
+        val base = primaryLyrics ?: wordLevelLyrics ?: return null
+        val primarySynced = primaryLyrics?.synced.orEmpty()
+        val wordSynced = wordLevelLyrics?.synced.orEmpty()
+
+        if (primarySynced.isEmpty() && wordSynced.isEmpty()) {
+            return base.copy(areFromRemote = true)
+        }
+
+        val mergedSynced = when {
+            primarySynced.isEmpty() -> wordSynced
+            wordSynced.isEmpty() -> primarySynced
+            else -> mergePrimaryAndWordLevel(primarySynced, wordSynced)
+        }
+
+        val mergedPlain = mergedSynced.takeIf { it.isNotEmpty() }
+            ?.let(LyricsUtils::rebuildPlainFromSynced)
+            ?: base.plain
+
+        return base.copy(
+            synced = mergedSynced.ifEmpty { null },
+            plain = mergedPlain,
+            areFromRemote = true
+        )
+    }
+
+    private fun mergePrimaryAndWordLevel(
+        primaryLines: List<SyncedLine>,
+        wordLines: List<SyncedLine>
+    ): List<SyncedLine> {
+        if (primaryLines.isEmpty()) return wordLines
+        if (wordLines.isEmpty()) return primaryLines
+
+        val merged = mutableListOf<SyncedLine>()
+        var wordIndex = 0
+
+        for (primary in primaryLines) {
+            while (wordIndex < wordLines.size && wordLines[wordIndex].time < primary.time - 300) {
+                wordIndex++
+            }
+
+            val candidate = wordLines.getOrNull(wordIndex)
+            val matched = candidate?.takeIf { kotlin.math.abs(it.time - primary.time) <= 300 }
+            if (matched != null) {
+                merged += primary.copy(
+                    words = matched.words ?: primary.words,
+                    translation = primary.translation ?: matched.translation,
+                    romanization = primary.romanization ?: matched.romanization
+                )
+            } else {
+                merged += primary
             }
         }
 
-        return variants
+        return merged
     }
 
-    private fun songFileName(song: Song): String {
-        if (song.path.isBlank()) return ""
-        return runCatching { File(song.path).nameWithoutExtension }.getOrDefault("")
+    private suspend fun persistRemoteLyrics(song: Song, payload: RemoteLyricsPayload) {
+        Timber.d("Lyrics[Persist] source=%s for %s - %s", payload.sourceTag, song.displayArtist, song.title)
+        saveLocalLyricsJson(song, payload.lyrics, payload.rawLyrics)
+        song.id.toLongOrNull()?.let { songId ->
+            runCatching {
+                val persistedContent = lyricsToPersistedContent(payload)
+                lyricsDao.insert(
+                    com.theveloper.pixelplay.data.database.LyricsEntity(
+                        songId = songId,
+                        content = persistedContent,
+                        isSynced = !payload.lyrics.synced.isNullOrEmpty(),
+                        source = payload.sourceTag
+                    )
+                )
+            }.onFailure { error ->
+                Log.w(TAG, "Failed to persist remote lyrics for ${song.id}: ${error.message}")
+            }
+        }
     }
 
-    private fun artistTokens(normalizedArtist: String): Set<String> =
-        matchTokens(normalizedArtist)
-            .filterNot { it in ARTIST_CONNECTOR_TOKENS }
-            .toSet()
-
-    private fun matchTokens(normalizedValue: String): Set<String> =
-        normalizedValue
-            .split(' ')
-            .filter { it.isNotBlank() }
-            .toSet()
-
-    private fun containsWholePhrase(haystack: String, needle: String): Boolean {
-        if (needle.isBlank()) return false
-        return Regex("""(?:^|\s)${Regex.escape(needle)}(?:\s|$)""").containsMatchIn(haystack)
+    private fun lyricsToPersistedContent(payload: RemoteLyricsPayload): String {
+        if (payload.rawLyrics.startsWith("qqlyrics://")) return payload.rawLyrics
+        return lyricsToRawContent(payload.lyrics) ?: payload.rawLyrics
     }
 
-    private fun normalizeForMatch(value: String): String {
-        val withoutDiacritics = Normalizer.normalize(value.lowercase(Locale.ROOT), Normalizer.Form.NFD)
-            .replace(Regex("""\p{Mn}+"""), "")
-
-        return withoutDiacritics
-            .replace("&", " and ")
-            .replace(Regex("""[\u2019'`]"""), "")
-            .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
-            .trim()
-            .replace(Regex("""\s+"""), " ")
+    private fun shouldUseQqLyrics(song: Song, options: RemoteLyricsOptions): Boolean {
+        if (!options.enableQqLyrics) return false
+        return when {
+            isQqMusicSong(song) -> true
+            isLikelyLocalSong(song) -> true
+            else -> true
+        }
     }
 
-    private fun isUnknownArtist(value: String): Boolean =
-        normalizeForMatch(value) in UNKNOWN_ARTISTS
+    private fun parseRawLyricsContent(rawLyrics: String, areFromRemote: Boolean): Lyrics? {
+        val parsed = rawLyrics
+            .takeIf(::looksLikeNeteaseOfficialLyricsPayload)
+            ?.let(::parseNeteaseLyricsPayload)
+            ?: qqLyricsFetcher.parsePersistedRaw(rawLyrics)
+            ?: LyricsUtils.parseLyrics(rawLyrics)
+
+        return parsed
+            .takeIf { it.isValid() }
+            ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
+            ?.copy(areFromRemote = areFromRemote)
+    }
+
+    private fun looksLikeNeteaseOfficialLyricsPayload(rawLyrics: String): Boolean {
+        val trimmed = rawLyrics.trimStart()
+        if (!trimmed.startsWith("{")) return false
+        if (!trimmed.contains("\"lyric\"")) return false
+        return listOf("\"lrc\"", "\"tlyric\"", "\"romalrc\"", "\"yrc\"", "\"ytlrc\"", "\"yromalrc\"")
+            .any(trimmed::contains)
+    }
+
+    internal fun parseNeteaseLyricsPayload(rawPayload: String): Lyrics? {
+        val root = runCatching { JsonParser.parseString(rawPayload).asJsonObject }.getOrNull()
+            ?: return null
+
+        fun nestedLyric(key: String): String {
+            val nested = root.get(key)
+            if (nested == null || !nested.isJsonObject) return ""
+            val lyricElement = nested.asJsonObject.get("lyric") ?: return ""
+            return runCatching { lyricElement.asString }.getOrDefault("")
+        }
+
+        val lrc = nestedLyric("lrc")
+        val tlyric = nestedLyric("tlyric")
+        val romalrc = nestedLyric("romalrc")
+        val yrc = nestedLyric("yrc")
+        val ytlrc = nestedLyric("ytlrc")
+        val yromalrc = nestedLyric("yromalrc")
+
+        val primaryLyrics = buildNeteaseLineLyrics(
+            lyric = lrc,
+            translatedLyric = tlyric,
+            romanizedLyric = romalrc
+        )
+
+        val wordLevelLyrics = buildNeteaseWordLevelLyrics(
+            yrc = yrc,
+            translatedLyric = ytlrc,
+            romanizedLyric = yromalrc
+        )
+
+        if (primaryLyrics != null && wordLevelLyrics == null) {
+            return primaryLyrics.copy(areFromRemote = true)
+        }
+        if (primaryLyrics == null && wordLevelLyrics != null) {
+            return wordLevelLyrics.copy(areFromRemote = true)
+        }
+        return mergeLyricsPayloads(primaryLyrics, wordLevelLyrics)?.copy(areFromRemote = true)
+            ?: if (lrc.isNotBlank()) LyricsUtils.parseLyrics(lrc)
+                .takeIf { it.isValid() }
+                ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
+                ?.copy(areFromRemote = true) else null
+    }
+
+    private fun buildNeteaseLineLyrics(
+        lyric: String,
+        translatedLyric: String,
+        romanizedLyric: String
+    ): Lyrics? {
+        if (lyric.isBlank()) return null
+        var parsed = LyricsUtils.parseLyrics(lyric)
+
+        if (parsed.synced.isNullOrEmpty() && parsed.plain.isNullOrEmpty()) return null
+
+        parsed = parsed.copy(
+            synced = LyricsUtils.mergeSupplementalLines(
+                baseLines = parsed.synced.orEmpty(),
+                translationLines = LyricsUtils.parseSameTimestampBilingualLrc(translatedLyric).synced.orEmpty(),
+                romanizationLines = LyricsUtils.parseLyrics(romanizedLyric).synced.orEmpty()
+            )
+        )
+
+        return parsed.copy(
+            plain = LyricsUtils.rebuildPlainFromSynced(parsed.synced.orEmpty()).ifEmpty { parsed.plain },
+            areFromRemote = true
+        )
+    }
+
+    private fun buildNeteaseWordLevelLyrics(
+        yrc: String,
+        translatedLyric: String,
+        romanizedLyric: String
+    ): Lyrics? {
+        if (yrc.isBlank()) return null
+        val parsedYrc = parseNeteaseYrc(yrc) ?: return null
+        val merged = LyricsUtils.mergeSupplementalLines(
+            baseLines = parsedYrc.synced.orEmpty(),
+            translationLines = LyricsUtils.parseSameTimestampBilingualLrc(translatedLyric).synced.orEmpty(),
+            romanizationLines = LyricsUtils.parseLyrics(romanizedLyric).synced.orEmpty()
+        )
+
+        return parsedYrc.copy(
+            synced = merged,
+            plain = LyricsUtils.rebuildPlainFromSynced(merged),
+            areFromRemote = true
+        )
+    }
+
+    private fun parseNeteaseYrc(raw: String): Lyrics? {
+        val syncedLines = raw.lines().mapNotNull { rawLine ->
+            val line = rawLine.trim()
+            if (line.isEmpty()) return@mapNotNull null
+            val match = NETEASE_YRC_LINE_REGEX.matchEntire(line) ?: return@mapNotNull null
+            val lineTime = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
+            val body = match.groupValues[3]
+            val words = mutableListOf<com.theveloper.pixelplay.data.model.SyncedWord>()
+            val plainText = StringBuilder()
+            var previousEndsWithSpace = true
+
+            NETEASE_YRC_WORD_REGEX.findAll(body).forEach { wordMatch ->
+                val text = wordMatch.groupValues[1]
+                val wordOffset = wordMatch.groupValues[2].toIntOrNull() ?: 0
+                val cleaned = text.trim()
+                plainText.append(text)
+                if (cleaned.isNotEmpty()) {
+                    val startsNew = previousEndsWithSpace || text.firstOrNull()?.isWhitespace() == true || words.isEmpty()
+                    words += com.theveloper.pixelplay.data.model.SyncedWord(
+                        time = lineTime + wordOffset,
+                        word = cleaned,
+                        startsNewWord = startsNew
+                    )
+                }
+                previousEndsWithSpace = text.lastOrNull()?.isWhitespace() == true
+            }
+
+            val lineText = plainText.toString().trim()
+            if (lineText.isEmpty() && words.isEmpty()) return@mapNotNull null
+            SyncedLine(
+                time = lineTime,
+                line = lineText,
+                words = words.takeIf { it.isNotEmpty() }
+            )
+        }
+
+        if (syncedLines.isEmpty()) return null
+        val plain = syncedLines.map { it.line }
+        return Lyrics(synced = syncedLines, plain = plain, areFromRemote = true)
+    }
 
     private fun isNeteaseSong(song: Song): Boolean =
         song.neteaseId != null || song.contentUriString.startsWith("netease://")
+
+    private fun isQqMusicSong(song: Song): Boolean =
+        song.qqMusicMid != null || song.contentUriString.startsWith("qqmusic://")
+
+    private fun isLikelyLocalSong(song: Song): Boolean = isLocalMetadataReadableUri(song.contentUriString)
+
+    private fun lyricsDescriptor(
+        sourceTag: String,
+        lyrics: Lyrics,
+        matchType: String,
+        durationDiffMs: Long? = null,
+        exactPlatformMatch: Boolean = false
+    ): LyricsSourceDescriptor = LyricsSourceDescriptor(
+        sourceTag = sourceTag,
+        matchType = matchType,
+        durationDiffMs = durationDiffMs,
+        exactPlatformMatch = exactPlatformMatch,
+        capabilities = lyricsCapabilities(lyrics)
+    )
+
+    private fun lyricsCapabilities(lyrics: Lyrics): LyricsCapabilities {
+        val synced = lyrics.synced.orEmpty()
+        return LyricsCapabilities(
+            hasWordLevel = synced.any { !it.words.isNullOrEmpty() },
+            hasTranslation = synced.any { !it.translation.isNullOrBlank() },
+            hasRoman = synced.any { !it.romanization.isNullOrBlank() }
+        )
+    }
+
+    private fun buildRemoteLyricsPayload(result: UnifiedLyricsResult): RemoteLyricsPayload? {
+        val primarySourceTag = result.primarySource?.sourceTag ?: result.wordLevelSource?.sourceTag ?: return null
+        val raw = result.rawContents[primarySourceTag]
+            ?: result.wordLevelSource?.sourceTag?.let { result.rawContents[it] }
+            ?: lyricsToRawContent(result.lyrics)
+            ?: return null
+
+        return RemoteLyricsPayload(
+            lyrics = result.lyrics,
+            rawLyrics = raw,
+            sourceTag = primarySourceTag
+        )
+    }
+
+    private fun extractDurationDiffMs(rawLyrics: String): Long? = runCatching {
+        if (!rawLyrics.startsWith("qqlyrics://")) return@runCatching null
+        null
+    }.getOrNull()
+
+    private fun logLyricsRequest(song: Song, options: RemoteLyricsOptions) {
+        Timber.d(
+            "Lyrics[Request] platform=%s title=%s artist=%s durationMs=%s online=%s ttml=%s",
+            when {
+                isNeteaseSong(song) -> "netease"
+                isQqMusicSong(song) -> "qq"
+                isLikelyLocalSong(song) -> "local"
+                else -> "other"
+            },
+            song.title,
+            song.displayArtist,
+            song.duration,
+            options.enableQqLyrics,
+            options.enableOnlineTtmlLyrics
+        )
+    }
+
+    private fun logLyricsSourceHit(song: Song, descriptor: LyricsSourceDescriptor) {
+        Timber.d(
+            "Lyrics[Hit] source=%s match=%s durationDiffMs=%s wordLevel=%s translation=%s roman=%s exact=%s song=%s - %s",
+            descriptor.sourceTag,
+            descriptor.matchType,
+            descriptor.durationDiffMs,
+            descriptor.capabilities.hasWordLevel,
+            descriptor.capabilities.hasTranslation,
+            descriptor.capabilities.hasRoman,
+            descriptor.exactPlatformMatch,
+            song.displayArtist,
+            song.title
+        )
+    }
+
+    private fun logLyricsMergeSummary(
+        song: Song,
+        primary: LyricsSourceDescriptor?,
+        wordLevel: LyricsSourceDescriptor?,
+        lyrics: Lyrics
+    ) {
+        val capabilities = lyricsCapabilities(lyrics)
+        Timber.d(
+            "Lyrics[Final] primary=%s wordLevel=%s translation=%s roman=%s hasWordLevel=%s song=%s - %s",
+            primary?.sourceTag ?: "none",
+            wordLevel?.sourceTag ?: "none",
+            capabilities.hasTranslation,
+            capabilities.hasRoman,
+            capabilities.hasWordLevel,
+            song.displayArtist,
+            song.title
+        )
+    }
 
     private fun resolveNeteaseSongId(song: Song): Long? {
         song.neteaseId?.let { return it }
@@ -876,37 +873,163 @@ class LyricsRepositoryImpl @Inject constructor(
         return Uri.parse(song.contentUriString).host?.toLongOrNull()
     }
 
+    private data class AmlldbSearchResult(
+        val title: String,
+        val artist: String,
+        val file: String
+    )
+
     private suspend fun fetchFromAmlldb(song: Song): Lyrics? = withContext(Dispatchers.IO) {
         val neteaseSongId = resolveNeteaseSongId(song) ?: return@withContext null
-        val request = Request.Builder()
-            .url("$AMLLDB_NCM_LYRICS_BASE_URL$neteaseSongId")
-            .get()
-            .build()
 
         try {
-            val ttml = withNetworkRetry(
-                operationName = "amlldb_fetch:$neteaseSongId",
-                shouldRetry = { throwable -> throwable is IOException }
-            ) {
-                okHttpClient.newCall(request).execute().use { response ->
-                    when {
-                        response.isSuccessful -> response.body.string()
-                        response.code.isRetryableHttpStatusCode() ->
-                            throw IOException("AMLLDB HTTP ${response.code} for songId=$neteaseSongId")
-                        else -> ""
+            fetchAmlldbNcmTtml(neteaseSongId)
+                ?.let { ttml ->
+                    parseAmlldbTtml(ttml)?.also {
+                        Log.d(TAG, "AMLLDB direct NCM lyrics hit for songId=$neteaseSongId")
                     }
                 }
-            }
+                ?.let { return@withContext it }
 
-            if (ttml.isBlank() || ttml.contains("歌词不存在")) return@withContext null
-            val lrc = convertAmlTtmlToLrc(ttml) ?: return@withContext null
-            val parsed = LyricsUtils.parseLyrics(lrc)
-            if (!parsed.isValid()) return@withContext null
-            return@withContext parsed.copy(areFromRemote = true)
+            val searchHit = searchAmlldbByMetadata(song).firstOrNull()
+                ?: return@withContext null
+            val rawTtml = fetchAmlldbRawLyrics(searchHit.file)
+                ?: return@withContext null
+
+            parseAmlldbTtml(rawTtml)?.also {
+                Log.d(
+                    TAG,
+                    "AMLLDB search lyrics hit for songId=$neteaseSongId " +
+                        "title=${searchHit.title} artist=${searchHit.artist} file=${searchHit.file}"
+                )
+            }
         } catch (e: Exception) {
             Log.w(TAG, "AMLLDB fetch failed for $neteaseSongId: ${e.message}")
             return@withContext null
         }
+    }
+
+    private suspend fun fetchAmlldbNcmTtml(neteaseSongId: Long): String? {
+        val request = Request.Builder()
+            .url("$AMLLDB_BASE_URL/ncm-lyrics/$neteaseSongId.ttml")
+            .get()
+            .build()
+
+        return fetchAmlldbTtml(request, operationName = "amlldb_ncm_fetch:$neteaseSongId")
+    }
+
+    private suspend fun fetchAmlldbRawLyrics(fileName: String): String? {
+        val safeFileName = fileName.substringAfterLast('/').takeIf { it.endsWith(".ttml") } ?: return null
+        val request = Request.Builder()
+            .url("$AMLLDB_BASE_URL/raw-lyrics/$safeFileName")
+            .get()
+            .build()
+
+        return fetchAmlldbTtml(request, operationName = "amlldb_raw_fetch:$safeFileName")
+    }
+
+    private suspend fun fetchAmlldbTtml(
+        request: Request,
+        operationName: String
+    ): String? {
+        val ttml = withNetworkRetry(
+            operationName = operationName,
+            shouldRetry = { throwable -> throwable is IOException }
+        ) {
+            okHttpClient.newCall(request).execute().use { response ->
+                when {
+                    response.isSuccessful -> response.body.string()
+                    response.code.isRetryableHttpStatusCode() ->
+                        throw IOException("AMLLDB HTTP ${response.code} for ${request.url}")
+                    else -> ""
+                }
+            }
+        }
+
+        return ttml.takeIf { it.isNotBlank() && !it.contains("歌词不存在") }
+    }
+
+    private suspend fun searchAmlldbByMetadata(song: Song): List<AmlldbSearchResult> {
+        val title = song.title.trim()
+        if (title.isBlank()) return emptyList()
+
+        val body = JSONObject()
+            .put("query", title)
+            .put("type", "title")
+            .toString()
+            .toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder()
+            .url(AMLLDB_SEARCH_URL)
+            .post(body)
+            .build()
+
+        val raw = withNetworkRetry(
+            operationName = "amlldb_search:${song.id}",
+            shouldRetry = { throwable -> throwable is IOException }
+        ) {
+            okHttpClient.newCall(request).execute().use { response ->
+                when {
+                    response.isSuccessful -> response.body.string()
+                    response.code.isRetryableHttpStatusCode() ->
+                        throw IOException("AMLLDB search HTTP ${response.code}")
+                    else -> "[]"
+                }
+            }
+        }
+
+        return parseAmlldbSearchResults(raw)
+            .filter { result -> result.file.endsWith(".ttml") }
+            .filter { result -> result.matchesSong(song) }
+    }
+
+    private fun parseAmlldbSearchResults(rawJson: String): List<AmlldbSearchResult> {
+        val array = runCatching { JSONArray(rawJson) }.getOrNull() ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val file = item.optString("file").takeIf { it.isNotBlank() } ?: continue
+                add(
+                    AmlldbSearchResult(
+                        title = item.optString("title"),
+                        artist = item.optString("artist"),
+                        file = file
+                    )
+                )
+            }
+        }
+    }
+
+    private fun AmlldbSearchResult.matchesSong(song: Song): Boolean {
+        val normalizedSongTitle = normalizeAmlldbMatchText(song.title)
+        val normalizedResultTitle = normalizeAmlldbMatchText(title)
+        if (normalizedSongTitle.isBlank() || normalizedResultTitle != normalizedSongTitle) {
+            return false
+        }
+
+        val songArtistTokens = normalizeAmlldbMatchText(song.displayArtist)
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .toSet()
+        if (songArtistTokens.isEmpty()) return true
+
+        val resultArtist = normalizeAmlldbMatchText(artist)
+        return songArtistTokens.any { token -> resultArtist.contains(token) }
+    }
+
+    private fun normalizeAmlldbMatchText(value: String): String =
+        value
+            .lowercase(Locale.ROOT)
+            .replace("&", " ")
+            .replace(Regex("""[\p{Punct}\p{IsPunctuation}]+"""), " ")
+            .trim()
+            .replace(Regex("""\s+"""), " ")
+
+    private fun parseAmlldbTtml(ttml: String): Lyrics? {
+        val lrc = convertAmlTtmlToLrc(ttml) ?: return null
+        val parsed = LyricsUtils.parseLyrics(lrc)
+        return parsed
+            .takeIf { it.isValid() }
+            ?.copy(areFromRemote = true)
     }
 
     private fun convertAmlTtmlToLrc(ttml: String): String? {
@@ -925,6 +1048,7 @@ class LyricsRepositoryImpl @Inject constructor(
         lineRegex.findAll(ttml).forEach { lineMatch ->
             val lineStartMs = parseTtmlTimeToMs(lineMatch.groupValues[1]) ?: return@forEach
             var inner = lineMatch.groupValues[2]
+            val translationLines = mutableListOf<String>()
             val markerRegex = Regex("§§TS\\(([^)]+)\\)§§")
 
             inner = spanRegex.replace(inner) { spanMatch ->
@@ -940,8 +1064,13 @@ class LyricsRepositoryImpl @Inject constructor(
                     ?.let(::parseTtmlTimeToMs)
                 val text = decodeXmlEntities(spanMatch.groupValues[2])
 
+                if (role == "x-translation") {
+                    text.trim().takeIf { it.isNotBlank() }?.let(translationLines::add)
+                    return@replace ""
+                }
+
                 if (wordStartMs == null) {
-                    // Keep visible text (e.g. translation) but do not inject word timing.
+                    // Keep visible non-timed text but do not inject word timing.
                     return@replace text
                 }
 
@@ -953,6 +1082,9 @@ class LyricsRepositoryImpl @Inject constructor(
             if (lrcInlineTagged.isBlank()) return@forEach
 
             lrcLines += "[${formatTimestamp(lineStartMs.toInt())}]$lrcInlineTagged"
+            translationLines.forEach { translation ->
+                lrcLines += "[${formatTimestamp(lineStartMs.toInt())}]$translation"
+            }
         }
 
         return lrcLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
@@ -1044,7 +1176,7 @@ class LyricsRepositoryImpl @Inject constructor(
     /**
      * Save lyrics to JSON disk cache (matching Rhythm)
      */
-    private fun saveLocalLyricsJson(song: Song, lyrics: Lyrics) {
+    private fun saveLocalLyricsJson(song: Song, lyrics: Lyrics, rawLyricsOverride: String? = null) {
         try {
             val fileName = "${song.id}.json"
             val lyricsDir = File(context.filesDir, "lyrics")
@@ -1056,8 +1188,9 @@ class LyricsRepositoryImpl @Inject constructor(
 
             val lyricsData = LyricsData(
                 plainLyrics = lyrics.plain?.joinToString("\n"),
-                syncedLyrics = lyrics.synced?.joinToString("\n") { "[${formatTimestamp(it.time)}]${it.line}" },
-                wordByWordLyrics = wordByWordLyrics
+                syncedLyrics = lyrics.synced?.let(LyricsUtils::syncedToLrcString),
+                wordByWordLyrics = wordByWordLyrics,
+                structuredLyrics = rawLyricsOverride?.takeIf { it.startsWith("qqlyrics://") }
             )
 
             val file = File(lyricsDir, fileName)
@@ -1076,9 +1209,9 @@ class LyricsRepositoryImpl @Inject constructor(
         try {
             val data = readLyricsJsonCache(song) ?: return null
             if (data.hasLyrics()) {
-                val rawLyrics = data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
-                val parsed = LyricsUtils.parseLyrics(rawLyrics)
-                if (parsed.isValid()) {
+                val rawLyrics = data.structuredLyrics ?: data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
+                val parsed = rawLyrics?.let { parseRawLyricsContent(it, areFromRemote = true) }
+                if (parsed != null && parsed.isValid()) {
                     val hasWordTimestamps = parsed.synced?.any { !it.words.isNullOrEmpty() } == true
                     if (!hasWordTimestamps && data.wordByWordLyrics.isNullOrBlank()) {
                         // Legacy cache may have flattened word-by-word lines.
@@ -1118,10 +1251,10 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     private fun toWordByWordLrc(lines: List<SyncedLine>): String {
-        return lines.joinToString("\n") { line ->
+        return lines.flatMap { line ->
             val linePrefix = "[${formatTimestamp(line.time)}]"
             val words = line.words
-            if (words.isNullOrEmpty()) {
+            val primaryLine = if (words.isNullOrEmpty()) {
                 linePrefix + line.line
             } else {
                 val wordsPart = words.mapIndexed { index, word ->
@@ -1131,7 +1264,16 @@ class LyricsRepositoryImpl @Inject constructor(
                     .joinToString("")
                 linePrefix + wordsPart
             }
-        }
+            buildList {
+                add(primaryLine)
+                line.translation
+                    ?.lines()
+                    ?.filter { it.isNotBlank() }
+                    ?.forEach { translationLine ->
+                        add(linePrefix + translationLine)
+                    }
+            }
+        }.joinToString("\n")
     }
 
     private fun looksLikeFlattenedWordByWordCache(lyrics: Lyrics): Boolean {
@@ -1233,7 +1375,7 @@ class LyricsRepositoryImpl @Inject constructor(
         readLyricsJsonCache(song)
             ?.takeIf { it.hasLyrics() }
             ?.let { data ->
-                val rawLyrics = data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
+                val rawLyrics = data.structuredLyrics ?: data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
                 if (!rawLyrics.isNullOrBlank()) {
                     parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
                 }
@@ -1250,12 +1392,8 @@ class LyricsRepositoryImpl @Inject constructor(
         null
     }
 
-    private fun parseStoredLyrics(rawLyrics: String): Lyrics? {
-        val parsedLyrics = LyricsUtils.parseLyrics(rawLyrics)
-        return parsedLyrics
-            .takeIf { it.isValid() }
-            ?.copy(areFromRemote = false)
-    }
+    private fun parseStoredLyrics(rawLyrics: String): Lyrics? =
+        parseRawLyricsContent(rawLyrics, areFromRemote = false)
 
     private fun lyricsToRawContent(lyrics: Lyrics): String? {
         val syncedLyrics = lyrics.synced
@@ -1285,96 +1423,16 @@ class LyricsRepositoryImpl @Inject constructor(
         return gson.fromJson(json, LyricsData::class.java)
     }
 
-    // ========== Original methods (kept for backward compatibility) ==========
-
     override suspend fun fetchFromRemote(song: Song): Result<Pair<Lyrics, String>> = withContext(Dispatchers.IO) {
         try {
             LogUtils.d(this@LyricsRepositoryImpl, "Fetching lyrics from remote for: ${song.title}")
 
             val cacheKey = generateCacheKey(song.id)
-            loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.let { stored ->
-                lyricsCache.put(cacheKey, stored.first)
-                LogUtils.d(
-                    this@LyricsRepositoryImpl,
-                    "Skipping remote lyrics fetch because stored lyrics already exist for: ${song.title}"
-                )
-                return@withContext Result.success(stored)
-            }
+            val payload = fetchLyricsFromRemoteSource(song)
+                ?: return@withContext Result.failure(NoLyricsFoundException())
 
-            // First, try the search API which is more flexible, then pick the best match
-            val searchResult = searchRemote(song)
-            if (searchResult.isSuccess) {
-                val (_, results) = searchResult.getOrThrow()
-                if (results.isNotEmpty()) {
-                    // Pick the first result (already sorted by synced priority)
-                    val best = results.first()
-                    val rawLyricsToSave = best.rawLyrics
-
-                    try {
-                        lyricsDao.insert(
-                             com.theveloper.pixelplay.data.database.LyricsEntity(
-                                 songId = song.id.toLong(),
-                                 content = rawLyricsToSave,
-                                 isSynced = !best.lyrics.synced.isNullOrEmpty(),
-                                 source = "remote"
-                             )
-                        )
-                    } catch (e: NumberFormatException) {
-                        Log.w(TAG, "Skipping DB update for non-numeric ID: ${song.id}")
-                    }
-
-                    lyricsCache.put(cacheKey, best.lyrics)
-                    saveLocalLyricsJson(song, best.lyrics)
-                    LogUtils.d(this@LyricsRepositoryImpl, "Fetched and cached remote lyrics for: ${song.title}")
-
-                    return@withContext Result.success(Pair(best.lyrics, rawLyricsToSave))
-                }
-            }
-
-            // Fallback: Try the exact match API (less likely to succeed, but worth a shot)
-            val response = withNetworkRetry(operationName = "lrclib_get_lyrics") {
-                lrcLibApiService.getLyrics(
-                    trackName = song.title,
-                    artistName = song.displayArtist,
-                    albumName = song.album,
-                    duration = (song.duration / 1000).toInt()
-                )
-            }
-
-            val exactMatch = response
-                ?.let { rankRemoteLyricsMatches(song, listOf(it), RemoteLyricsMatchMode.AUTOMATIC).firstOrNull()?.response }
-
-            if (exactMatch != null) {
-                val rawLyricsToSave = exactMatch.syncedLyrics ?: exactMatch.plainLyrics
-                    ?: return@withContext Result.failure(NoLyricsFoundException())
-
-                val parsedLyrics = LyricsUtils.parseLyrics(rawLyricsToSave).copy(areFromRemote = true)
-                if (!parsedLyrics.isValid()) {
-                    return@withContext Result.failure(LyricsException("Parsed lyrics are empty"))
-                }
-
-                try {
-                    lyricsDao.insert(
-                        com.theveloper.pixelplay.data.database.LyricsEntity(
-                            songId = song.id.toLong(),
-                            content = rawLyricsToSave,
-                            isSynced = !parsedLyrics.synced.isNullOrEmpty(),
-                            source = "remote"
-                        )
-                    )
-                } catch (e: NumberFormatException) {
-                    Log.w(TAG, "Skipping DB update for non-numeric ID in fallback: ${song.id}")
-                }
-
-                lyricsCache.put(cacheKey, parsedLyrics)
-                saveLocalLyricsJson(song, parsedLyrics)
-                LogUtils.d(this@LyricsRepositoryImpl, "Fetched and cached remote lyrics (exact match) for: ${song.title}")
-
-                Result.success(Pair(parsedLyrics, rawLyricsToSave))
-            } else {
-                LogUtils.d(this@LyricsRepositoryImpl, "No lyrics found remotely for: ${song.title}")
-                Result.failure(NoLyricsFoundException())
-            }
+            lyricsCache.put(cacheKey, payload.lyrics)
+            Result.success(payload.lyrics to payload.rawLyrics)
         } catch (e: Exception) {
             LogUtils.e(this@LyricsRepositoryImpl, e, "Error fetching lyrics from remote")
             when {
@@ -1390,71 +1448,21 @@ class LyricsRepositoryImpl @Inject constructor(
 
     override suspend fun searchRemote(song: Song): Result<Pair<String, List<LyricsSearchResult>>> = withContext(Dispatchers.IO) {
         try {
-            LogUtils.d(this@LyricsRepositoryImpl, "Searching remote for lyrics for: ${song.title} by ${song.displayArtist}")
-
-            val combinedQuery = "${song.title} ${song.displayArtist}"
-            val cleanTitle = song.title.trim()
-            val cleanArtist = song.displayArtist.trim()
-
-            // FAST STRATEGY: run all requests in parallel, keep first non-empty batch
-            // FAST STRATEGY: run all requests in parallel, keep first non-empty batch
-            val strategies = buildList {
-                add(RemoteSearchStrategy("query+artist") {
-                    lrcLibApiService.searchLyrics(query = combinedQuery, artistName = cleanArtist)
-                })
-                add(RemoteSearchStrategy("track+artist") {
-                    lrcLibApiService.searchLyrics(trackName = cleanTitle, artistName = cleanArtist)
-                })
-                
-                // Smart title cleanup strategy
-                val smartTitle = cleanTitleSmart(cleanTitle)
-                if (smartTitle != cleanTitle && smartTitle.isNotBlank()) {
-                    LogUtils.d(this@LyricsRepositoryImpl, "Adding smart search strategy for: '$smartTitle' (orig: '$cleanTitle')")
-                    add(RemoteSearchStrategy("smart_track_only") {
-                        lrcLibApiService.searchLyrics(trackName = smartTitle)
-                    })
-                }
-
-                add(RemoteSearchStrategy("track_only") {
-                    lrcLibApiService.searchLyrics(trackName = cleanTitle)
-                })
-                add(RemoteSearchStrategy("query_title_only") {
-                    lrcLibApiService.searchLyrics(query = cleanTitle)
-                })
+            val options = loadRemoteLyricsOptions()
+            if (!options.enableQqLyrics) {
+                return@withContext Result.failure(NoLyricsFoundException("${song.title} ${song.displayArtist}".trim()))
             }
 
-            val uniqueResults = runSearchStrategiesFast(strategies)
+            val query = listOf(song.title, song.displayArtist)
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
+                .trim()
+            val results = qqLyricsFetcher.search(song)
 
-            if (uniqueResults.isNotEmpty()) {
-                val rankedMatches = rankRemoteLyricsMatches(
-                    song = song,
-                    responses = uniqueResults,
-                    mode = RemoteLyricsMatchMode.CANDIDATE
-                )
-                val results = rankedMatches.mapNotNull { match ->
-                    val response = match.response
-                    val rawLyrics = response.syncedLyrics ?: response.plainLyrics ?: return@mapNotNull null
-                    val parsedLyrics = LyricsUtils.parseLyrics(rawLyrics).copy(areFromRemote = true)
-                    if (!parsedLyrics.isValid()) {
-                        LogUtils.w(this@LyricsRepositoryImpl, "Parsed lyrics are empty for: ${song.title}")
-                        return@mapNotNull null
-                    }
-                    val hasSynced = !response.syncedLyrics.isNullOrEmpty()
-                    LogUtils.d(this@LyricsRepositoryImpl, "  Found: ${response.name} by ${response.artistName} (synced: $hasSynced)")
-                    LyricsSearchResult(response, parsedLyrics, rawLyrics)
-                }
-
-                if (results.isNotEmpty()) {
-                    val syncedCount = results.count { !it.record.syncedLyrics.isNullOrEmpty() }
-                    LogUtils.d(this@LyricsRepositoryImpl, "Found ${results.size} lyrics for: ${song.title} ($syncedCount with synced)")
-                    Result.success(Pair(combinedQuery, results))
-                } else {
-                    LogUtils.d(this@LyricsRepositoryImpl, "No matching lyrics found for: ${song.title}")
-                    Result.failure(NoLyricsFoundException(combinedQuery))
-                }
+            if (results.isEmpty()) {
+                Result.failure(NoLyricsFoundException(query))
             } else {
-                LogUtils.d(this@LyricsRepositoryImpl, "No lyrics found remotely for: ${song.title}")
-                Result.failure(NoLyricsFoundException(combinedQuery))
+                Result.success(query to results)
             }
         } catch (e: Exception) {
             LogUtils.e(this@LyricsRepositoryImpl, e, "Error searching remote for lyrics")
@@ -1470,50 +1478,28 @@ class LyricsRepositoryImpl @Inject constructor(
 
     override suspend fun searchRemoteByQuery(title: String, artist: String?): Result<Pair<String, List<LyricsSearchResult>>> = withContext(Dispatchers.IO) {
         try {
-            val cleanTitle = title.trim()
-            val cleanArtist = artist?.trim()?.takeIf { it.isNotBlank() }
+            val options = loadRemoteLyricsOptions()
             val query = listOfNotNull(
-                cleanTitle.takeIf { it.isNotBlank() },
-                cleanArtist
+                title.trim().takeIf { it.isNotBlank() },
+                artist?.trim()?.takeIf { it.isNotBlank() }
             ).joinToString(" ")
 
-            LogUtils.d(this@LyricsRepositoryImpl, "Manual lyrics search: title=$title, artist=$artist")
-
-            val strategies = buildList {
-                add(RemoteSearchStrategy("manual_query") { lrcLibApiService.searchLyrics(query = query) })
-                if (!cleanArtist.isNullOrBlank()) {
-                    add(
-                        RemoteSearchStrategy("manual_track+artist") {
-                            lrcLibApiService.searchLyrics(trackName = cleanTitle, artistName = cleanArtist)
-                        }
-                    )
-                }
-            }
-
-            // Run both in parallel and take the first non-empty result set.
-            val responses = runSearchStrategiesFast(strategies)
-
-            if (responses.isEmpty()) {
+            if (!options.enableQqLyrics) {
                 return@withContext Result.failure(NoLyricsFoundException(query))
             }
 
-            val results = responses.mapNotNull { response ->
-                val rawLyrics = response.syncedLyrics ?: response.plainLyrics ?: return@mapNotNull null
-                val parsed = LyricsUtils.parseLyrics(rawLyrics).copy(areFromRemote = true)
-                if (!parsed.isValid()) return@mapNotNull null
-
-                LyricsSearchResult(response, parsed, rawLyrics)
-            }.sortedByDescending { !it.record.syncedLyrics.isNullOrEmpty() }
-
+            val results = qqLyricsFetcher.searchByQuery(
+                title = title,
+                artist = artist
+            )
             if (results.isEmpty()) {
                 Result.failure(NoLyricsFoundException(query))
             } else {
-                Result.success(Pair(query, results))
+                Result.success(query to results)
             }
         } catch (e: Exception) {
             LogUtils.e(this@LyricsRepositoryImpl, e, "Manual search failed")
-            Result.failure(LyricsException(context.getString(R.string.lyrics_failed_to_search), e)
-            )
+            Result.failure(LyricsException(context.getString(R.string.lyrics_failed_to_search), e))
         }
     }
 
@@ -1708,32 +1694,7 @@ class LyricsRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun cleanTitleSmart(title: String): String {
-        // 1. Remove leading digits/spaces/dots/hyphens (e.g., "01 ", "01. ", "01 - ")
-        // \uFF0D is the fullwidth hyphen-minus character used in fullwidth/CJK text.
-        var cleaned = title.replace(Regex("^[\\d\\s.\\-\\uFF0D]+"), "")
-        
-        // 2. Truncate at first special char (-, (, ), Asian brackets)
-        // "Taare Ginn - Envy" -> "Taare Ginn "
-        // "Song (Feat. X)" -> "Song "
-        val splitRegex = Regex("""[-\(\[\{\uFF08\uFF3B\uFF5B\u3010\u300E\u300C\u3014\u3008\u300A]""")
-        cleaned = cleaned.split(splitRegex).firstOrNull() ?: cleaned
-        
-        // 3. Trim whitespace
-        return cleaned.trim()
-    }
-
-    private fun romanizeForMatch(text: String): String {
-        return when {
-            MultiLangRomanizer.isJapanese(text) -> MultiLangRomanizer.romanizeJapanese(text) ?: text
-            MultiLangRomanizer.isChinese(text) -> MultiLangRomanizer.romanizeChinese(text) ?: text
-            MultiLangRomanizer.isKorean(text) -> MultiLangRomanizer.romanizeKorean(text)
-            else -> text
-        }
-    }
 }
-
-data class LyricsSearchResult(val record: LrcLibResponse, val lyrics: Lyrics, val rawLyrics: String)
 
 data class NoLyricsFoundException(val query: String? = null) : Exception()
 

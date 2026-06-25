@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Şarkı Sözü Kaynak Önceliği</string>
     <string name="settings_lyrics_source_priority_subtitle">Şarkı sözleri alınırken ilk olarak hangi kaynağın deneneceğini seçin.</string>
     <string name="settings_lyrics_embedded_first">Önce Gömülü Olanlar</string>
-    <string name="settings_lyrics_online_first">Önce Çevrimici Olanlar</string>
     <string name="settings_lyrics_local_first">Önce Yerel (.lrc) Olanlar</string>
     <string name="settings_reset_imported_lyrics_title">İçe Aktarılan Şarkı Sözlerini Sıfırla</string>
     <string name="settings_reset_imported_lyrics_subtitle">İçe aktarılan tüm şarkı sözlerini veri tabanından kaldırın.</string>

@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.utils
 
+import com.theveloper.pixelplay.data.model.SyncedLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -103,6 +104,80 @@ class LyricsUtilsTest {
         assertEquals("Time is standing still", synced[0].line)
         assertEquals(9_860, synced[1].time)
         assertEquals("Tracing my body", synced[1].line)
+    }
+
+    @Test
+    fun parseLyrics_dropsNeteaseCreditJsonArrayLines() {
+        val lrc = """
+            [03:25.12]I'm yours
+            [{\"tx\":\"钢琴: \"},{\"tx\":\"Martin Terefe\"}]}
+            [{\"tx\":\"母带工程师: \"},{\"tx\":\"Chris Gehringer\"}]}
+        """.trimIndent()
+
+        val lyrics = LyricsUtils.parseLyrics(lrc)
+        val synced = requireNotNull(lyrics.synced)
+
+        assertEquals(1, synced.size)
+        assertEquals("I'm yours", synced.first().line)
+    }
+
+    @Test
+    fun parseLyrics_convertsNeteaseTimedJsonObjectLines() {
+        val lrc = """
+            {"t":-1000,"c":[{"tx":"作词: "},{"tx":"Jason Mraz"}]}
+            {"t":0,"c":[{"tx":"制作人: "},{"tx":"Martin Terefe"}]}
+            {"t":12500,"c":[{"tx":"Hello "},{"tx":"world"}]}
+        """.trimIndent()
+
+        val lyrics = LyricsUtils.parseLyrics(lrc)
+        val synced = requireNotNull(lyrics.synced)
+
+        assertEquals(1, synced.size)
+        assertEquals(12_500, synced.first().time)
+        assertEquals("Hello world", synced.first().line)
+    }
+
+    @Test
+    fun parseLyrics_convertsEscapedNeteaseTimedJsonObjectLines() {
+        val lrc = """
+            {\"t\":0,\"c\":[{\"tx\":\"作词: \"},{\"tx\":\"Jason Mraz\"}]}
+            {\"t\":12500,\"c\":[{\"tx\":\"Hello \"},{\"tx\":\"world\"}]}
+        """.trimIndent()
+
+        val lyrics = LyricsUtils.parseLyrics(lrc)
+        val synced = requireNotNull(lyrics.synced)
+
+        assertEquals(1, synced.size)
+        assertEquals(12_500, synced.first().time)
+        assertEquals("Hello world", synced.first().line)
+    }
+
+    @Test
+    fun parseLyrics_splitsEscapedNewlineNeteaseJsonObjectLines() {
+        val lrc = """[{\"tx\":\"制作人: \"},{\"tx\":\"John Legend\"}]\n{\"t\":1000,\"c\":[{\"tx\":\"作词: \"},{\"tx\":\"John Stephens\"}]}\n{\"t\":9390,\"c\":[{\"tx\":\"What would I do without your smart mouth\"}]}"""
+
+        val lyrics = LyricsUtils.parseLyrics(lrc)
+        val synced = requireNotNull(lyrics.synced)
+
+        assertEquals(1, synced.size)
+        assertEquals(9_390, synced.first().time)
+        assertEquals("What would I do without your smart mouth", synced.first().line)
+    }
+
+    @Test
+    fun parseNeteaseOfficialLyricsPayload_dropsCreditJsonAndKeepsTranslation() {
+        val payload = """
+            {"code":200,"lrc":{"lyric":"{\"t\":0,\"c\":[{\"tx\":\"制作人: \"},{\"tx\":\"John Legend\"}]}\n{\"t\":9390,\"c\":[{\"tx\":\"What would I do without your smart mouth\"}]}"},"tlyric":{"lyric":"[00:09.39]没有你的甜言蜜语"}}
+        """.trimIndent()
+
+        val lyrics = LyricsUtils.parseNeteaseOfficialLyricsPayload(payload)
+
+        assertNotNull(lyrics)
+        val synced = requireNotNull(lyrics!!.synced)
+        assertEquals(1, synced.size)
+        assertEquals("What would I do without your smart mouth", synced.first().line)
+        assertEquals("没有你的甜言蜜语", synced.first().translation)
+        assertTrue(!LyricsUtils.hasNeteaseJsonLyricGarbage(lyrics))
     }
 
     @Test
@@ -405,7 +480,7 @@ class LyricsUtilsTest {
     fun syncedToLrcString_expandsMultilineTranslationWithTimestampPerLine() {
         val lrc = LyricsUtils.syncedToLrcString(
             listOf(
-                com.theveloper.pixelplay.data.model.SyncedLine(
+                SyncedLine(
                     time = 10_000,
                     line = "Hello world",
                     translation = "你好世界\nby: translator"
@@ -417,5 +492,42 @@ class LyricsUtilsTest {
             "[00:10.00]Hello world\n[00:10.00]你好世界\n[00:10.00]by: translator",
             lrc
         )
+    }
+
+    @Test
+    fun mergeSupplementalLines_alignsTranslationAndRomanizationWithoutOverwriting() {
+        val merged = LyricsUtils.mergeSupplementalLines(
+            baseLines = listOf(
+                SyncedLine(time = 10_000, line = "Hello world", translation = "existing"),
+                SyncedLine(time = 20_000, line = "Goodbye")
+            ),
+            translationLines = listOf(
+                SyncedLine(time = 10_120, line = "你好世界"),
+                SyncedLine(time = 20_250, line = "再见")
+            ),
+            romanizationLines = listOf(
+                SyncedLine(time = 20_100, line = "zai jian")
+            )
+        )
+
+        assertEquals("existing", merged[0].translation)
+        assertEquals("再见", merged[1].translation)
+        assertEquals("zai jian", merged[1].romanization)
+    }
+
+    @Test
+    fun rebuildPlainFromSynced_usesOriginalTranslationRomanizationOrder() {
+        val plain = LyricsUtils.rebuildPlainFromSynced(
+            listOf(
+                SyncedLine(
+                    time = 10_000,
+                    line = "Hello world",
+                    translation = "你好世界",
+                    romanization = "ni hao shi jie"
+                )
+            )
+        )
+
+        assertEquals(listOf("Hello world\n你好世界\nni hao shi jie"), plain)
     }
 }

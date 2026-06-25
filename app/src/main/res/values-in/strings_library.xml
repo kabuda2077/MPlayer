@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Cubit dan geser untuk menyesuaikan framing.</string>
     <string name="edit_song_action_apply_cover">Terapkan</string>
     <string name="edit_song_unable_to_load_image">Tidak dapat memuat gambar yang dipilih</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Cari lirik di lrclib.net</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">Edit %d Lagu</string>
     <string name="batch_edit_info_message">Hanya kolom yang dimodifikasi yang akan diperbarui. Biarkan kolom kosong untuk mempertahankan nilai yang ada.</string>

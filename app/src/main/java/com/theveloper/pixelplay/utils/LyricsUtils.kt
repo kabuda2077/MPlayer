@@ -38,6 +38,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.google.gson.JsonParser
 import com.atilika.kuromoji.ipadic.Tokenizer
 import net.sourceforge.pinyin4j.PinyinHelper
 import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType
@@ -730,8 +731,6 @@ object LyricsUtils {
             return Lyrics(plain = emptyList(), synced = emptyList())
         }
 
-        val entireLyricsHasKana = lyricsText.any { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' }
-
         val normalizedInput = stripLeadingLyricsDocumentNoise(lyricsText)
         if (looksLikeTtmlDocument(normalizedInput)) {
             val converted = TtmlLyricsParser.parseToEnhancedLrc(normalizedInput)
@@ -739,19 +738,22 @@ object LyricsUtils {
             return parseLyrics(converted)
         }
 
+        val normalizedLyricsText = normalizeNeteaseJsonLyricLines(normalizedInput)
+        val entireLyricsHasKana = normalizedLyricsText.any { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' }
+
         // Kugou / Paxsenix word-by-word detection:
         // If any non-metadata line matches [number,number] where the first
         // number is > 999 (i.e. milliseconds, not minutes), treat the whole
         // file as Kugou format.
-        if (looksLikeKugouFormat(lyricsText)) {
-            return parseKugouLyrics(lyricsText)
+        if (looksLikeKugouFormat(normalizedLyricsText)) {
+            return parseKugouLyrics(normalizedLyricsText)
         }
 
         val syncedLines = mutableListOf<SyncedLine>()
         val plainLines = mutableListOf<String>()
         var isSynced = false
 
-        lyricsText.lines().forEach { rawLine ->
+        normalizedLyricsText.lines().forEach { rawLine ->
             val line = sanitizeLrcLine(rawLine)
             if (line.isEmpty() || LRC_METADATA_PATTERN.matcher(line).matches()) return@forEach
 
@@ -879,13 +881,7 @@ object LyricsUtils {
 
                 line.copy(romanization = romanized)
             }
-            val plainVersion = pairedLines.map { line ->
-                buildString {
-                    append(line.line)
-                    if (!line.romanization.isNullOrEmpty()) append("\n").append(line.romanization)
-                    if (!line.translation.isNullOrEmpty()) append("\n").append(line.translation)
-                }
-            }
+            val plainVersion = rebuildPlainFromSynced(pairedLines)
             Lyrics(synced = pairedLines, plain = plainVersion)
         } else {
             val processedPlain = plainLines.map { line ->
@@ -998,7 +994,7 @@ object LyricsUtils {
 
         val sorted = syncedLines.sortedBy { it.time }
         val paired = pairTranslationLines(sorted)
-        val plainVersion = paired.map { it.line }
+        val plainVersion = rebuildPlainFromSynced(paired)
         return Lyrics(synced = paired, plain = plainVersion, areFromRemote = false)
     }
 
@@ -1042,6 +1038,43 @@ object LyricsUtils {
     internal fun isTranslationCreditLine(line: String): Boolean {
         val normalized = stripLrcTimestamps(line).trim()
         return normalized.isNotEmpty() && TRANSLATION_CREDIT_REGEX.matches(normalized)
+    }
+
+    fun parseSameTimestampBilingualLrc(raw: String?): Lyrics {
+        return parseLyrics(raw)
+    }
+
+    fun mergeSupplementalLines(
+        baseLines: List<SyncedLine>,
+        translationLines: List<SyncedLine> = emptyList(),
+        romanizationLines: List<SyncedLine> = emptyList(),
+        toleranceMs: Int = 300
+    ): List<SyncedLine> {
+        if (baseLines.isEmpty()) return baseLines
+        val withTranslation = alignSupplementalLines(
+            baseLines = baseLines,
+            extraLines = translationLines,
+            toleranceMs = toleranceMs
+        ) { base, extra ->
+            base.copy(translation = base.translation ?: extra.line)
+        }
+        return alignSupplementalLines(
+            baseLines = withTranslation,
+            extraLines = romanizationLines,
+            toleranceMs = toleranceMs
+        ) { base, extra ->
+            base.copy(romanization = base.romanization ?: extra.line)
+        }
+    }
+
+    fun rebuildPlainFromSynced(lines: List<SyncedLine>): List<String> {
+        return lines.map { line ->
+            buildString {
+                append(line.line)
+                if (!line.translation.isNullOrBlank()) append("\n").append(line.translation)
+                if (!line.romanization.isNullOrBlank()) append("\n").append(line.romanization)
+            }
+        }
     }
 
     /**
@@ -1100,6 +1133,58 @@ object LyricsUtils {
             ""
         }
     }
+
+    fun parseNeteaseOfficialLyricsPayload(rawPayload: String?): Lyrics? {
+        val root = runCatching {
+            JsonParser.parseString(rawPayload?.trim().orEmpty()).asJsonObject
+        }.getOrNull() ?: return null
+
+        fun nestedLyric(key: String): String {
+            val nested = root.get(key)
+            if (nested == null || !nested.isJsonObject) return ""
+            val lyricElement = nested.asJsonObject.get("lyric") ?: return ""
+            return runCatching { lyricElement.asString }.getOrDefault("")
+        }
+
+        val lrc = nestedLyric("lrc")
+        val tlyric = nestedLyric("tlyric")
+        val romalrc = nestedLyric("romalrc")
+        if (lrc.isBlank()) return null
+
+        var parsed = parseLyrics(lrc)
+        if (parsed.synced.isNullOrEmpty() && parsed.plain.isNullOrEmpty()) return null
+
+        parsed = parsed.copy(
+            synced = mergeSupplementalLines(
+                baseLines = parsed.synced.orEmpty(),
+                translationLines = parseLyrics(tlyric).synced.orEmpty(),
+                romanizationLines = parseLyrics(romalrc).synced.orEmpty()
+            )
+        )
+
+        return parsed.copy(
+            plain = rebuildPlainFromSynced(parsed.synced.orEmpty()).ifEmpty { parsed.plain },
+            areFromRemote = true
+        ).takeUnless(::hasNeteaseJsonLyricGarbage)
+    }
+
+    fun hasNeteaseJsonLyricGarbage(lyrics: Lyrics): Boolean {
+        val suspicious = sequence {
+            lyrics.synced.orEmpty().forEach { line ->
+                yield(line.line)
+                line.translation?.let { yield(it) }
+                line.romanization?.let { yield(it) }
+            }
+            lyrics.plain.orEmpty().forEach { yield(it) }
+        }
+
+        return suspicious.any { line ->
+            line.contains("\\\"tx\\\"") ||
+                line.contains("{\\\"t\\\"") ||
+                line.contains("[{\\\"tx\\\"") ||
+                (line.contains("\"tx\"") && line.contains("\"t\"") && line.contains("\"c\""))
+        }
+    }
 }
 
 private fun stripLeadingLyricsDocumentNoise(value: String): String {
@@ -1125,6 +1210,88 @@ private fun looksLikeTtmlDocument(value: String): Boolean {
         .substringAfter("?>", missingDelimiterValue = "")
         .trimStart()
         .startsWithTtmlRoot()
+}
+
+private val NETEASE_TX_ARRAY_FRAGMENT_REGEX = Regex("""\s*\[\{\\?"tx\\?":.*?]\}?""")
+private val NETEASE_JSON_TIME_REGEX = Regex("""^\{\s*"t"\s*:\s*(-?\d+)""")
+private val NETEASE_JSON_TX_REGEX = Regex(""""tx"\s*:\s*"([^"]*)"""")
+private val NETEASE_CREDIT_TEXT_REGEX = Regex(
+    """^\s*(作词|作曲|编曲|制作人|监制|出品|发行|词|曲|编|混音|录音|母带|钢琴|鼓|吉他|贝斯|低音吉他|木吉他|电钢琴|和声|主人声|音频助理|录音工程师|混音工程师|母带工程师|lyricist|composer|arranger|producer|vocal|guitar|bass|drum|piano|engineer|mastering)\s*[:：]""",
+    setOf(RegexOption.IGNORE_CASE)
+)
+
+private fun normalizeNeteaseJsonLyricLines(value: String): String {
+    val lines = if (value.contains("\\n") && value.contains("\\\"tx\\\"")) {
+        value.replace("\\r\\n", "\n")
+            .replace("\\n", "\n")
+            .lines()
+    } else {
+        value.lines()
+    }
+
+    return lines
+        .mapNotNull(::normalizeNeteaseJsonLyricLine)
+        .joinToString("\n")
+}
+
+private fun alignSupplementalLines(
+    baseLines: List<SyncedLine>,
+    extraLines: List<SyncedLine>,
+    toleranceMs: Int,
+    merge: (SyncedLine, SyncedLine) -> SyncedLine
+): List<SyncedLine> {
+    if (baseLines.isEmpty() || extraLines.isEmpty()) return baseLines
+    val result = baseLines.toMutableList()
+    var i = 0
+    var j = 0
+    while (i < result.size && j < extraLines.size) {
+        val diff = result[i].time - extraLines[j].time
+        when {
+            kotlin.math.abs(diff) <= toleranceMs -> {
+                result[i] = merge(result[i], extraLines[j])
+                i++
+                j++
+            }
+            diff < 0 -> i++
+            else -> j++
+        }
+    }
+    return result
+}
+
+private fun normalizeNeteaseJsonLyricLine(rawLine: String): String? {
+    val trimmed = rawLine.trim()
+    if (trimmed.isEmpty()) return rawLine
+
+    val jsonLike = trimmed.replace("\\\"", "\"")
+    if (jsonLike.startsWith("[{") && jsonLike.contains("\"tx\"")) return null
+
+    if (jsonLike.startsWith("{") && jsonLike.contains("\"t\"") && jsonLike.contains("\"c\"")) {
+        val timeMs = NETEASE_JSON_TIME_REGEX.find(jsonLike)?.groupValues?.getOrNull(1)?.toLongOrNull()
+            ?: return rawLine
+        if (timeMs < 0L) return null
+
+        val text = NETEASE_JSON_TX_REGEX.findAll(jsonLike)
+            .joinToString(separator = "") { it.groupValues[1] }
+            .trim()
+
+        if (isNeteaseCreditText(text)) return null
+        if (text.isBlank()) return null
+        return "[${formatLrcTimestamp(timeMs)}]$text"
+    }
+
+    val cleanedInline = NETEASE_TX_ARRAY_FRAGMENT_REGEX.replace(rawLine, "").trimEnd()
+    return cleanedInline.takeIf { it.isNotBlank() }
+}
+
+private fun isNeteaseCreditText(value: String): Boolean =
+    NETEASE_CREDIT_TEXT_REGEX.containsMatchIn(value.trim())
+
+private fun formatLrcTimestamp(timeMs: Long): String {
+    val minutes = timeMs / 60_000
+    val seconds = (timeMs % 60_000) / 1_000
+    val hundredths = (timeMs % 1_000) / 10
+    return "%02d:%02d.%02d".format(Locale.ROOT, minutes, seconds, hundredths)
 }
 
 private fun sanitizeLrcLine(rawLine: String): String {
@@ -1162,7 +1329,8 @@ private fun stripFormatCharacters(value: String): String {
 @Composable
 fun ProviderText(
     providerText: String,
-    uri: String,
+    uri: String?,
+    linkLabel: String,
     modifier: Modifier = Modifier,
     textAlign: TextAlign? = null,
     accentColor: Color? = null
@@ -1174,13 +1342,21 @@ fun ProviderText(
         withStyle(style = SpanStyle(color = textColor)) {
             append(providerText)
         }
-        withLink(
-            LinkAnnotation.Url(
-                url = uri,
-                styles = TextLinkStyles(style = SpanStyle(color = linkColor))
-            )
-        ) {
-            append(" LRCLIB")
+        if (!uri.isNullOrBlank()) {
+            withLink(
+                LinkAnnotation.Url(
+                    url = uri,
+                    styles = TextLinkStyles(style = SpanStyle(color = linkColor))
+                )
+            ) {
+                append(" ")
+                append(linkLabel)
+            }
+        } else {
+            append(" ")
+            withStyle(style = SpanStyle(color = linkColor)) {
+                append(linkLabel)
+            }
         }
     }
 

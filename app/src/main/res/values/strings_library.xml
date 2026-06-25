@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Use pinch and drag gestures to find the perfect framing.</string>
     <string name="edit_song_action_apply_cover">Apply cover art</string>
     <string name="edit_song_unable_to_load_image">Unable to load the selected image</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Search lyrics on lrclib.net</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">Edit %d Songs</string>
     <string name="batch_edit_info_message">Only modified fields will be updated. Leave fields empty to keep existing values.</string>

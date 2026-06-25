@@ -9,6 +9,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.ByteArrayInputStream
@@ -26,6 +27,15 @@ class QqMusicApiService @Inject constructor(
     // Use newBuilder() to share the base connection pool and dispatcher.
     baseOkHttpClient: OkHttpClient
 ) {
+
+    data class SearchSongResult(
+        val id: String,
+        val mid: String,
+        val title: String,
+        val artist: String,
+        val album: String,
+        val durationMs: Long
+    )
 
     private val cookieStore: MutableMap<String, MutableList<Cookie>> = mutableMapOf()
 
@@ -200,6 +210,112 @@ class QqMusicApiService @Inject constructor(
         makePostRequest("https://u6.y.qq.com/cgi-bin/musics.fcg", payload)
     }
 
+    suspend fun searchSongs(keyword: String, page: Int = 1, pageSize: Int = 20): List<SearchSongResult> = withContext(Dispatchers.IO) {
+        val searchId = buildSearchId()
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf(
+                    "ct" to 11,
+                    "cv" to "1003006",
+                    "v" to "1003006",
+                    "os_ver" to "15",
+                    "phonetype" to "24122RKC7C",
+                    "tmeAppID" to "qqmusiclight",
+                    "nettype" to "NETWORK_WIFI",
+                    "udid" to "0"
+                ),
+                "request" to mapOf(
+                    "method" to "DoSearchForQQMusicLite",
+                    "module" to "music.search.SearchCgiService",
+                    "param" to mapOf(
+                        "search_id" to searchId,
+                        "remoteplace" to "search.android.keyboard",
+                        "query" to keyword,
+                        "search_type" to 0,
+                        "num_per_page" to pageSize,
+                        "page_num" to page,
+                        "highlight" to 0,
+                        "nqc_flag" to 0,
+                        "page_id" to 1,
+                        "grp" to 1
+                    )
+                )
+            )
+        )
+
+        val response = JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload))
+        val request = response.optJSONObject("request") ?: return@withContext emptyList()
+        val data = request.optJSONObject("data") ?: return@withContext emptyList()
+        val body = data.optJSONObject("body") ?: return@withContext emptyList()
+        val items = body.optJSONArray("item_song") ?: JSONArray()
+        buildList {
+            for (index in 0 until items.length()) {
+                val song = items.optJSONObject(index) ?: continue
+                val singers = song.optJSONArray("singer")
+                val artist = buildArtistName(singers)
+                add(
+                    SearchSongResult(
+                        id = song.opt("id")?.toString().orEmpty(),
+                        mid = song.optString("mid"),
+                        title = song.optString("title"),
+                        artist = artist.ifBlank { "Unknown Artist" },
+                        album = song.optJSONObject("album")?.optString("name").orEmpty(),
+                        durationMs = song.optLong("interval", 0L) * 1000L
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun getLyricPayload(
+        songId: Long,
+        songName: String,
+        singerName: String,
+        albumName: String,
+        durationSeconds: Int,
+        includeQrc: Boolean = true
+    ): JSONObject = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf(
+                    "ct" to 11,
+                    "cv" to "1003006",
+                    "v" to "1003006",
+                    "os_ver" to "15",
+                    "phonetype" to "24122RKC7C",
+                    "tmeAppID" to "qqmusiclight",
+                    "nettype" to "NETWORK_WIFI",
+                    "udid" to "0"
+                ),
+                "request" to mapOf(
+                    "method" to "GetPlayLyricInfo",
+                    "module" to "music.musichallSong.PlayLyricInfo",
+                    "param" to mapOf(
+                        "albumName" to base64(albumName),
+                        "crypt" to 1,
+                        "ct" to 19,
+                        "cv" to 2111,
+                        "interval" to durationSeconds,
+                        "lrc_t" to 0,
+                        "qrc" to if (includeQrc) 1 else 0,
+                        "qrc_t" to 0,
+                        "roma" to 1,
+                        "roma_t" to 0,
+                        "singerName" to base64(singerName),
+                        "songID" to songId,
+                        "songName" to base64(songName),
+                        "trans" to 1,
+                        "trans_t" to 0,
+                        "type" to 0
+                    )
+                )
+            )
+        )
+
+        val response = JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload))
+        response.optJSONObject("request")?.optJSONObject("data") ?: JSONObject()
+    }
+
     // ─── Helper Methods ────────────────────────────────────────────────
 
     private fun extractUin(): String {
@@ -213,6 +329,27 @@ class QqMusicApiService @Inject constructor(
 
     private fun extractKeyst(): String {
         return persistedCookies["qm_keyst"] ?: ""
+    }
+
+    private fun base64(value: String): String =
+        android.util.Base64.encodeToString(value.toByteArray(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP)
+
+    private fun buildSearchId(): String {
+        val part1 = (Math.random() * 20).toLong() * 18014398509481984L
+        val part2 = (Math.random() * 4194304).toLong() * 4294967296L
+        val part3 = System.currentTimeMillis() % 86400000L
+        return (part1 + part2 + part3).toString()
+    }
+
+    private fun buildArtistName(singers: JSONArray?): String {
+        if (singers == null) return ""
+        return buildList {
+            for (index in 0 until singers.length()) {
+                val singer = singers.optJSONObject(index) ?: continue
+                val name = singer.optString("name")
+                if (name.isNotBlank()) add(name)
+            }
+        }.joinToString(" / ")
     }
 
     /**

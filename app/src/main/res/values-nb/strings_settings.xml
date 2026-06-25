@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Prioritet for sangtekstkilde</string>
     <string name="settings_lyrics_source_priority_subtitle">Velg hvilken kilde som skal prøves først ved henting av sangtekster.</string>
     <string name="settings_lyrics_embedded_first">Innebygd først</string>
-    <string name="settings_lyrics_online_first">Online først</string>
     <string name="settings_lyrics_local_first">Lokal (.lrc) først</string>
     <string name="settings_reset_imported_lyrics_title">Nullstill importerte sangtekster</string>
     <string name="settings_reset_imported_lyrics_subtitle">Fjern alle importerte sangtekster fra databasen.</string>

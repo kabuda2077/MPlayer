@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Priorità sorgente testi</string>
     <string name="settings_lyrics_source_priority_subtitle">Scegli quale sorgente provare per prima quando recuperi i testi.</string>
     <string name="settings_lyrics_embedded_first">Incorporati prima</string>
-    <string name="settings_lyrics_online_first">Online prima</string>
     <string name="settings_lyrics_local_first">Locali (.lrc) prima</string>
     <string name="settings_reset_imported_lyrics_title">Reimposta testi importati</string>
     <string name="settings_reset_imported_lyrics_subtitle">Rimuovi tutti i testi importati dal database.</string>

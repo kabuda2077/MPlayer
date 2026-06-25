@@ -3111,8 +3111,11 @@ internal fun Song.improvesLyricsLookupComparedTo(previousSong: Song): Boolean {
 
 internal fun parsePersistedLyrics(rawLyrics: String?): Lyrics? {
     val normalizedLyrics = rawLyrics?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val parsedLyrics = LyricsUtils.parseLyrics(normalizedLyrics)
+    if (normalizedLyrics.startsWith("qqlyrics://")) return null
+    val parsedLyrics = LyricsUtils.parseNeteaseOfficialLyricsPayload(normalizedLyrics)
+        ?: LyricsUtils.parseLyrics(normalizedLyrics)
     return parsedLyrics.takeIf {
-        !it.synced.isNullOrEmpty() || !it.plain.isNullOrEmpty()
+        (!it.synced.isNullOrEmpty() || !it.plain.isNullOrEmpty()) &&
+            !LyricsUtils.hasNeteaseJsonLyricGarbage(it)
     }
 }

@@ -10,13 +10,6 @@ import javax.inject.Qualifier
 annotation class DeezerRetrofit
 
 /**
- * Qualifier for Fast OkHttpClient (Short timeouts).
- */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class FastOkHttpClient
-
-/**
  * Qualifier for Gson instance configured for backup serialization.
  */
 @Qualifier

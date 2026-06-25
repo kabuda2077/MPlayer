@@ -194,5 +194,4 @@
     <string name="lyrics_synced_badge">SYNCHRONISIERT</string>
     <string name="lyrics_artist_album_line">%1$s • %2$s</string>
     <string name="lyrics_provided_by">Lyrics von</string>
-    <string name="lyrics_lrclib_uri">https://lrclib.net/</string>
 </resources>

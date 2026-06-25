@@ -1080,6 +1080,10 @@ class MusicService : MediaLibraryService() {
                 }
                 PlayerActions.NEXT -> {
                     player.seekToNext()
+                    if (player.playbackState == Player.STATE_IDLE) {
+                        player.prepare()
+                    }
+                    player.play()
                     widgetUpdateManager.requestFullUpdate(true)
                 }
                 PlayerActions.PREVIOUS -> {

@@ -166,7 +166,6 @@ import com.theveloper.pixelplay.data.preferences.LibraryNavigationMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.ThemePreference
 import com.theveloper.pixelplay.data.model.Song
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.ExpressiveTopBarContent
 import com.theveloper.pixelplay.presentation.components.FileExplorerDialog
@@ -512,21 +511,12 @@ fun SettingsCategoryScreen(
                                 title = stringResource(R.string.settings_lyrics_management_section),
                                 addBottomSpace = false
                             ) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.settings_lyrics_source_priority_title),
-                                    description = stringResource(R.string.settings_lyrics_source_priority_subtitle),
-                                    options = mapOf(
-                                        LyricsSourcePreference.EMBEDDED_FIRST.name to stringResource(R.string.settings_lyrics_embedded_first),
-                                        LyricsSourcePreference.API_FIRST.name to stringResource(R.string.settings_lyrics_online_first),
-                                        LyricsSourcePreference.LOCAL_FIRST.name to stringResource(R.string.settings_lyrics_local_first)
-                                    ),
-                                    selectedKey = uiState.lyricsSourcePreference.name,
-                                    onSelectionChanged = { key ->
-                                        settingsViewModel.setLyricsSourcePreference(
-                                            LyricsSourcePreference.fromName(key)
-                                        )
-                                    },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.settings_lyrics_enable_qq_title),
+                                    subtitle = stringResource(R.string.settings_lyrics_enable_qq_subtitle),
+                                    checked = uiState.enableQqLyrics,
+                                    onCheckedChange = { settingsViewModel.setOnlineLyricsEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SettingsItem(
                                     title = stringResource(R.string.settings_reset_imported_lyrics_title),

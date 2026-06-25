@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Mükemmel çerçevelemeyi bulmak için sıkıştırma ve sürükleme hareketlerini kullanın.</string>
     <string name="edit_song_action_apply_cover">Kapak resmini uygula</string>
     <string name="edit_song_unable_to_load_image">Seçilen görsel yüklenemedi</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">lrclib.net\'te sözleri ara</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">%d Šarkıyı Düzenle</string>
     <string name="batch_edit_info_message">Yalnızca değiştirilen alanlar güncellenecektir. Mevcut değerleri korumak için alanları boş bırakın.</string>

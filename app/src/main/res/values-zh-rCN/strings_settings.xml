@@ -63,8 +63,14 @@
     <string name="settings_lyrics_source_priority_title">歌词来源优先级</string>
     <string name="settings_lyrics_source_priority_subtitle">选择获取歌词时优先尝试的来源。</string>
     <string name="settings_lyrics_embedded_first">内嵌优先</string>
-    <string name="settings_lyrics_online_first">在线优先</string>
+    <string name="settings_lyrics_remote_first">远程优先</string>
     <string name="settings_lyrics_local_first">本地 (.lrc) 优先</string>
+    <string name="settings_lyrics_enable_ttml_title">启用 TTML 歌词</string>
+    <string name="settings_lyrics_enable_ttml_subtitle">网易云歌曲优先尝试 AMLL TTML，再回退到官方歌词接口。</string>
+    <string name="settings_lyrics_enable_qq_title">在线歌词</string>
+    <string name="settings_lyrics_enable_qq_subtitle">在线歌曲自动获取歌词，并允许手动在线搜索歌词。</string>
+    <string name="settings_lyrics_local_allow_qq_title">本地歌曲允许使用 QQ 歌词</string>
+    <string name="settings_lyrics_local_allow_qq_subtitle">本地文件没有内嵌或同目录歌词时，尝试使用 QQ 音乐补全歌词。</string>
     <string name="settings_reset_imported_lyrics_title">重置已导入的歌词</string>
     <string name="settings_reset_imported_lyrics_subtitle">从数据库中移除所有已导入的歌词。</string>
     <string name="settings_dialog_reset_imported_lyrics_title">重置已导入的歌词？</string>

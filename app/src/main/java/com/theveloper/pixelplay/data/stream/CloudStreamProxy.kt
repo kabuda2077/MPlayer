@@ -5,9 +5,12 @@ import com.theveloper.pixelplay.BuildConfig
 import com.theveloper.pixelplay.data.plugin.PluginResolveException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
@@ -81,6 +84,7 @@ abstract class CloudStreamProxy<K : Any>(
     private var startJob: Job? = null
 
     private val urlCache = ConcurrentHashMap<String, CachedStream>()
+    private val inFlightResolves = ConcurrentHashMap<String, Deferred<ResolvedStream?>>()
     private val clientSockets = ConcurrentHashMap.newKeySet<Socket>()
 
     private data class CachedStream(val stream: ResolvedStream, val timestamp: Long, val expirationMs: Long) {
@@ -211,6 +215,25 @@ abstract class CloudStreamProxy<K : Any>(
                 return cached.stream
             }
         }
+
+        val newResolve = proxyScope.async(start = CoroutineStart.LAZY) {
+            resolveAndCacheStream(id, cacheKey)
+        }
+        val activeResolve = inFlightResolves.putIfAbsent(cacheKey, newResolve)
+        if (activeResolve != null) {
+            newResolve.cancel()
+            return activeResolve.await()
+        }
+
+        return try {
+            newResolve.start()
+            newResolve.await()
+        } finally {
+            inFlightResolves.remove(cacheKey, newResolve)
+        }
+    }
+
+    private suspend fun resolveAndCacheStream(id: K, cacheKey: String): ResolvedStream? {
         return resolveStream(id)?.also { stream ->
             val effectiveKey = stream.cacheKeySuffix ?: cacheKey
             val expirationMs = stream.expireAt

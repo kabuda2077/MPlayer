@@ -937,8 +937,8 @@ class MusicRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Obtiene la letra de una canción desde la API de LRCLIB, la persiste en la base de datos
-     * y la devuelve como un objeto Lyrics parseado.
+     * Fetches lyrics from the configured remote lyrics sources, persists them,
+     * and returns the parsed Lyrics result.
      *
      * @param song La canción para la cual se buscará la letra.
      * @return Un objeto Result que contiene el objeto Lyrics si se encontró, o un error.

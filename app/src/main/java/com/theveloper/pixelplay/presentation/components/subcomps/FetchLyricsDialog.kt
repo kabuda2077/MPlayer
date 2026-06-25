@@ -307,6 +307,8 @@ private fun PickResultContent(
     onPickResult: (LyricsSearchResult) -> Unit,
     onCancel: () -> Unit
 ) {
+    val provider = results.firstOrNull()?.record
+
     Text(
         text = stringResource(R.string.lyrics_found_n_matches_format).format(results.size),
         style = MaterialTheme.typography.headlineSmall,
@@ -329,7 +331,8 @@ private fun PickResultContent(
         item {
             ProviderText(
                 providerText = stringResource(R.string.lyrics_provided_by),
-                uri = stringResource(R.string.lyrics_lrclib_uri),
+                uri = provider?.sourceUrl,
+                linkLabel = provider?.sourceName ?: stringResource(R.string.lyrics_provider_online_source),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)
             )
@@ -746,14 +749,6 @@ private fun ErrorContent(
 //                                }
 //                            }
 //
-//                            ProviderText(
-//                                providerText = stringResource(R.string.lyrics_provided_by),
-//                                uri = stringResource(R.string.lrclib_uri),
-//                                textAlign = TextAlign.Center,
-//                                modifier = Modifier
-//                                    .fillMaxWidth()
-//                                    .padding(vertical = 16.dp)
-//                            )
 //                        }
 //                    }
 //                    is LyricsSearchUiState.Error -> {

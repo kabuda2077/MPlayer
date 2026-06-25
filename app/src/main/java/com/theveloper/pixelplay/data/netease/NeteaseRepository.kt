@@ -561,9 +561,10 @@ class NeteaseRepository @Inject constructor(
                 val raw = api.getLyrics(songId)
                 val root = JSONObject(raw)
                 val lyric = root.optJSONObject("lrc")?.optString("lyric", "")
+                val translatedLyric = root.optJSONObject("tlyric")?.optString("lyric", "")
 
                 if (!lyric.isNullOrBlank()) {
-                    Result.success(lyric)
+                    Result.success(mergeNeteaseLyricWithTranslation(lyric, translatedLyric))
                 } else {
                     Result.failure(Exception("No lyrics for song $songId"))
                 }
@@ -571,6 +572,40 @@ class NeteaseRepository @Inject constructor(
                 Timber.e(e, "Failed to get lyrics for song $songId")
                 Result.failure(e)
             }
+        }
+    }
+
+    suspend fun getLyricsPayload(songId: Long): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Result.success(api.getLyrics(songId))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get raw lyrics payload for song $songId")
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun mergeNeteaseLyricWithTranslation(
+        lyric: String,
+        translatedLyric: String?
+    ): String {
+        if (translatedLyric.isNullOrBlank()) return lyric
+
+        val cleanedTranslation = translatedLyric
+            .lines()
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+
+        if (cleanedTranslation.isBlank()) return lyric
+
+        // LyricsUtils pairs consecutive lines with the same timestamp as
+        // original + translation, so keeping both LRC streams preserves
+        // bilingual display without replacing the original lyric.
+        return buildString {
+            append(lyric.trimEnd())
+            append('\n')
+            append(cleanedTranslation)
         }
     }
 

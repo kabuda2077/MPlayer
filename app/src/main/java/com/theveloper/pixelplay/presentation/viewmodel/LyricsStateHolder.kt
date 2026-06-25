@@ -13,7 +13,6 @@ import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.repository.NoLyricsFoundException
 import com.theveloper.pixelplay.utils.LyricsImportSecurity
 import com.theveloper.pixelplay.utils.LyricsImportValidationResult
-import com.theveloper.pixelplay.utils.LyricsUtils
 import com.theveloper.pixelplay.utils.ValidatedLyricsImport
 import java.io.File
 import javax.inject.Inject
@@ -188,65 +187,13 @@ class LyricsStateHolder @Inject constructor(
     fun fetchLyricsForSong(
         song: Song,
         forcePickResults: Boolean,
-        sourcePreference: LyricsSourcePreference,
+        @Suppress("UNUSED_PARAMETER") sourcePreference: LyricsSourcePreference,
         contextHelper: (Int) -> String
     ) {
         loadingJob?.cancel()
         loadingJob = scope?.launch {
             _searchUiState.value = LyricsSearchUiState.Loading
 
-            if (!forcePickResults) {
-                val storedLyrics = withContext(Dispatchers.IO) {
-                    musicRepository.getStoredLyrics(song)
-                }
-                if (storedLyrics != null) {
-                    val (lyrics, rawLyrics) = storedLyrics
-                    _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-                    _songUpdates.emit(song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri = null) to lyrics)
-                    _messageEvents.emit(contextHelper(R.string.lyrics_already_available))
-                    return@launch
-                }
-            }
-
-            // Build ordered list of local source checks based on user preference.
-            // API_FIRST: skip local sources, go straight to remote.
-            // EMBEDDED_FIRST: check embedded, then local .lrc, then remote.
-            // LOCAL_FIRST: check local .lrc, then embedded, then remote.
-            val localSourceChecks: List<suspend () -> Pair<String, Int>?> = when (sourcePreference) {
-                LyricsSourcePreference.API_FIRST -> emptyList()
-                LyricsSourcePreference.EMBEDDED_FIRST -> listOf(
-                    { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } },
-                    { readLocalLyricsFile(song)?.let { it to R.string.lyrics_local_lrc_already_available } }
-                )
-                LyricsSourcePreference.LOCAL_FIRST -> listOf(
-                    { readLocalLyricsFile(song)?.let { it to R.string.lyrics_local_lrc_already_available } },
-                    { readEmbeddedLyricsFromFile(song)?.let { it to R.string.lyrics_embedded_already_available } }
-                )
-            }
-
-            // Try local sources in priority order.
-            for (sourceCheck in localSourceChecks) {
-                val result = withContext(Dispatchers.IO) { sourceCheck() }
-                if (result != null) {
-                    val (rawLyrics, messageResId) = result
-                    val parsed = LyricsUtils.parseLyrics(rawLyrics)
-                    if (hasValidLyrics(parsed)) {
-                        val lyrics = parsed.copy(areFromRemote = false)
-                        _searchUiState.value = LyricsSearchUiState.Success(lyrics)
-
-                        val songId = song.id.toLongOrNull()
-                        if (songId != null) {
-                            musicRepository.updateLyrics(songId, rawLyrics)
-                        }
-
-                        _songUpdates.emit(song.copy(lyrics = rawLyrics) to lyrics)
-                        _messageEvents.emit(contextHelper(messageResId))
-                        return@launch
-                    }
-                }
-            }
-
-            // Fall through to remote fetch.
             if (forcePickResults) {
                 musicRepository.searchRemoteLyrics(song)
                     .onSuccess { (query, results) ->

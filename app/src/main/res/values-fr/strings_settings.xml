@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Priorité des sources de paroles</string>
     <string name="settings_lyrics_source_priority_subtitle">Choisissez quelle source essayer en premier pour récupérer les paroles.</string>
     <string name="settings_lyrics_embedded_first">Intégrées d\'abord</string>
-    <string name="settings_lyrics_online_first">En ligne d\'abord</string>
     <string name="settings_lyrics_local_first">Locales (.lrc) d\'abord</string>
     <string name="settings_reset_imported_lyrics_title">Réinitialiser les paroles importées</string>
     <string name="settings_reset_imported_lyrics_subtitle">Supprimer toutes les paroles importées de la base de données.</string>

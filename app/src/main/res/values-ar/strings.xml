@@ -19,7 +19,6 @@
     <string name="loading_lyrics">جاري تحميل كلمات الأغنية…</string>
     <string name="cant_find_lyrics">تعذر العثور على كلمات لهذه الأغنية.</string>
     <string name="lyrics_provided_by">الكلمات مقدمة من</string>
-    <string name="lrclib_uri">https://lrclib.net/</string>
     <string name="lyrics_not_found">لم يتم العثور على كلمات الأغنية</string>
     <string name="search_lyrics_online_prompt">هل تود البحث عن كلمات الأغنية عبر الإنترنت؟</string>
     <string name="lyrics_custom_search_hint">لم نتمكن من العثور على كلمات الأغنية تلقائياً. يمكنك تعديل العنوان أو اسم الفنان والمحاولة بالبحث يدوياً.</string>

@@ -67,7 +67,7 @@
 - **Statistics** - Track your listening history and habits
 
 ### 🎤 Lyrics
-- **Synchronized Lyrics** - LRC format via LRCLIB API
+- **Synchronized Lyrics** - Online lyrics via TTML, official NetEase, and QQ sources
 - **Lyrics Editing** - Modify or add lyrics to your tracks
 - **Scrolling Display** - Follow along as you listen
 
@@ -167,7 +167,7 @@ app/src/main/java/com/theveloper/pixelplay/
 ├── data/
 │   ├── database/       # Room entities, DAOs, migrations
 │   ├── model/          # Domain models (Song, Album, Artist, etc.)
-│   ├── network/        # API services (LRCLIB, Deezer)
+│   ├── network/        # API services (music platforms, Deezer)
 │   ├── preferences/    # DataStore preferences
 │   ├── repository/     # Data repositories
 │   ├── service/        # MusicService, HTTP server

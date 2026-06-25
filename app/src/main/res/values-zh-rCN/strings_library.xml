@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">使用双指缩放和拖动手势找到完美的构图。</string>
     <string name="edit_song_action_apply_cover">应用封面</string>
     <string name="edit_song_unable_to_load_image">无法加载选定的图片</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">在 lrclib.net 搜索歌词</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">批量编辑 %d 首歌曲</string>
     <string name="batch_edit_info_message">仅会更新已修改的字段。将字段留空则保持现有值。</string>

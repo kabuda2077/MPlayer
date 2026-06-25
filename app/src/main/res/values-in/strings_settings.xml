@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Prioritas Sumber Lirik</string>
     <string name="settings_lyrics_source_priority_subtitle">Pilih sumber mana yang akan dicoba terlebih dahulu saat mengambil lirik.</string>
     <string name="settings_lyrics_embedded_first">Tertanam Terlebih Dahulu</string>
-    <string name="settings_lyrics_online_first">Online Terlebih Dahulu</string>
     <string name="settings_lyrics_local_first">Lokal (.lrc) Terlebih Dahulu</string>
     <string name="settings_reset_imported_lyrics_title">Reset Lirik yang Diimpor</string>
     <string name="settings_reset_imported_lyrics_subtitle">Hapus semua lirik yang diimpor dari database.</string>

@@ -63,8 +63,14 @@
     <string name="settings_lyrics_source_priority_title">Lyrics Source Priority</string>
     <string name="settings_lyrics_source_priority_subtitle">Choose which source to try first when fetching lyrics.</string>
     <string name="settings_lyrics_embedded_first">Embedded First</string>
-    <string name="settings_lyrics_online_first">Online First</string>
+    <string name="settings_lyrics_remote_first">Remote First</string>
     <string name="settings_lyrics_local_first">Local (.lrc) First</string>
+    <string name="settings_lyrics_enable_ttml_title">Enable TTML lyrics</string>
+    <string name="settings_lyrics_enable_ttml_subtitle">For NetEase songs, try AMLL TTML before the official lyrics API.</string>
+    <string name="settings_lyrics_enable_qq_title">Online lyrics</string>
+    <string name="settings_lyrics_enable_qq_subtitle">Automatically fetch online lyrics for cloud songs and allow manual online search.</string>
+    <string name="settings_lyrics_local_allow_qq_title">Allow QQ lyrics for local songs</string>
+    <string name="settings_lyrics_local_allow_qq_subtitle">When local files have no embedded or sidecar lyrics, try QQ Music as a fallback source.</string>
     <string name="settings_reset_imported_lyrics_title">Reset Imported Lyrics</string>
     <string name="settings_reset_imported_lyrics_subtitle">Remove all imported lyrics from the database.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Reset imported lyrics?</string>

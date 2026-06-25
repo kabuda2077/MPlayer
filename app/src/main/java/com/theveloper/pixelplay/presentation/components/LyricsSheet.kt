@@ -333,9 +333,9 @@ fun LyricsSheet(
 
     // Read lyrics romanization preference internally from DataStore
     val showLyricsRomanizationFlow = remember(context) {
-        context.dataStore.data.map { it[booleanPreferencesKey("show_lyrics_romanization")] ?: true }
+        context.dataStore.data.map { it[booleanPreferencesKey("show_lyrics_romanization")] ?: false }
     }
-    val showLyricsRomanization by showLyricsRomanizationFlow.collectAsStateWithLifecycle(initialValue = true)
+    val showLyricsRomanization by showLyricsRomanizationFlow.collectAsStateWithLifecycle(initialValue = false)
 
     // Read animated lyrics preference internally from DataStore
     val useAnimatedLyricsFlow = remember(context) {
@@ -385,29 +385,6 @@ fun LyricsSheet(
             }
         }
 
-        if (keepScreenOn) {
-            view.keepScreenOn = true
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            view.keepScreenOn = false
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    DisposableEffect(keepScreenOn, lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && keepScreenOn) {
-                keepScreenOn = false
-                coroutineScope.launch {
-                    context.dataStore.edit { prefs ->
-                        prefs[booleanPreferencesKey("keep_screen_on_lyrics")] = false
-                    }
-                }
-            }
-        }
-        
         if (keepScreenOn) {
             view.keepScreenOn = true
         }
@@ -806,7 +783,8 @@ fun LyricsSheet(
                                         item(key = "provider_text") {
                                             ProviderText(
                                                 providerText = stringResource(R.string.lyrics_provided_by),
-                                                uri = stringResource(R.string.lyrics_lrclib_uri),
+                                                uri = null,
+                                                linkLabel = stringResource(R.string.lyrics_provider_online_source),
                                                 textAlign = TextAlign.Center,
                                                 accentColor = lyricHighlightColor,
                                                 modifier = Modifier
@@ -1975,11 +1953,26 @@ internal fun resolveCurrentLineIndex(
 ): Int {
     if (lines.isEmpty()) return -1
 
-    return lines.withIndex().lastOrNull { (index, line) ->
-        val nextTime = lines.getOrNull(index + 1)?.time ?: Int.MAX_VALUE
-        val lineEndTime = resolveLineEndTimeMs(line, nextTime)
-        position in line.time.toLong()..<lineEndTime
-    }?.index ?: -1
+    var low = 0
+    var high = lines.lastIndex
+    var candidate = -1
+
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        if (lines[mid].time.toLong() <= position) {
+            candidate = mid
+            low = mid + 1
+        } else {
+            high = mid - 1
+        }
+    }
+
+    if (candidate == -1) return -1
+
+    val line = lines[candidate]
+    val nextTime = lines.getOrNull(candidate + 1)?.time ?: Int.MAX_VALUE
+    val lineEndTime = resolveLineEndTimeMs(line, nextTime)
+    return if (position < lineEndTime) candidate else -1
 }
 
 @Composable

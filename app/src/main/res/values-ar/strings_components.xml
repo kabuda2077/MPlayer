@@ -77,7 +77,6 @@
     <string name="cd_song_title_icon">العنوان</string>
     <string name="cd_track_number_icon">رقم المسار</string>
     <string name="cd_disc_number_icon">رقم القرص</string>
-    <string name="cd_search_lyrics_lrclib">البحث عن كلمات الأغاني على lrclib.net</string>
     <string name="edit_song_cover_art_heading">غلاف الألبوم</string>
     <string name="edit_song_cover_art_hint">اختر صورة مربعة وقم بضبطها لتظهر بشكل ممتاز في جميع أنحاء التطبيق.</string>
     <string name="edit_song_change_cover_art">تغيير غلاف الألبوم</string>

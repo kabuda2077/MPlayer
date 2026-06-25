@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Usa los gestos de pellizcar y arrastrar para encontrar el encuadre perfecto.</string>
     <string name="edit_song_action_apply_cover">Aplicar portada</string>
     <string name="edit_song_unable_to_load_image">No se pudo cargar la imagen seleccionada</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Buscar letras en lrclib.net</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">Editar %d canciones</string>
     <string name="batch_edit_info_message">Solo se actualizarán los campos modificados. Deja los campos vacíos para conservar los valores existentes.</string>

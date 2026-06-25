@@ -36,7 +36,8 @@ import com.theveloper.pixelplay.data.preferences.dataStore
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
 import com.theveloper.pixelplay.data.network.deezer.DeezerApiService
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
-import com.theveloper.pixelplay.data.network.lyrics.LrcLibApiService
+import com.theveloper.pixelplay.data.netease.NeteaseRepository
+import com.theveloper.pixelplay.data.qqmusic.QqLyricsFetcher
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl
@@ -327,13 +328,17 @@ object AppModule {
     @Singleton
     fun provideLyricsRepository(
         @ApplicationContext context: Context,
-        lrcLibApiService: LrcLibApiService,
+        neteaseRepository: NeteaseRepository,
+        qqLyricsFetcher: QqLyricsFetcher,
+        userPreferencesRepository: UserPreferencesRepository,
         lyricsDao: LyricsDao,
         okHttpClient: OkHttpClient
     ): LyricsRepository {
         return LyricsRepositoryImpl(
             context = context,
-            lrcLibApiService = lrcLibApiService,
+            neteaseRepository = neteaseRepository,
+            qqLyricsFetcher = qqLyricsFetcher,
+            userPreferencesRepository = userPreferencesRepository,
             lyricsDao = lyricsDao,
             okHttpClient = okHttpClient
         )
@@ -475,89 +480,16 @@ object AppModule {
                 val requestWithUserAgent = originalRequest.newBuilder()
                     .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
                     .build()
-                chain.proceed(requestWithUserAgent)
+                val host = originalRequest.url.host.lowercase()
+                val tunedChain = if (host == "127.0.0.1" || host == "localhost") {
+                    chain.withReadTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                } else {
+                    chain
+                }
+                tunedChain.proceed(requestWithUserAgent)
             }
             .addInterceptor(loggingInterceptor)
             .build()
-    }
-
-    /**
-     * Provee una instancia de OkHttpClient con timeouts para búsquedas de lyrics.
-     * Includes DNS resolver, modern TLS, connection pool, and connection retry.
-     */
-    @Provides
-    @Singleton
-    @FastOkHttpClient
-    fun provideFastOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor()
-        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS)
-        
-        // Connection pool to reuse connections for better performance
-        val connectionPool = okhttp3.ConnectionPool(
-            maxIdleConnections = 5,
-            keepAliveDuration = 30,
-            timeUnit = java.util.concurrent.TimeUnit.SECONDS
-        )
-        
-        // Use Cloudflare and Google DNS to avoid potential DNS issues
-        val dns = okhttp3.Dns { hostname ->
-            try {
-                // First try system DNS
-                okhttp3.Dns.SYSTEM.lookup(hostname)
-            } catch (e: Exception) {
-                // Fallback to manual resolution if system DNS fails
-                java.net.InetAddress.getAllByName(hostname).toList()
-            }
-        }
-
-        return OkHttpClient.Builder()
-            .dns(dns)
-            .connectionPool(connectionPool)
-            // Use HTTP/1.1 to avoid HTTP/2 stream issues with some servers
-            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
-            // Use modern TLS connection spec
-            .connectionSpecs(listOf(
-                okhttp3.ConnectionSpec.MODERN_TLS,
-                okhttp3.ConnectionSpec.COMPATIBLE_TLS
-            ))
-            .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-            .writeTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-            // Enable built-in retry on connection failure
-            .retryOnConnectionFailure(true)
-            // Add headers
-            .addInterceptor { chain ->
-                val originalRequest = chain.request()
-                val requestWithHeaders = originalRequest.newBuilder()
-                    .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
-                    .header("Accept", "application/json")
-                    .build()
-                chain.proceed(requestWithHeaders)
-            }
-            .addInterceptor(loggingInterceptor)
-            .build()
-    }
-
-    /**
-     * Provee una instancia singleton de Retrofit para la API de LRCLIB.
-     */
-    @Provides
-    @Singleton
-    fun provideRetrofit(@FastOkHttpClient okHttpClient: OkHttpClient): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl("https://lrclib.net/")
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-    }
-
-    /**
-     * Provee una instancia singleton del servicio de la API de LRCLIB.
-     */
-    @Provides
-    @Singleton
-    fun provideLrcLibApiService(retrofit: Retrofit): LrcLibApiService {
-        return retrofit.create(LrcLibApiService::class.java)
     }
 
     /**

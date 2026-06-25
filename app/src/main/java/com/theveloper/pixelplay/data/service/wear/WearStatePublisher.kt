@@ -112,7 +112,7 @@ class WearStatePublisher @Inject constructor(
         // the same translation/romanization visibility as the phone UI.
         val prefs = application.dataStore.data.first()
         val showLyricsTranslation = prefs[booleanPreferencesKey("show_lyrics_translation")] ?: true
-        val showLyricsRomanization = prefs[booleanPreferencesKey("show_lyrics_romanization")] ?: true
+        val showLyricsRomanization = prefs[booleanPreferencesKey("show_lyrics_romanization")] ?: false
 
         val volumeLevel = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
         val volumeMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)

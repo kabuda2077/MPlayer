@@ -504,8 +504,14 @@ class PlaybackStateHolder @Inject constructor(
         val castSession = castStateHolder.castSession.value
         if (castSession != null && castSession.remoteMediaClient != null) {
             castStateHolder.castPlayer?.next()
+            castStateHolder.castPlayer?.play()
         } else {
-             activeLocalPlayer().seekToNext()
+            val player = activeLocalPlayer()
+            player.seekToNext()
+            if (player.playbackState == Player.STATE_IDLE) {
+                player.prepare()
+            }
+            player.play()
         }
     }
 

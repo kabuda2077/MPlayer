@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Lyrics-Quell-Priorität</string>
     <string name="settings_lyrics_source_priority_subtitle">Legt fest, welche Quelle beim Laden von Lyrics zuerst versucht wird.</string>
     <string name="settings_lyrics_embedded_first">Eingebettet zuerst</string>
-    <string name="settings_lyrics_online_first">Online zuerst</string>
     <string name="settings_lyrics_local_first">Lokal (.lrc) zuerst</string>
     <string name="settings_reset_imported_lyrics_title">Importierte Lyrics zurücksetzen</string>
     <string name="settings_reset_imported_lyrics_subtitle">Alle manuell importierten Lyrics aus der Datenbank löschen.</string>

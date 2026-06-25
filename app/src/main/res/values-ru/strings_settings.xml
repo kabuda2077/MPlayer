@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Приоритет источников текстов</string>
     <string name="settings_lyrics_source_priority_subtitle">Выберите источник, который будет использоваться первым.</string>
     <string name="settings_lyrics_embedded_first">Сначала встроенные</string>
-    <string name="settings_lyrics_online_first">Сначала онлайн</string>
     <string name="settings_lyrics_local_first">Сначала локальные (.lrc)</string>
     <string name="settings_reset_imported_lyrics_title">Сбросить импортированные тексты</string>
     <string name="settings_reset_imported_lyrics_subtitle">Удалить все импортированные тексты из базы данных.</string>

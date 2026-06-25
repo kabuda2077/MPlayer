@@ -316,8 +316,6 @@
     <string name="edit_song_crop_dialog_hint">Pincez et glissez pour trouver le cadrage parfait.</string>
     <string name="edit_song_action_apply_cover">Appliquer la pochette</string>
     <string name="edit_song_unable_to_load_image">Impossible de charger l\'image sélectionnée</string>
-    <string name="edit_song_cd_search_lyrics_lrclib">Rechercher les paroles sur lrclib.net</string>
-
     <!-- EditMultipleSongsSheet -->
     <string name="batch_edit_toolbar_title">Modifier %d chansons</string>
     <string name="batch_edit_info_message">Seuls les champs modifiés seront mis à jour. Laissez les champs vides pour conserver les valeurs existantes.</string>

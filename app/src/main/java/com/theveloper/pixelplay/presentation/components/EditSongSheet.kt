@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -61,7 +60,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.theveloper.pixelplay.R
-import java.net.URLEncoder
 import timber.log.Timber
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
@@ -602,37 +600,17 @@ private fun EditSongContent(
                         color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.labelLarge
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = lyrics,
-                            colors = textFieldColors,
-                            shape = textFieldShape,
-                            onValueChange = { lyrics = it },
-                            placeholder = { Text(stringResource(R.string.lyrics_title)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Notes, tint = MaterialTheme.colorScheme.primary, contentDescription = stringResource(R.string.lyrics_title)) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(150.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        FilledTonalIconButton(
-                            onClick = {
-                                val encodedTitle = URLEncoder.encode(title, "UTF-8")
-                                val encodedArtist = URLEncoder.encode(artist, "UTF-8")
-                                val url = "https://lrclib.net/search/$encodedTitle%20$encodedArtist"
-                                val intent = Intent(Intent.ACTION_VIEW).setData(Uri.parse(url))
-                                context.startActivity(intent)
-                            },
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.rounded_search_24),
-                                contentDescription = stringResource(R.string.edit_song_cd_search_lyrics_lrclib)
-                            )
-                        }
-                    }
+                    OutlinedTextField(
+                        value = lyrics,
+                        colors = textFieldColors,
+                        shape = textFieldShape,
+                        onValueChange = { lyrics = it },
+                        placeholder = { Text(stringResource(R.string.lyrics_title)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Notes, tint = MaterialTheme.colorScheme.primary, contentDescription = stringResource(R.string.lyrics_title)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                    )
                 }
             }
         }

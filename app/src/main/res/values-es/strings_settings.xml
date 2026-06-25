@@ -63,7 +63,6 @@
     <string name="settings_lyrics_source_priority_title">Prioridad de fuente de letras</string>
     <string name="settings_lyrics_source_priority_subtitle">Elige qué fuente probar primero al buscar letras.</string>
     <string name="settings_lyrics_embedded_first">Incrustadas primero</string>
-    <string name="settings_lyrics_online_first">En línea primero</string>
     <string name="settings_lyrics_local_first">Locales (.lrc) primero</string>
     <string name="settings_reset_imported_lyrics_title">Restablecer letras importadas</string>
     <string name="settings_reset_imported_lyrics_subtitle">Eliminar de la base de datos todas las letras importadas.</string>

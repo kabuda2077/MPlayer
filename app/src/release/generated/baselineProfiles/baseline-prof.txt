@@ -33823,7 +33823,6 @@ SPLcom/theveloper/pixelplay/data/network/jellyfin/JellyfinApiService;-><init>(Lo
 Lcom/theveloper/pixelplay/data/network/jellyfin/JellyfinApiService$Companion;
 SPLcom/theveloper/pixelplay/data/network/jellyfin/JellyfinApiService$Companion;-><init>()V
 SPLcom/theveloper/pixelplay/data/network/jellyfin/JellyfinApiService$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
-Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;
 Lcom/theveloper/pixelplay/data/network/navidrome/NavidromeApiService;
 SPLcom/theveloper/pixelplay/data/network/navidrome/NavidromeApiService;-><clinit>()V
 SPLcom/theveloper/pixelplay/data/network/navidrome/NavidromeApiService;-><init>(Lokhttp3/OkHttpClient;)V
@@ -35473,7 +35472,6 @@ SPLcom/theveloper/pixelplay/data/repository/FolderTreeBuilder$buildImmutableFold
 Lcom/theveloper/pixelplay/data/repository/LyricsRepository;
 Lcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl;
 SPLcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl;-><clinit>()V
-SPLcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl;-><init>(Landroid/content/Context;Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;Lcom/theveloper/pixelplay/data/database/LyricsDao;Lokhttp3/OkHttpClient;)V
 Lcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl$Companion;
 SPLcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl$Companion;-><init>()V
 SPLcom/theveloper/pixelplay/data/repository/LyricsRepositoryImpl$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -36578,9 +36576,7 @@ SPLcom/theveloper/pixelplay/di/AppModule;->provideJellyfinDao(Lcom/theveloper/pi
 SPLcom/theveloper/pixelplay/di/AppModule;->provideJson$lambda$0(Lkotlinx/serialization/json/JsonBuilder;)Lkotlin/Unit;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideJson()Lkotlinx/serialization/json/Json;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideLocalPlaylistDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/LocalPlaylistDao;
-SPLcom/theveloper/pixelplay/di/AppModule;->provideLrcLibApiService(Lretrofit2/Retrofit;)Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideLyricsDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/LyricsDao;
-SPLcom/theveloper/pixelplay/di/AppModule;->provideLyricsRepository(Landroid/content/Context;Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;Lcom/theveloper/pixelplay/data/database/LyricsDao;Lokhttp3/OkHttpClient;)Lcom/theveloper/pixelplay/data/repository/LyricsRepository;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideMusicDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/MusicDao;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideMusicRepository(Landroid/content/Context;Lcom/theveloper/pixelplay/data/preferences/UserPreferencesRepository;Lcom/theveloper/pixelplay/data/preferences/PlaylistPreferencesRepository;Lcom/theveloper/pixelplay/data/database/SearchHistoryDao;Lcom/theveloper/pixelplay/data/database/MusicDao;Lcom/theveloper/pixelplay/data/repository/LyricsRepository;Lcom/theveloper/pixelplay/data/database/TelegramDao;Ldagger/Lazy;Ldagger/Lazy;Lcom/theveloper/pixelplay/data/repository/SongRepository;Lcom/theveloper/pixelplay/data/database/FavoritesDao;Lcom/theveloper/pixelplay/data/repository/ArtistImageRepository;Lcom/theveloper/pixelplay/data/repository/FolderTreeBuilder;)Lcom/theveloper/pixelplay/data/repository/MusicRepository;
 SPLcom/theveloper/pixelplay/di/AppModule;->provideNavidromeDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/NavidromeDao;
@@ -36645,12 +36641,9 @@ Lcom/theveloper/pixelplay/di/AppModule_ProvideJsonFactory;
 SPLcom/theveloper/pixelplay/di/AppModule_ProvideJsonFactory;->provideJson()Lkotlinx/serialization/json/Json;
 Lcom/theveloper/pixelplay/di/AppModule_ProvideLocalPlaylistDaoFactory;
 SPLcom/theveloper/pixelplay/di/AppModule_ProvideLocalPlaylistDaoFactory;->provideLocalPlaylistDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/LocalPlaylistDao;
-Lcom/theveloper/pixelplay/di/AppModule_ProvideLrcLibApiServiceFactory;
-SPLcom/theveloper/pixelplay/di/AppModule_ProvideLrcLibApiServiceFactory;->provideLrcLibApiService(Lretrofit2/Retrofit;)Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;
 Lcom/theveloper/pixelplay/di/AppModule_ProvideLyricsDaoFactory;
 SPLcom/theveloper/pixelplay/di/AppModule_ProvideLyricsDaoFactory;->provideLyricsDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/LyricsDao;
 Lcom/theveloper/pixelplay/di/AppModule_ProvideLyricsRepositoryFactory;
-SPLcom/theveloper/pixelplay/di/AppModule_ProvideLyricsRepositoryFactory;->provideLyricsRepository(Landroid/content/Context;Lcom/theveloper/pixelplay/data/network/lyrics/LrcLibApiService;Lcom/theveloper/pixelplay/data/database/LyricsDao;Lokhttp3/OkHttpClient;)Lcom/theveloper/pixelplay/data/repository/LyricsRepository;
 Lcom/theveloper/pixelplay/di/AppModule_ProvideMusicDaoFactory;
 SPLcom/theveloper/pixelplay/di/AppModule_ProvideMusicDaoFactory;->provideMusicDao(Lcom/theveloper/pixelplay/data/database/PixelPlayDatabase;)Lcom/theveloper/pixelplay/data/database/MusicDao;
 Lcom/theveloper/pixelplay/di/AppModule_ProvideMusicRepositoryFactory;
