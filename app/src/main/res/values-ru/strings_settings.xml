@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">Скругление панели навигации</string>
     <string name="settings_navbar_corner_subtitle">Настройте радиус скругления углов панели навигации.</string>
     <string name="settings_lyrics_screen_section">Экран текстов песен</string>
-    <string name="settings_immersive_lyrics_title">Иммерсивный режим</string>
-    <string name="settings_immersive_lyrics_subtitle">Автоматически скрывать элементы управления и увеличивать текст.</string>
-    <string name="settings_auto_hide_delay_title">Задержка скрытия</string>
-    <string name="settings_auto_hide_delay_subtitle">Время до скрытия элементов управления.</string>
-    <string name="settings_auto_hide_delay_3s">3 с</string>
-    <string name="settings_auto_hide_delay_4s">4 с</string>
-    <string name="settings_auto_hide_delay_5s">5 с</string>
-    <string name="settings_auto_hide_delay_6s">6 с</string>
     <string name="settings_app_navigation_section">Навигация приложения</string>
     <string name="settings_default_tab_title">Вкладка по умолчанию</string>
     <string name="settings_default_tab_subtitle">Выберите вкладку, открываемую при запуске.</string>

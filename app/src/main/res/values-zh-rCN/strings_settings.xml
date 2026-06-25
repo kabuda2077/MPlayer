@@ -44,6 +44,12 @@
     <string name="settings_min_song_duration">最小歌曲时长</string>
     <string name="settings_min_tracks_per_album">每张专辑最少曲目数</string>
     <string name="settings_album_art_cache_limit">专辑封面缓存限制</string>
+    <string name="settings_online_audio_cache_limit">在线歌曲缓存上限</string>
+    <string name="settings_online_audio_cache_disabled">0 MB（关闭）</string>
+    <string name="settings_online_audio_cache_size_title">在线歌曲缓存占用</string>
+    <string name="settings_online_audio_cache_size_subtitle">当前占用 %1$s。</string>
+    <string name="settings_action_clear_online_audio_cache">清空在线歌曲缓存</string>
+    <string name="settings_online_audio_cache_cleared">已清空在线歌曲缓存</string>
     <string name="settings_sync_scanning_section">同步与扫描</string>
     <string name="settings_refresh_library_title">刷新媒体库</string>
     <string name="settings_refresh_library_subtitle">扫描整个媒体库以查找新增和修改的文件。</string>
@@ -219,14 +225,6 @@
     <string name="settings_navbar_corner_title">导航栏圆角半径</string>
     <string name="settings_navbar_corner_subtitle">调整导航栏的圆角半径。</string>
     <string name="settings_lyrics_screen_section">歌词界面</string>
-    <string name="settings_immersive_lyrics_title">沉浸式歌词</string>
-    <string name="settings_immersive_lyrics_subtitle">自动隐藏控件并放大文本。</string>
-    <string name="settings_auto_hide_delay_title">自动隐藏延迟</string>
-    <string name="settings_auto_hide_delay_subtitle">控件隐藏前的时间。</string>
-    <string name="settings_auto_hide_delay_3s">3秒</string>
-    <string name="settings_auto_hide_delay_4s">4秒</string>
-    <string name="settings_auto_hide_delay_5s">5秒</string>
-    <string name="settings_auto_hide_delay_6s">6秒</string>
     <string name="settings_app_navigation_section">应用导航</string>
     <string name="settings_default_tab_title">默认选项卡</string>
     <string name="settings_default_tab_subtitle">选择默认启动时的选项卡。</string>

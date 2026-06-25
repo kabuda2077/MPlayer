@@ -39,7 +39,8 @@ import java.util.concurrent.ConcurrentHashMap
  * @param K The song identifier type (e.g. [String] for QQ Music songMid, [Long] for Netease songId)
  */
 abstract class CloudStreamProxy<K : Any>(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val onlineAudioCacheManager: OnlineAudioCacheManager? = null
 ) {
     // ─── Subclass Configuration ────────────────────────────────────────
 
@@ -279,6 +280,15 @@ abstract class CloudStreamProxy<K : Any>(
                 return
             }
 
+            val initialCacheKey = cacheKeyFor(id)
+            onlineAudioCacheManager?.get(initialCacheKey)?.let { cached ->
+                if (BuildConfig.DEBUG) {
+                    Timber.d("$proxyTag audio cache hit id=$id key=$initialCacheKey")
+                }
+                writeCachedStream(cached, rangeValidation.normalizedHeader, request.method == "HEAD", output)
+                return
+            }
+
             val stream = try {
                 getOrFetchStream(id)
             } catch (e: Exception) {
@@ -297,6 +307,18 @@ abstract class CloudStreamProxy<K : Any>(
                 Timber.w("$proxyTag no stream URL available for id=$id")
                 writeTextResponse(output, 404, "Not Found", "No stream URL available")
                 return
+            }
+
+            stream.cacheKeySuffix?.let { streamCacheKey ->
+                if (streamCacheKey != initialCacheKey) {
+                    onlineAudioCacheManager?.get(streamCacheKey)?.let { cached ->
+                        if (BuildConfig.DEBUG) {
+                            Timber.d("$proxyTag audio cache hit id=$id key=$streamCacheKey")
+                        }
+                        writeCachedStream(cached, rangeValidation.normalizedHeader, request.method == "HEAD", output)
+                        return
+                    }
+                }
             }
 
             val streamUrl = stream.url
@@ -325,6 +347,7 @@ abstract class CloudStreamProxy<K : Any>(
                 stream = stream,
                 rangeHeader = rangeValidation.normalizedHeader,
                 headOnly = request.method == "HEAD",
+                cacheKey = stream.cacheKeySuffix ?: initialCacheKey,
                 output = output
             )
         } catch (e: Exception) {
@@ -391,6 +414,7 @@ abstract class CloudStreamProxy<K : Any>(
         stream: ResolvedStream,
         rangeHeader: String?,
         headOnly: Boolean,
+        cacheKey: String,
         output: BufferedOutputStream
     ) {
         val requestBuilder = Request.Builder().url(stream.url)
@@ -448,17 +472,137 @@ abstract class CloudStreamProxy<K : Any>(
 
             if (!headOnly) {
                 val body = upstream.body
+                val cacheWriter = if (shouldCacheUpstreamResponse(rangeHeader, upstream.code, upstream.header("Content-Range"))) {
+                    onlineAudioCacheManager?.createWriter(
+                        cacheKey = cacheKey,
+                        contentLength = contentLength?.toLongOrNull(),
+                        mimeType = headers["Content-Type"] ?: "application/octet-stream",
+                        source = uriScheme,
+                        quality = stream.quality
+                    )
+                } else {
+                    null
+                }
                 body.byteStream().use { input ->
                     val buffer = ByteArray(64 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
+                    var clientDisconnected = false
+                    try {
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            cacheWriter?.write(buffer, 0, read)
+                            if (!clientDisconnected) {
+                                try {
+                                    output.write(buffer, 0, read)
+                                } catch (e: Exception) {
+                                    if (cacheWriter != null && isExpectedClientDisconnect(e)) {
+                                        clientDisconnected = true
+                                        if (BuildConfig.DEBUG) {
+                                            Timber.d(
+                                                "$proxyTag client disconnected while cacheable response is still downloading; " +
+                                                    "continuing cache fill id=$id"
+                                            )
+                                        }
+                                    } else {
+                                        throw e
+                                    }
+                                }
+                            }
+                        }
+                        cacheWriter?.commit()
+                    } catch (e: Exception) {
+                        cacheWriter?.abort()
+                        throw e
+                    }
+                }
+                if (cacheWriter != null) {
+                    onlineAudioCacheManager?.let { manager ->
+                        proxyScope.launch(Dispatchers.IO) {
+                            manager.cleanCacheIfNeeded()
+                        }
                     }
                 }
             }
             output.flush()
         }
+    }
+
+    private fun writeCachedStream(
+        entry: OnlineAudioCacheEntry,
+        rangeHeader: String?,
+        headOnly: Boolean,
+        output: BufferedOutputStream
+    ) {
+        val fileLength = entry.file.length()
+        val byteRange = parseByteRange(rangeHeader, fileLength)
+        if (byteRange == null) {
+            writeTextResponse(output, 416, "Range Not Satisfiable", "Invalid range header")
+            return
+        }
+
+        val (start, end) = byteRange
+        val partial = rangeHeader != null
+        val contentLength = end - start + 1
+        val headers = linkedMapOf(
+            "Accept-Ranges" to "bytes",
+            "Connection" to "close",
+            "Content-Type" to entry.mimeType,
+            "Content-Length" to contentLength.toString()
+        )
+        if (partial) {
+            headers["Content-Range"] = "bytes $start-$end/$fileLength"
+        }
+        writeHeaders(
+            output = output,
+            statusCode = if (partial) 206 else 200,
+            reason = if (partial) "Partial Content" else "OK",
+            headers = headers
+        )
+
+        if (!headOnly) {
+            entry.file.inputStream().use { input ->
+                var skipped = 0L
+                while (skipped < start) {
+                    val step = input.skip(start - skipped)
+                    if (step <= 0L) break
+                    skipped += step
+                }
+                val buffer = ByteArray(64 * 1024)
+                var remaining = contentLength
+                while (remaining > 0L) {
+                    val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    remaining -= read
+                }
+            }
+        }
+        output.flush()
+    }
+
+    private fun parseByteRange(rangeHeader: String?, fileLength: Long): Pair<Long, Long>? {
+        if (fileLength <= 0L) return null
+        if (rangeHeader.isNullOrBlank()) return 0L to (fileLength - 1)
+        if (!rangeHeader.startsWith("bytes=")) return null
+        val range = rangeHeader.removePrefix("bytes=")
+        val startText = range.substringBefore('-')
+        val endText = range.substringAfter('-', "")
+        val start = startText.toLongOrNull() ?: return null
+        val end = endText.toLongOrNull() ?: (fileLength - 1)
+        if (start < 0L || end < start || start >= fileLength) return null
+        return start to end.coerceAtMost(fileLength - 1)
+    }
+
+    private fun shouldCacheUpstreamResponse(
+        rangeHeader: String?,
+        upstreamCode: Int,
+        contentRange: String?
+    ): Boolean {
+        if (rangeHeader == null) return upstreamCode == 200
+        if (rangeHeader != "bytes=0-") return false
+        if (upstreamCode == 200) return true
+        if (upstreamCode != 206) return false
+        return contentRange?.startsWith("bytes 0-", ignoreCase = true) == true
     }
 
     private fun writeTextResponse(

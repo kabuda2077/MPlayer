@@ -172,7 +172,6 @@
     <string name="lyrics_controls_hide_sync">Sembunyikan kontrol sinkronisasi</string>
     <string name="lyrics_controls_show_romanization">Tampilkan romanisasi</string>
     <string name="lyrics_controls_show_translations">Tampilkan terjemahan</string>
-    <string name="lyrics_controls_disable_immersive_once">Nonaktifkan imersif (sekali)</string>
     <string name="lyrics_controls_keep_screen_on">Layar tetap menyala</string>
     
     <!-- LyricsSheet save dialog -->

@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">Raggio angoli barra navigazione</string>
     <string name="settings_navbar_corner_subtitle">Regola il raggio degli angoli della barra di navigazione.</string>
     <string name="settings_lyrics_screen_section">Schermata testi</string>
-    <string name="settings_immersive_lyrics_title">Testi immersivi</string>
-    <string name="settings_immersive_lyrics_subtitle">Nascondi automaticamente controlli e ingrandisci testo.</string>
-    <string name="settings_auto_hide_delay_title">Ritardo auto-nascondi</string>
-    <string name="settings_auto_hide_delay_subtitle">Tempo prima che i controlli si nascondano.</string>
-    <string name="settings_auto_hide_delay_3s">3s</string>
-    <string name="settings_auto_hide_delay_4s">4s</string>
-    <string name="settings_auto_hide_delay_5s">5s</string>
-    <string name="settings_auto_hide_delay_6s">6s</string>
     <string name="settings_app_navigation_section">Navigazione app</string>
     <string name="settings_default_tab_title">Scheda predefinita</string>
     <string name="settings_default_tab_subtitle">Scegli la scheda di avvio predefinita.</string>

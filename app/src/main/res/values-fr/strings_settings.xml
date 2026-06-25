@@ -208,14 +208,6 @@
     <string name="settings_navbar_corner_title">Rayon des angles de la barre</string>
     <string name="settings_navbar_corner_subtitle">Ajuster le rayon des angles de la barre de navigation.</string>
     <string name="settings_lyrics_screen_section">Écran des paroles</string>
-    <string name="settings_immersive_lyrics_title">Paroles immersives</string>
-    <string name="settings_immersive_lyrics_subtitle">Masquer auto les contrôles et agrandir le texte.</string>
-    <string name="settings_auto_hide_delay_title">Délai de masquage auto</string>
-    <string name="settings_auto_hide_delay_subtitle">Temps avant que les contrôles ne se masquent.</string>
-    <string name="settings_auto_hide_delay_3s">3s</string>
-    <string name="settings_auto_hide_delay_4s">4s</string>
-    <string name="settings_auto_hide_delay_5s">5s</string>
-    <string name="settings_auto_hide_delay_6s">6s</string>
     <string name="settings_app_navigation_section">Navigation application</string>
     <string name="settings_default_tab_title">Onglet par défaut</string>
     <string name="settings_default_tab_subtitle">Choisissez l\'onglet par défaut au lancement.</string>

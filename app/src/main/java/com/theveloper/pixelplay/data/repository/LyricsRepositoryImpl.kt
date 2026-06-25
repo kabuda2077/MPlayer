@@ -172,8 +172,10 @@ class LyricsRepositoryImpl @Inject constructor(
 
         if (!bypassMemoryCache) {
             lyricsCache.get(cacheKey)?.let { cached ->
-                Log.d(TAG, "===== RETURNING IN-MEMORY CACHED LYRICS =====")
-                return@withContext cached
+                if (!shouldBypassOnlinePlainOnlyStoredLyrics(song, cached, "memory_cache")) {
+                    Log.d(TAG, "===== RETURNING IN-MEMORY CACHED LYRICS =====")
+                    return@withContext cached
+                }
             }
         }
 
@@ -1212,6 +1214,10 @@ class LyricsRepositoryImpl @Inject constructor(
                 val rawLyrics = data.structuredLyrics ?: data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
                 val parsed = rawLyrics?.let { parseRawLyricsContent(it, areFromRemote = true) }
                 if (parsed != null && parsed.isValid()) {
+                    if (shouldBypassOnlinePlainOnlyStoredLyrics(song, parsed, "json_cache")) {
+                        return null
+                    }
+
                     val hasWordTimestamps = parsed.synced?.any { !it.words.isNullOrEmpty() } == true
                     if (!hasWordTimestamps && data.wordByWordLyrics.isNullOrBlank()) {
                         // Legacy cache may have flattened word-by-word lines.
@@ -1357,11 +1363,17 @@ class LyricsRepositoryImpl @Inject constructor(
         cacheKey: String,
         includeMemoryCache: Boolean
     ): Pair<Lyrics, String>? = withContext(Dispatchers.IO) {
+        fun acceptedStoredLyrics(rawLyrics: String, sourceTag: String): Pair<Lyrics, String>? {
+            val parsed = parseStoredLyrics(rawLyrics) ?: return null
+            if (shouldBypassOnlinePlainOnlyStoredLyrics(song, parsed, sourceTag)) return null
+            return parsed to rawLyrics
+        }
+
         song.lyrics
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?.let { rawLyrics ->
-                parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
+                acceptedStoredLyrics(rawLyrics, "song_field")?.let { return@withContext it }
             }
 
         song.id.toLongOrNull()
@@ -1369,7 +1381,7 @@ class LyricsRepositoryImpl @Inject constructor(
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?.let { rawLyrics ->
-                parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
+                acceptedStoredLyrics(rawLyrics, "lyrics_db")?.let { return@withContext it }
             }
 
         readLyricsJsonCache(song)
@@ -1377,19 +1389,39 @@ class LyricsRepositoryImpl @Inject constructor(
             ?.let { data ->
                 val rawLyrics = data.structuredLyrics ?: data.wordByWordLyrics ?: data.syncedLyrics ?: data.plainLyrics
                 if (!rawLyrics.isNullOrBlank()) {
-                    parseStoredLyrics(rawLyrics)?.let { return@withContext it to rawLyrics }
+                    acceptedStoredLyrics(rawLyrics, "json_cache")?.let { return@withContext it }
                 }
             }
 
         if (includeMemoryCache) {
             lyricsCache.get(cacheKey)?.let { cached ->
-                lyricsToRawContent(cached)?.let { rawLyrics ->
-                    return@withContext cached to rawLyrics
+                if (!shouldBypassOnlinePlainOnlyStoredLyrics(song, cached, "memory_cache")) {
+                    lyricsToRawContent(cached)?.let { rawLyrics ->
+                        return@withContext cached to rawLyrics
+                    }
                 }
             }
         }
 
         null
+    }
+
+    private fun shouldBypassOnlinePlainOnlyStoredLyrics(
+        song: Song,
+        lyrics: Lyrics,
+        sourceTag: String
+    ): Boolean {
+        if (isLikelyLocalSong(song)) return false
+        if (!lyrics.synced.isNullOrEmpty()) return false
+        if (lyrics.plain.isNullOrEmpty()) return false
+
+        Timber.d(
+            "Lyrics[Stored][Bypass] reason=online_plain_only source=%s song=%s - %s",
+            sourceTag,
+            song.displayArtist,
+            song.title
+        )
+        return true
     }
 
     private fun parseStoredLyrics(rawLyrics: String): Lyrics? =

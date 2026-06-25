@@ -217,6 +217,7 @@ class UserPreferencesRepository @Inject constructor(
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
         val ALBUM_ART_CACHE_LIMIT_MB = intPreferencesKey("album_art_cache_limit_mb")
+        val ONLINE_AUDIO_CACHE_LIMIT_MB = intPreferencesKey("online_audio_cache_limit_mb")
         val TAP_BACKGROUND_CLOSES_PLAYER = booleanPreferencesKey("tap_background_closes_player")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val ADVANCED_PERFORMANCE_DIAGNOSTICS_ENABLED =
@@ -225,8 +226,6 @@ class UserPreferencesRepository @Inject constructor(
             longPreferencesKey("advanced_performance_diagnostics_started_at_epoch_ms")
         val ADVANCED_PERFORMANCE_DIAGNOSTICS_EXPIRES_AT =
             longPreferencesKey("advanced_performance_diagnostics_expires_at_epoch_ms")
-        val IMMERSIVE_LYRICS_ENABLED = booleanPreferencesKey("immersive_lyrics_enabled")
-        val IMMERSIVE_LYRICS_TIMEOUT = longPreferencesKey("immersive_lyrics_timeout")
         val USE_ANIMATED_LYRICS = booleanPreferencesKey("use_animated_lyrics")
         val ANIMATED_LYRICS_BLUR_ENABLED = booleanPreferencesKey("animated_lyrics_blur_enabled")
         val ANIMATED_LYRICS_BLUR_STRENGTH = androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")
@@ -1119,20 +1118,6 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] = enabled }
     }
 
-    val immersiveLyricsEnabledFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.IMMERSIVE_LYRICS_ENABLED] ?: false }
-
-    suspend fun setImmersiveLyricsEnabled(enabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.IMMERSIVE_LYRICS_ENABLED] = enabled }
-    }
-
-    val immersiveLyricsTimeoutFlow: Flow<Long> =
-        pref { it[PreferencesKeys.IMMERSIVE_LYRICS_TIMEOUT] ?: 4000L }
-
-    suspend fun setImmersiveLyricsTimeout(timeout: Long) {
-        dataStore.edit { it[PreferencesKeys.IMMERSIVE_LYRICS_TIMEOUT] = timeout }
-    }
-
     val useAnimatedLyricsFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.USE_ANIMATED_LYRICS] ?: false }
 
@@ -1247,6 +1232,13 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setAlbumArtCacheLimitMb(limitMb: Int) {
         dataStore.edit { it[PreferencesKeys.ALBUM_ART_CACHE_LIMIT_MB] = limitMb.coerceIn(50, 1500) }
+    }
+
+    val onlineAudioCacheLimitMbFlow: Flow<Int> =
+        pref { it[PreferencesKeys.ONLINE_AUDIO_CACHE_LIMIT_MB] ?: DEFAULT_ONLINE_AUDIO_CACHE_LIMIT_MB }
+
+    suspend fun setOnlineAudioCacheLimitMb(limitMb: Int) {
+        dataStore.edit { it[PreferencesKeys.ONLINE_AUDIO_CACHE_LIMIT_MB] = limitMb.coerceIn(0, 4096) }
     }
 
     /** Whether tapping the player sheet background closes it. Defaults to false to avoid accidental dismissal. */
@@ -1394,6 +1386,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         )
 
         const val DEFAULT_ALBUM_ART_CACHE_LIMIT_MB = 200
+        const val DEFAULT_ONLINE_AUDIO_CACHE_LIMIT_MB = 2048
     }
 
     // ─── Private utilities ────────────────────────────────────────────────────

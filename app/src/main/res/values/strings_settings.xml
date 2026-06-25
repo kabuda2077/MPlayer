@@ -44,6 +44,12 @@
     <string name="settings_min_song_duration">Minimum Song Duration</string>
     <string name="settings_min_tracks_per_album">Minimum Tracks per Album</string>
     <string name="settings_album_art_cache_limit">Album Art Cache Limit</string>
+    <string name="settings_online_audio_cache_limit">Online Song Cache Limit</string>
+    <string name="settings_online_audio_cache_disabled">0 MB (Off)</string>
+    <string name="settings_online_audio_cache_size_title">Online Song Cache Usage</string>
+    <string name="settings_online_audio_cache_size_subtitle">Currently using %1$s.</string>
+    <string name="settings_action_clear_online_audio_cache">Clear Online Song Cache</string>
+    <string name="settings_online_audio_cache_cleared">Online song cache cleared</string>
     <string name="settings_sync_scanning_section">Sync and Scanning</string>
     <string name="settings_refresh_library_title">Refresh Library</string>
     <string name="settings_refresh_library_subtitle">Scan entire library for new and modified files.</string>
@@ -219,14 +225,6 @@
     <string name="settings_navbar_corner_title">NavBar Corner Radius</string>
     <string name="settings_navbar_corner_subtitle">Adjust the corner radius of the navigation bar.</string>
     <string name="settings_lyrics_screen_section">Lyrics Screen</string>
-    <string name="settings_immersive_lyrics_title">Immersive Lyrics</string>
-    <string name="settings_immersive_lyrics_subtitle">Auto-hide controls and enlarge text.</string>
-    <string name="settings_auto_hide_delay_title">Auto-hide Delay</string>
-    <string name="settings_auto_hide_delay_subtitle">Time before controls hide.</string>
-    <string name="settings_auto_hide_delay_3s">3s</string>
-    <string name="settings_auto_hide_delay_4s">4s</string>
-    <string name="settings_auto_hide_delay_5s">5s</string>
-    <string name="settings_auto_hide_delay_6s">6s</string>
     <string name="settings_app_navigation_section">App Navigation</string>
     <string name="settings_default_tab_title">Default Tab</string>
     <string name="settings_default_tab_subtitle">Choose the Default launch tab.</string>

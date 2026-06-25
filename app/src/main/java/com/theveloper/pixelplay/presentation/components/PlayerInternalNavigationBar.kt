@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -35,8 +36,8 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-internal val NavBarContentHeight = 90.dp // Altura del contenido de la barra de navegación
-internal val NavBarCompactContentHeight = 64.dp
+internal val NavBarContentHeight = 78.dp // Altura del contenido de la barra de navegación
+internal val NavBarCompactContentHeight = 62.dp
 internal val NavBarContentHeightFullWidth = NavBarContentHeight // Altura del contenido de la barra de navegación en modo completo
 private val MainScreenBottomGradientExtraHeight = MiniPlayerHeight + MiniPlayerBottomSpacer + 8.dp
 // Some OEM freeform/floating-window modes can report a bottom inset close to the whole window height.
@@ -112,10 +113,10 @@ private fun PlayerInternalNavigationItemsRow(
     val rowModifier = if (navBarStyle == NavBarStyle.FULL_WIDTH) {
         modifier
             .fillMaxWidth()
-            .padding(top = 0.dp, bottom = innerRowPadding, start = 12.dp, end = 12.dp)
+            .padding(top = 8.dp, bottom = innerRowPadding + 8.dp, start = 8.dp, end = 8.dp)
     } else {
         modifier
-            .padding(start = 10.dp, end = 10.dp, bottom = innerRowPadding)
+            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = innerRowPadding + 8.dp)
             .fillMaxWidth()
     }
     Row(
@@ -141,7 +142,8 @@ private fun PlayerInternalNavigationItemsRow(
                 {
                     Icon(
                         painter = painterResource(id = iconPainterResId),
-                        contentDescription = localizedLabel
+                        contentDescription = localizedLabel,
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
@@ -149,7 +151,8 @@ private fun PlayerInternalNavigationItemsRow(
                 {
                     Icon(
                         painter = painterResource(id = iconPainterResId),
-                        contentDescription = localizedLabel
+                        contentDescription = localizedLabel,
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }

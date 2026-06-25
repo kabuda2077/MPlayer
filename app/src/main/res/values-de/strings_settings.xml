@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">NavBar-Eckenradius</string>
     <string name="settings_navbar_corner_subtitle">Ecken der NavBar an dein Gerät anpassen.</string>
     <string name="settings_lyrics_screen_section">Lyrics-Ansicht</string>
-    <string name="settings_immersive_lyrics_title">Immersive Lyrics</string>
-    <string name="settings_immersive_lyrics_subtitle">Steuerung automatisch ausblenden und Text im Vollbild genießen.</string>
-    <string name="settings_auto_hide_delay_title">Ausblend-Verzögerung</string>
-    <string name="settings_auto_hide_delay_subtitle">Wie lange die Steuerung sichtbar bleibt, bevor sie ausblendet.</string>
-    <string name="settings_auto_hide_delay_3s">3s</string>
-    <string name="settings_auto_hide_delay_4s">4s</string>
-    <string name="settings_auto_hide_delay_5s">5s</string>
-    <string name="settings_auto_hide_delay_6s">6s</string>
     <string name="settings_app_navigation_section">App-Navigation</string>
     <string name="settings_default_tab_title">Start-Tab</string>
     <string name="settings_default_tab_subtitle">Welcher Tab beim Öffnen der App zuerst erscheint.</string>

@@ -111,10 +111,6 @@
     <string name="setcat_navbar_corner_title">نصف قطر زوايا شريط التنقل</string>
     <string name="setcat_navbar_corner_subtitle">ضبط درجة تدوير زوايا شريط التنقل.</string>
     <string name="setcat_lyrics_screen">شاشة كلمات الأغاني</string>
-    <string name="setcat_immersive_lyrics_title">كلمات غامرة وملء الشاشة</string>
-    <string name="setcat_immersive_lyrics_subtitle">إخفاء عناصر التحكم تلقائياً وتكبير حجم الخط.</string>
-    <string name="setcat_auto_hide_delay_label">مهلة الإخفاء التلقائي</string>
-    <string name="setcat_auto_hide_delay_desc">الوقت المستغرق قبل إخفاء عناصر التحكم.</string>
     <string name="setcat_lyrics_delay_3s">3 ثوانٍ</string>
     <string name="setcat_lyrics_delay_4s">4 ثوانٍ</string>
     <string name="setcat_lyrics_delay_5s">5 ثوانٍ</string>

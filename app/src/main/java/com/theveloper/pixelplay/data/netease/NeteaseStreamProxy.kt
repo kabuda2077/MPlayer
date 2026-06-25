@@ -6,6 +6,7 @@ import com.theveloper.pixelplay.data.plugin.PluginAudioSourceResolver
 import com.theveloper.pixelplay.data.plugin.PluginSource
 import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
 import com.theveloper.pixelplay.data.stream.ResolvedStream
+import com.theveloper.pixelplay.data.stream.OnlineAudioCacheManager
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,8 +21,9 @@ import javax.inject.Singleton
 class NeteaseStreamProxy @Inject constructor(
     private val pluginResolver: PluginAudioSourceResolver,
     private val playbackInfoStore: CloudStreamPlaybackInfoStore,
+    onlineAudioCacheManager: OnlineAudioCacheManager,
     okHttpClient: OkHttpClient
-) : CloudStreamProxy<Long>(okHttpClient) {
+) : CloudStreamProxy<Long>(okHttpClient, onlineAudioCacheManager) {
 
     override val allowedHostSuffixes = emptySet<String>()
     override val cacheExpirationMs = 10L * 60 * 1000

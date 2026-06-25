@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">NavBar hjørneradius</string>
     <string name="settings_navbar_corner_subtitle">Juster hjørneradius for navigasjonslinjen.</string>
     <string name="settings_lyrics_screen_section">Sangtekst-skjerm</string>
-    <string name="settings_immersive_lyrics_title">Immersiv sangtekst</string>
-    <string name="settings_immersive_lyrics_subtitle">Skjul kontroller automatisk og forstørr tekst.</string>
-    <string name="settings_auto_hide_delay_title">Forsinkelse for autoskjuling</string>
-    <string name="settings_auto_hide_delay_subtitle">Tid før kontrollene skjules.</string>
-    <string name="settings_auto_hide_delay_3s">3s</string>
-    <string name="settings_auto_hide_delay_4s">4s</string>
-    <string name="settings_auto_hide_delay_5s">5s</string>
-    <string name="settings_auto_hide_delay_6s">6s</string>
     <string name="settings_app_navigation_section">App-navigasjon</string>
     <string name="settings_default_tab_title">Standardfane</string>
     <string name="settings_default_tab_subtitle">Velg standardfane ved oppstart.</string>

@@ -84,7 +84,6 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -206,6 +205,7 @@ fun SettingsCategoryScreen(
     val toastDailyMixRegenerationStarted = stringResource(R.string.settings_toast_daily_mix_regeneration_started)
     val toastStatsRegenerationStarted = stringResource(R.string.settings_toast_stats_regeneration_started)
     val backupFileNameFormat = stringResource(R.string.settings_backup_file_name_format)
+    val onlineAudioCacheDisabledLabel = stringResource(R.string.settings_online_audio_cache_disabled)
     
     // State Collection (Duplicated from SettingsScreen for now to ensure functionality)
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -249,6 +249,9 @@ fun SettingsCategoryScreen(
     }
     var albumArtCacheLimitDraft by remember(uiState.albumArtCacheLimitMb) {
         mutableStateOf(uiState.albumArtCacheLimitMb.toFloat())
+    }
+    var onlineAudioCacheLimitDraft by remember(uiState.onlineAudioCacheLimitMb) {
+        mutableStateOf(uiState.onlineAudioCacheLimitMb.toFloat())
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -478,6 +481,44 @@ fun SettingsCategoryScreen(
                                     },
                                     valueText = { value -> "${value.toInt()} MB" }
                                 )
+                                SliderSettingsItem(
+                                    label = stringResource(R.string.settings_online_audio_cache_limit),
+                                    value = onlineAudioCacheLimitDraft,
+                                    valueRange = 0f..4096f,
+                                    steps = 63,
+                                    onValueChange = { onlineAudioCacheLimitDraft = it },
+                                    onValueChangeFinished = {
+                                        val selectedLimit = onlineAudioCacheLimitDraft.toInt()
+                                        if (selectedLimit != uiState.onlineAudioCacheLimitMb) {
+                                            settingsViewModel.setOnlineAudioCacheLimitMb(selectedLimit)
+                                        }
+                                    },
+                                    valueText = { value ->
+                                        val mb = value.toInt()
+                                        when {
+                                            mb <= 0 -> onlineAudioCacheDisabledLabel
+                                            mb >= 1024 -> "${mb / 1024} GB"
+                                            else -> "$mb MB"
+                                        }
+                                    }
+                                )
+                                ActionSettingsItem(
+                                    title = stringResource(R.string.settings_online_audio_cache_size_title),
+                                    subtitle = stringResource(
+                                        R.string.settings_online_audio_cache_size_subtitle,
+                                        uiState.onlineAudioCacheSizeLabel
+                                    ),
+                                    icon = {
+                                        Icon(
+                                            Icons.Rounded.MusicNote,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    },
+                                    primaryActionLabel = stringResource(R.string.settings_action_clear_online_audio_cache),
+                                    onPrimaryAction = { settingsViewModel.clearOnlineAudioCache() },
+                                    enabled = uiState.onlineAudioCacheSizeLabel != "0.0 MB"
+                                )
                             }
 
                             SettingsSubsection(title = stringResource(R.string.settings_sync_scanning_section)) {
@@ -667,32 +708,6 @@ fun SettingsCategoryScreen(
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely("nav_bar_corner_radius") }
                                 )
-                            }
-
-                            SettingsSubsection(title = stringResource(R.string.settings_lyrics_screen_section)) {
-                                SwitchSettingItem(
-                                    title = stringResource(R.string.settings_immersive_lyrics_title),
-                                    subtitle = stringResource(R.string.settings_immersive_lyrics_subtitle),
-                                    checked = uiState.immersiveLyricsEnabled,
-                                    onCheckedChange = { settingsViewModel.setImmersiveLyricsEnabled(it) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-
-                                if (uiState.immersiveLyricsEnabled) {
-                                    ThemeSelectorItem(
-                                        label = stringResource(R.string.settings_auto_hide_delay_title),
-                                        description = stringResource(R.string.settings_auto_hide_delay_subtitle),
-                                        options = mapOf(
-                                            "3000" to stringResource(R.string.settings_auto_hide_delay_3s),
-                                            "4000" to stringResource(R.string.settings_auto_hide_delay_4s),
-                                            "5000" to stringResource(R.string.settings_auto_hide_delay_5s),
-                                            "6000" to stringResource(R.string.settings_auto_hide_delay_6s)
-                                        ),
-                                        selectedKey = uiState.immersiveLyricsTimeout.toString(),
-                                        onSelectionChanged = { settingsViewModel.setImmersiveLyricsTimeout(it.toLong()) },
-                                        leadingIcon = { Icon(Icons.Rounded.Timer, null, tint = MaterialTheme.colorScheme.secondary) }
-                                    )
-                                }
                             }
 
                             SettingsSubsection(

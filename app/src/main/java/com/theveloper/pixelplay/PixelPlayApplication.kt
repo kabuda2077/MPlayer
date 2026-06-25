@@ -16,6 +16,7 @@ import coil.ImageLoaderFactory
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
+import com.theveloper.pixelplay.data.stream.OnlineAudioCacheManager
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryStateHolder
 import com.theveloper.pixelplay.presentation.viewmodel.ThemeStateHolder
@@ -71,6 +72,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
 
     @Inject
     lateinit var advancedPerformanceDiagnosticsController: dagger.Lazy<AdvancedPerformanceDiagnosticsController>
+
+    @Inject
+    lateinit var onlineAudioCacheManager: dagger.Lazy<OnlineAudioCacheManager>
 
     private val startupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -128,6 +132,13 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
             }.getOrNull()
             if (savedLimit != null) {
                 AlbumArtCacheManager.configuredCacheLimitMb = savedLimit.toLong()
+            }
+            val onlineAudioCacheLimit = runCatching {
+                userPreferencesRepository.get().onlineAudioCacheLimitMbFlow.first()
+            }.getOrNull()
+            if (onlineAudioCacheLimit != null) {
+                onlineAudioCacheManager.get().configuredCacheLimitMb = onlineAudioCacheLimit
+                onlineAudioCacheManager.get().cleanCacheIfNeeded()
             }
         }
     }

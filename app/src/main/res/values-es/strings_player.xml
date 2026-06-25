@@ -172,7 +172,6 @@
     <string name="lyrics_controls_hide_sync">Ocultar controles de sincronización</string>
     <string name="lyrics_controls_show_romanization">Mostrar romanización</string>
     <string name="lyrics_controls_show_translations">Mostrar traducciones</string>
-    <string name="lyrics_controls_disable_immersive_once">Desactivar inmersivo (una vez)</string>
     <string name="lyrics_controls_keep_screen_on">Mantener pantalla encendida</string>
     
     <!-- LyricsSheet save dialog -->

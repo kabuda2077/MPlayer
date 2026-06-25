@@ -168,7 +168,7 @@ internal fun rememberSheetVisualState(
             val collapsedRadius = if (isNavBarHidden) {
                 32.dp
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                10.dp
+                navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
             } else {
@@ -186,7 +186,7 @@ internal fun rememberSheetVisualState(
                         if (isNavBarHidden) {
                             32.dp
                         } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                            10.dp
+                            navBarCornerRadiusDp
                         } else {
                             navBarCornerRadiusDp
                         }
@@ -205,7 +205,7 @@ internal fun rememberSheetVisualState(
                 if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                     calculatedNormally
                 } else if (navBarStyle == NavBarStyle.DEFAULT) {
-                    lerp(10.dp, navBarCornerRadiusDp, swipeDismissProgress)
+                    navBarCornerRadiusDp
                 } else {
                     val baseCollapsedRadius = if (isNavBarHidden) 32.dp else navBarCornerRadiusDp
                     lerp(baseCollapsedRadius, navBarCornerRadiusDp, swipeDismissProgress)

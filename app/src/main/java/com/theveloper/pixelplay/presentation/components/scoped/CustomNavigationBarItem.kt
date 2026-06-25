@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -82,7 +83,7 @@ fun RowScope.CustomNavigationBarItem(
     )
 
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.1f else 1f,
+        targetValue = if (selected) 1.06f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
@@ -92,18 +93,16 @@ fun RowScope.CustomNavigationBarItem(
 
     // Determinar si mostrar la etiqueta
     val showLabel = label != null && (alwaysShowLabel || selected)
-    val indicatorWidth = 64.dp
-    val indicatorHeight = 32.dp
-    val iconWidth = 48.dp
-    val iconHeight = 24.dp
-    val indicatorPadding = 4.dp
-    val indicatorShape = RoundedCornerShape(16.dp)
-    val iconShape = RoundedCornerShape(12.dp)
+    val indicatorShape = RoundedCornerShape(percent = 50)
+    val itemContainerColor by animateColorAsState(
+        targetValue = if (selected) indicatorColor else Color.Transparent,
+        animationSpec = tween(durationMillis = 150),
+        label = "itemContainerColor"
+    )
 
     // Layout principal
     Column(
         modifier = modifier
-            .weight(1f)
             .fillMaxHeight()
             .clickable(
                 onClick = onClick,
@@ -120,53 +119,25 @@ fun RowScope.CustomNavigationBarItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Container para el ícono con indicador
-        Box(
-            contentAlignment = Alignment.Center,
+        Column(
             modifier = Modifier
-                .size(indicatorWidth, indicatorHeight)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(indicatorShape)
+                .background(itemContainerColor)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            // Indicador de fondo (pill shape para Material 3 Expressive)
-            androidx.compose.animation.AnimatedVisibility(
-                visible = selected,
-                enter = fadeIn(animationSpec = tween(100)) + // Un fade in más rápido
-                        scaleIn(
-                            animationSpec = spring( // Usamos spring para el scaleIn
-                                dampingRatio = Spring.DampingRatioMediumBouncy, // Proporciona un rebote moderado
-                                stiffness = Spring.StiffnessLow // Puedes ajustar la rigidez
-                                // initialScale para que empiece un poco más pequeño si quieres más impacto
-                                // initialScale = 0.8f // (Opcional)
-                            ),
-                            // También puedes ajustar initialScale dentro de scaleIn si es necesario
-                            // initialScale = 0.8f // Este es el valor por defecto de scaleIn si no se especifica dentro de spring
-                        ),
-                exit = fadeOut(animationSpec = tween(100)) +
-                        scaleOut(animationSpec = tween(100, easing = EaseInQuart)) // Mantenemos el exit como estaba o lo ajustamos según se necesite
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = indicatorPadding)
-                        .background(
-                            color = indicatorColor,
-                            shape = indicatorShape
-                        )
-                )
-            }
-
-            // Área clicable del ícono (más pequeña que el container)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(iconWidth, iconHeight)
-                    .clip(iconShape)
+                    .size(30.dp)
                     .graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale
                     }
-
             ) {
-                // Ícono
                 CompositionLocalProvider(LocalContentColor provides iconColor) {
                     Box(
                         modifier = Modifier.clearAndSetSemantics {
@@ -179,26 +150,17 @@ fun RowScope.CustomNavigationBarItem(
                     }
                 }
             }
-        }
 
-        // Etiqueta con animación
-        androidx.compose.animation.AnimatedVisibility(
-            visible = showLabel,
-            enter = fadeIn(animationSpec = tween(200, delayMillis = 50)),
-            exit = fadeOut(animationSpec = tween(100))
-        ) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Box(
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
+            if (showLabel) {
+                Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
                     value = MaterialTheme.typography.labelMedium.copy(
                         color = textColor,
-                        fontSize = 13.sp,
+                        fontSize = 12.5.sp,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
                     )
                 ) {
-                    label?.invoke()
+                    label.invoke()
                 }
             }
         }

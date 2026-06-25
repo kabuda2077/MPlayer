@@ -208,14 +208,6 @@
     <string name="settings_navbar_corner_title">Radius Sudut NavBar</string>
     <string name="settings_navbar_corner_subtitle">Sesuaikan radius sudut bilah navigasi.</string>
     <string name="settings_lyrics_screen_section">Layar Lirik</string>
-    <string name="settings_immersive_lyrics_title">Lirik Imersif</string>
-    <string name="settings_immersive_lyrics_subtitle">Sembunyikan kontrol otomatis dan perbesar teks.</string>
-    <string name="settings_auto_hide_delay_title">Penundaan Sembunyi Otomatis</string>
-    <string name="settings_auto_hide_delay_subtitle">Waktu sebelum kontrol disembunyikan.</string>
-    <string name="settings_auto_hide_delay_3s">3d</string>
-    <string name="settings_auto_hide_delay_4s">4d</string>
-    <string name="settings_auto_hide_delay_5s">5d</string>
-    <string name="settings_auto_hide_delay_6s">6d</string>
     <string name="settings_app_navigation_section">Navigasi Aplikasi</string>
     <string name="settings_default_tab_title">Tab Default</string>
     <string name="settings_default_tab_subtitle">Pilih tab peluncuran Default.</string>

@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">Gezinme Çubuğu Köşe Yarıçapı</string>
     <string name="settings_navbar_corner_subtitle">Gezinme çubuğunun köşe yarıçapını ayarlayın.</string>
     <string name="settings_lyrics_screen_section">Şarkı Sözü Ekranı</string>
-    <string name="settings_immersive_lyrics_title">Sarmalayıcı Şarkı Sözleri</string>
-    <string name="settings_immersive_lyrics_subtitle">Kontrolleri otomatik olarak gizler ve metni büyütür.</string>
-    <string name="settings_auto_hide_delay_title">Otomatik Gizleme Gecikmesi</string>
-    <string name="settings_auto_hide_delay_subtitle">Kontrollerin gizlenmesinden önceki süre.</string>
-    <string name="settings_auto_hide_delay_3s">3sn</string>
-    <string name="settings_auto_hide_delay_4s">4sn</string>
-    <string name="settings_auto_hide_delay_5s">5sn</string>
-    <string name="settings_auto_hide_delay_6s">6sn</string>
     <string name="settings_app_navigation_section">Uygulama Gezinmesi</string>
     <string name="settings_default_tab_title">Varsayılan Sekme</string>
     <string name="settings_default_tab_subtitle">Varsayılan açılış sekmesini seçin.</string>

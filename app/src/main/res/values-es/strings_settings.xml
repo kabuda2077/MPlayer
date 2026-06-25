@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">Radio de esquinas de la barra</string>
     <string name="settings_navbar_corner_subtitle">Ajusta el radio de esquinas de la barra de navegación.</string>
     <string name="settings_lyrics_screen_section">Pantalla de letras</string>
-    <string name="settings_immersive_lyrics_title">Letras inmersivas</string>
-    <string name="settings_immersive_lyrics_subtitle">Ocultar controles automáticamente y agrandar el texto.</string>
-    <string name="settings_auto_hide_delay_title">Retraso de ocultación automática</string>
-    <string name="settings_auto_hide_delay_subtitle">Tiempo antes de que se oculten los controles.</string>
-    <string name="settings_auto_hide_delay_3s">3 s</string>
-    <string name="settings_auto_hide_delay_4s">4 s</string>
-    <string name="settings_auto_hide_delay_5s">5 s</string>
-    <string name="settings_auto_hide_delay_6s">6 s</string>
     <string name="settings_app_navigation_section">Navegación de la app</string>
     <string name="settings_default_tab_title">Pestaña predeterminada</string>
     <string name="settings_default_tab_subtitle">Elige la pestaña de inicio predeterminada.</string>

@@ -819,12 +819,6 @@ class MainActivity : ComponentActivity() {
                             label = "NavBarCornerRadius"
                         )
 
-                        val animatedDefaultTopCornerRadius = animateDpAsState(
-                            targetValue = if (showPlayerContentArea && !isMiniPlayerDismissing) 10.dp else navBarCornerRadius.dp,
-                            animationSpec = tween(400),
-                            label = "NavBarDefaultTopCornerRadius"
-                        )
-
                         // Shape is now resolved per quantized radius in the draw phase
                         // (see the Surface graphicsLayer below) instead of being
                         // re-remembered every animation frame.
@@ -880,8 +874,9 @@ class MainActivity : ComponentActivity() {
                                         // recomposition and no layout pass for the bar.
                                         val fraction = playerViewModel.playerContentExpansionFraction.value
                                         val safeFraction = fraction.coerceIn(0f, 1f)
+                                        val capsuleRadius = size.height / 2f
                                         val topDp = when {
-                                            navBarStyle == NavBarStyle.DEFAULT -> animatedDefaultTopCornerRadius.value
+                                            navBarStyle == NavBarStyle.DEFAULT -> capsuleRadius.toDp()
                                             navBarStyle == NavBarStyle.FULL_WIDTH -> lerp(navBarCornerRadius.dp, 26.dp, safeFraction)
                                             showPlayerContentArea -> if (fraction < 0.2f) {
                                                 lerp(navBarCornerRadius.dp, 26.dp, (fraction / 0.2f).coerceIn(0f, 1f))
@@ -892,6 +887,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         val bottomDp = when (navBarStyle) {
                                             NavBarStyle.FULL_WIDTH -> 0.dp
+                                            NavBarStyle.DEFAULT -> capsuleRadius.toDp()
                                             else -> animatedNavBarCornerRadius.value
                                         }
                                         shape = navBarShapeCache.get(this, topDp.toPx(), bottomDp.toPx(), useSmoothCorners)

@@ -29,6 +29,7 @@ import com.theveloper.pixelplay.data.preferences.FullPlayerLoadingTweaks
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
+import com.theveloper.pixelplay.data.stream.OnlineAudioCacheManager
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.worker.SyncManager
 import com.theveloper.pixelplay.data.worker.SyncProgress
@@ -92,10 +93,10 @@ data class SettingsUiState(
     // Developer Options
     val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
     val albumArtCacheLimitMb: Int = 200,
+    val onlineAudioCacheLimitMb: Int = OnlineAudioCacheManager.DEFAULT_CACHE_LIMIT_MB,
+    val onlineAudioCacheSizeLabel: String = "0.0 MB",
     val tapBackgroundClosesPlayer: Boolean = false,
     val hapticsEnabled: Boolean = true,
-    val immersiveLyricsEnabled: Boolean = false,
-    val immersiveLyricsTimeout: Long = 4000L,
     val useAnimatedLyrics: Boolean = false,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
@@ -171,8 +172,6 @@ private sealed interface SettingsUiUpdate {
         val localSongsAllowQqLyrics: Boolean,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
-        val immersiveLyricsEnabled: Boolean,
-        val immersiveLyricsTimeout: Long,
         val animatedLyricsBlurEnabled: Boolean,
         val animatedLyricsBlurStrength: Float,
         val disableBlurAllOver: Boolean,
@@ -194,6 +193,7 @@ class SettingsViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val musicRepository: MusicRepository,
     private val backupManager: BackupManager,
+    private val onlineAudioCacheManager: OnlineAudioCacheManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -567,8 +567,6 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.localSongsAllowQqLyricsFlow,
                 userPreferencesRepository.blockedDirectoriesFlow,
                 userPreferencesRepository.hapticsEnabledFlow,
-                userPreferencesRepository.immersiveLyricsEnabledFlow,
-                userPreferencesRepository.immersiveLyricsTimeoutFlow,
                 userPreferencesRepository.animatedLyricsBlurEnabledFlow,
                 userPreferencesRepository.animatedLyricsBlurStrengthFlow,
                 userPreferencesRepository.disableBlurAllOverFlow,
@@ -591,12 +589,10 @@ class SettingsViewModel @Inject constructor(
                     localSongsAllowQqLyrics = values[13] as Boolean,
                     blockedDirectories = @Suppress("UNCHECKED_CAST") (values[14] as Set<String>),
                     hapticsEnabled = values[15] as Boolean,
-                    immersiveLyricsEnabled = values[16] as Boolean,
-                    immersiveLyricsTimeout = values[17] as Long,
-                    animatedLyricsBlurEnabled = values[18] as Boolean,
-                    animatedLyricsBlurStrength = values[19] as Float,
-                    disableBlurAllOver = values[20] as Boolean,
-                    showScrollbar = values[21] as Boolean
+                    animatedLyricsBlurEnabled = values[16] as Boolean,
+                    animatedLyricsBlurStrength = values[17] as Float,
+                    disableBlurAllOver = values[18] as Boolean,
+                    showScrollbar = values[19] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -617,8 +613,6 @@ class SettingsViewModel @Inject constructor(
                         localSongsAllowQqLyrics = update.localSongsAllowQqLyrics,
                         blockedDirectories = update.blockedDirectories,
                         hapticsEnabled = update.hapticsEnabled,
-                        immersiveLyricsEnabled = update.immersiveLyricsEnabled,
-                        immersiveLyricsTimeout = update.immersiveLyricsTimeout,
                         animatedLyricsBlurEnabled = update.animatedLyricsBlurEnabled,
                         animatedLyricsBlurStrength = update.animatedLyricsBlurStrength,
                         disableBlurAllOver = update.disableBlurAllOver,
@@ -669,6 +663,20 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.albumArtCacheLimitMbFlow.collect { limitMb ->
                 _uiState.update { it.copy(albumArtCacheLimitMb = limitMb) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.onlineAudioCacheLimitMbFlow.collect { limitMb ->
+                onlineAudioCacheManager.configuredCacheLimitMb = limitMb
+                onlineAudioCacheManager.cleanCacheIfNeeded()
+                val cacheSizeLabel = onlineAudioCacheManager.getCacheSizeFormatted()
+                _uiState.update {
+                    it.copy(
+                        onlineAudioCacheLimitMb = limitMb,
+                        onlineAudioCacheSizeLabel = cacheSizeLabel
+                    )
+                }
             }
         }
 
@@ -1106,18 +1114,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setImmersiveLyricsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setImmersiveLyricsEnabled(enabled)
-        }
-    }
-
-    fun setImmersiveLyricsTimeout(timeout: Long) {
-        viewModelScope.launch {
-            userPreferencesRepository.setImmersiveLyricsTimeout(timeout)
-        }
-    }
-
     /**
      * Completely rebuilds the database from scratch.
      * Clears all data including user edits (lyrics, favorites) and rescans.
@@ -1273,6 +1269,23 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setAlbumArtCacheLimitMb(limitMb)
             com.theveloper.pixelplay.utils.AlbumArtCacheManager.configuredCacheLimitMb = limitMb.toLong()
+        }
+    }
+
+    fun setOnlineAudioCacheLimitMb(limitMb: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setOnlineAudioCacheLimitMb(limitMb)
+        }
+    }
+
+    fun clearOnlineAudioCache() {
+        viewModelScope.launch {
+            onlineAudioCacheManager.clearAll()
+            val cacheSizeLabel = onlineAudioCacheManager.getCacheSizeFormatted()
+            _uiState.update {
+                it.copy(onlineAudioCacheSizeLabel = cacheSizeLabel)
+            }
+            _dataTransferEvents.emit(context.getString(R.string.settings_online_audio_cache_cleared))
         }
     }
 

@@ -212,14 +212,6 @@
     <string name="settings_navbar_corner_title">내비게이션 바 모서리 반경</string>
     <string name="settings_navbar_corner_subtitle">내비게이션 바의 모서리 반경을 조정합니다.</string>
     <string name="settings_lyrics_screen_section">가사 화면</string>
-    <string name="settings_immersive_lyrics_title">몰입형 가사</string>
-    <string name="settings_immersive_lyrics_subtitle">컨트롤을 자동으로 숨기고 텍스트를 확대합니다.</string>
-    <string name="settings_auto_hide_delay_title">자동 숨김 지연 시간</string>
-    <string name="settings_auto_hide_delay_subtitle">컨트롤이 숨겨지기 전까지의 시간입니다.</string>
-    <string name="settings_auto_hide_delay_3s">3초</string>
-    <string name="settings_auto_hide_delay_4s">4초</string>
-    <string name="settings_auto_hide_delay_5s">5초</string>
-    <string name="settings_auto_hide_delay_6s">6초</string>
     <string name="settings_app_navigation_section">앱 내비게이션</string>
     <string name="settings_default_tab_title">기본 탭</string>
     <string name="settings_default_tab_subtitle">시작 시 열릴 기본 탭을 선택하세요.</string>

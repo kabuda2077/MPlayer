@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
@@ -26,12 +24,8 @@ import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.BrightnessHigh
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -44,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -67,13 +60,13 @@ fun LyricsMoreBottomSheet(
     sheetState: SheetState,
     lyrics: Lyrics?,
     showSyncedLyrics: Boolean,
+    hasSyncedLyrics: Boolean,
     isSyncControlsVisible: Boolean,
+    onShowSyncedLyricsChange: (Boolean) -> Unit,
     onSaveLyricsAsLrc: () -> Unit,
     onResetImportedLyrics: () -> Unit,
     onTranslateViaAi: () -> Unit,
     onToggleSyncControls: () -> Unit,
-    isImmersiveTemporarilyDisabled: Boolean,
-    onSetImmersiveTemporarilyDisabled: (Boolean) -> Unit,
     keepScreenOn: Boolean,
     onKeepScreenOnChange: (Boolean) -> Unit,
     lyricsAlignment: String,
@@ -84,7 +77,6 @@ fun LyricsMoreBottomSheet(
     showRomanization: Boolean,
     onShowTranslationChange: (Boolean) -> Unit,
     onShowRomanizationChange: (Boolean) -> Unit,
-    immersiveLyricsEnabled: Boolean,
     // BottomToggleRow params
     isShuffleEnabled: Boolean,
     repeatMode: Int,
@@ -111,11 +103,9 @@ fun LyricsMoreBottomSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         contentWindowInsets = { WindowInsets(top = 0, bottom = 0) }
     ) {
-        val screenHeight = LocalConfiguration.current.screenHeightDp.dp
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                //.heightIn(max = screenHeight * 0.85f)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 24.dp + navigationBarsPadding)
                 .verticalScroll(rememberScrollState()),
@@ -328,21 +318,22 @@ fun LyricsMoreBottomSheet(
             }
 
             // Control Settings Group
-            val isSyncVisible = showSyncedLyrics
+            val isSyncModeVisible = lyrics != null
+            val isSyncVisible = showSyncedLyrics && hasSyncedLyrics
             val isRomanizationVisible = hasRomanizedLyrics
             val isTranslationVisible = hasTranslatedLyrics
-            val isImmersiveVisible = showSyncedLyrics && immersiveLyricsEnabled
             val isKeepScreenOnVisible = true
 
-            if (isSyncVisible || isRomanizationVisible || isTranslationVisible || isKeepScreenOnVisible) {
+            if (isSyncModeVisible || isSyncVisible || isRomanizationVisible || isTranslationVisible || isKeepScreenOnVisible) {
                 // Determine first and last items for rounding
-                val isRomanizationFirst = isRomanizationVisible && !isSyncVisible
-                val isTranslationFirst = isTranslationVisible && !isSyncVisible && !isRomanizationVisible
+                val isSyncControlsFirst = isSyncVisible && !isSyncModeVisible
+                val isRomanizationFirst = isRomanizationVisible && !isSyncModeVisible && !isSyncVisible
+                val isTranslationFirst = isTranslationVisible && !isSyncModeVisible && !isSyncVisible && !isRomanizationVisible
 
-                val isSyncLast = isSyncVisible && !isRomanizationVisible && !isTranslationVisible && !isImmersiveVisible && !isKeepScreenOnVisible
-                val isRomanizationLast = isRomanizationVisible && !isTranslationVisible && !isImmersiveVisible && !isKeepScreenOnVisible
-                val isTranslationLast = isTranslationVisible && !isImmersiveVisible && !isKeepScreenOnVisible
-                val isImmersiveLast = isImmersiveVisible && !isKeepScreenOnVisible
+                val isSyncModeLast = isSyncModeVisible && !isSyncVisible && !isRomanizationVisible && !isTranslationVisible && !isKeepScreenOnVisible
+                val isSyncLast = isSyncVisible && !isRomanizationVisible && !isTranslationVisible && !isKeepScreenOnVisible
+                val isRomanizationLast = isRomanizationVisible && !isTranslationVisible && !isKeepScreenOnVisible
+                val isTranslationLast = isTranslationVisible && !isKeepScreenOnVisible
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -355,6 +346,54 @@ fun LyricsMoreBottomSheet(
                         color = accentColor,
                         style = MaterialTheme.typography.bodyLargeEmphasized
                     )
+
+                    if (isSyncModeVisible) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.lyrics_mode_synced)) },
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.rounded_lyrics_24),
+                                    contentDescription = null
+                                )
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = showSyncedLyrics && hasSyncedLyrics,
+                                    enabled = hasSyncedLyrics,
+                                    onCheckedChange = onShowSyncedLyricsChange,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = onAccentColor,
+                                        checkedTrackColor = accentColor,
+                                        uncheckedThumbColor = contentColor,
+                                        uncheckedTrackColor = contentColor.copy(alpha = 0.3f),
+                                        disabledCheckedThumbColor = contentColor.copy(alpha = 0.38f),
+                                        disabledCheckedTrackColor = contentColor.copy(alpha = 0.12f),
+                                        disabledUncheckedThumbColor = contentColor.copy(alpha = 0.38f),
+                                        disabledUncheckedTrackColor = contentColor.copy(alpha = 0.12f)
+                                    )
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 18.dp,
+                                        topEnd = 18.dp,
+                                        bottomStart = if (isSyncModeLast) 24.dp else 8.dp,
+                                        bottomEnd = if (isSyncModeLast) 24.dp else 8.dp
+                                    )
+                                )
+                                .background(itemBackgroundColor)
+                                .clickable(enabled = hasSyncedLyrics) {
+                                    onShowSyncedLyricsChange(!(showSyncedLyrics && hasSyncedLyrics))
+                                },
+                            colors = ListItemDefaults.colors(
+                                containerColor = Color.Transparent,
+                                headlineColor = if (hasSyncedLyrics) contentColor else contentColor.copy(alpha = 0.5f),
+                                leadingIconColor = if (hasSyncedLyrics) contentColor else contentColor.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
 
                     if (isSyncVisible) {
                         ListItem(
@@ -377,8 +416,8 @@ fun LyricsMoreBottomSheet(
                                 .fillMaxWidth()
                                 .clip(
                                     RoundedCornerShape(
-                                        topStart = 18.dp,
-                                        topEnd = 18.dp,
+                                        topStart = if (isSyncControlsFirst) 18.dp else 8.dp,
+                                        topEnd = if (isSyncControlsFirst) 18.dp else 8.dp,
                                         bottomStart = if (isSyncLast) 24.dp else 8.dp,
                                         bottomEnd = if (isSyncLast) 24.dp else 8.dp
                                     )
@@ -470,50 +509,6 @@ fun LyricsMoreBottomSheet(
                                 )
                                 .background(itemBackgroundColor)
                                 .clickable { onShowTranslationChange(!showTranslation) },
-                            colors = ListItemDefaults.colors(
-                                containerColor = Color.Transparent,
-                                headlineColor = contentColor,
-                                leadingIconColor = contentColor
-                            )
-                        )
-                    }
-
-                    // Immersive Mode Toggle
-                    if (isImmersiveVisible) {
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.lyrics_controls_disable_immersive_once)) },
-                            leadingContent = {
-                                Icon(
-                                    imageVector = Icons.Rounded.VisibilityOff,
-                                    contentDescription = null
-                                )
-                            },
-                            trailingContent = {
-                                Switch(
-                                    modifier = Modifier,
-                                    checked = isImmersiveTemporarilyDisabled,
-                                    onCheckedChange = {
-                                        onSetImmersiveTemporarilyDisabled(it)
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = onAccentColor,
-                                        checkedTrackColor = accentColor,
-                                        uncheckedThumbColor = contentColor,
-                                        uncheckedTrackColor = contentColor.copy(alpha = 0.3f)
-                                    )
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 8.dp,
-                                        topEnd = 8.dp,
-                                        bottomStart = if (isImmersiveLast) 24.dp else 8.dp,
-                                        bottomEnd = if (isImmersiveLast) 24.dp else 8.dp
-                                    )
-                                )
-                                .background(itemBackgroundColor),
                             colors = ListItemDefaults.colors(
                                 containerColor = Color.Transparent,
                                 headlineColor = contentColor,
