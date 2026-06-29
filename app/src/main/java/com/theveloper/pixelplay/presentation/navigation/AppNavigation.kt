@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.model.StorageFilter
 import androidx.compose.ui.unit.IntOffset
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
@@ -38,10 +39,10 @@ import com.theveloper.pixelplay.presentation.screens.AccountsScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistDetailScreen
 import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
+import com.theveloper.pixelplay.presentation.screens.DownloadManagerScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
 import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
-import com.theveloper.pixelplay.presentation.screens.GenreDetailScreen
 import com.theveloper.pixelplay.presentation.screens.HomeScreen
 import com.theveloper.pixelplay.presentation.screens.LibraryScreen
 import com.theveloper.pixelplay.presentation.screens.MashupScreen
@@ -172,6 +173,16 @@ fun AppNavigation(
             }
             composable(
                 Screen.Library.route,
+            ) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.OnlineLibrary.route) {
+                        popUpTo(Screen.Library.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+            composable(
+                Screen.OnlineLibrary.route,
                 enterTransition = {
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
@@ -202,7 +213,52 @@ fun AppNavigation(
                 },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    LibraryScreen(navController = navController, playerViewModel = playerViewModel)
+                    LibraryScreen(
+                        navController = navController,
+                        routeStorageFilter = StorageFilter.ONLINE,
+                        titleResId = R.string.online_library_screen_title,
+                        playerViewModel = playerViewModel
+                    )
+                }
+            }
+            composable(
+                Screen.LocalLibrary.route,
+                enterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = enterTransition()
+                    )
+                },
+                exitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = exitTransition()
+                    )
+                },
+                popEnterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popEnterTransition()
+                    )
+                },
+                popExitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popExitTransition()
+                    )
+                },
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
+                    LibraryScreen(
+                        navController = navController,
+                        routeStorageFilter = StorageFilter.OFFLINE,
+                        titleResId = R.string.local_library_screen_title,
+                        playerViewModel = playerViewModel
+                    )
                 }
             }
             composable(
@@ -246,6 +302,15 @@ fun AppNavigation(
                     AudioSourcePluginScreen(
                         onBack = { navController.popBackStack() },
                         onMessage = playerViewModel::sendToast
+                    )
+                }
+            }
+            composable(
+                Screen.Downloads.route,
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
+                    DownloadManagerScreen(
+                        onBackClick = { navController.popBackStack() }
                     )
                 }
             }
@@ -340,23 +405,6 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
                     MashupScreen()
-                }
-            }
-            composable(
-                route = Screen.GenreDetail.route,
-                arguments = listOf(navArgument("genreId") { type = NavType.StringType }),
-            ) { backStackEntry ->
-                val genreId = backStackEntry.arguments?.getString("genreId")
-                if (genreId != null) {
-                    ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                        GenreDetailScreen(
-                            navController = navController,
-                            genreId = genreId,
-                            playerViewModel = playerViewModel
-                        )
-                    }
-                } else {
-                    Text(stringResource(R.string.nav_error_genre_id_missing), modifier = Modifier)
                 }
             }
             composable(
@@ -511,7 +559,7 @@ fun AppNavigation(
 
 private fun String.toRoute(): String = when (this) {
     LaunchTab.SEARCH -> Screen.Search.route
-    LaunchTab.LIBRARY -> Screen.Library.route
+    LaunchTab.LIBRARY -> Screen.OnlineLibrary.route
     else -> Screen.Home.route
 }
 

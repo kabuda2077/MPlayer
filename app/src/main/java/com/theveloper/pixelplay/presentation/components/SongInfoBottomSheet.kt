@@ -329,8 +329,8 @@ fun SongInfoBottomSheet(
         )
     }
 
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded,
         confirmValueChange = { true }
     )
 
@@ -621,7 +621,6 @@ fun SongInfoBottomSheet(
                                                     icon = Icons.Rounded.MusicNote,
                                                     iconDescription = stringResource(R.string.song_info_genre_label),
                                                     shape = infoSegmentItemShape,
-                                                    onClick = onNavigateToGenre,
                                                 )
                                             }
 
@@ -774,7 +773,8 @@ fun SongInfoBottomSheet(
         },
     )
 
-    val artistPickerSheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val artistPickerSheetState = androidx.compose.material3.rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
     if (showArtistPicker && resolvedArtists.isNotEmpty()) {
         com.theveloper.pixelplay.presentation.components.player.PlayerArtistPickerBottomSheet(
             song = song,

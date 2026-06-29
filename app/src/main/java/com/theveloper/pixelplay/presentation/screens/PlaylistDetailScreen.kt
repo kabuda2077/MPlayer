@@ -3,8 +3,6 @@ package com.theveloper.pixelplay.presentation.screens
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
@@ -48,6 +46,7 @@ import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
@@ -73,7 +72,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -178,7 +178,6 @@ fun PlaylistDetailScreen(
     val editPlaylistLabel = stringResource(R.string.playlist_action_edit_playlist)
     val deletePlaylistLabel = stringResource(R.string.playlist_action_delete_playlist)
     val setDefaultTransitionLabel = stringResource(R.string.playlist_action_set_default_transition)
-    val exportPlaylistLabel = stringResource(R.string.playlist_action_export_playlist)
     val deletePlaylistConfirmTitle = stringResource(R.string.playlist_dialog_delete_title)
     val deletePlaylistConfirmBody = stringResource(R.string.playlist_dialog_delete_body)
     val sortSheetTitle = stringResource(R.string.playlist_sort_songs_title)
@@ -187,9 +186,11 @@ fun PlaylistDetailScreen(
     val currentPlaylist = uiState.currentPlaylistDetails
     val isFolderPlaylist = currentPlaylist?.id?.startsWith(FOLDER_PLAYLIST_PREFIX) == true
     val songsInPlaylist = uiState.currentPlaylistSongs
-
-    LaunchedEffect(playlistId) {
-        playlistViewModel.loadPlaylistDetails(playlistId)
+    val hasDownloadableSongs = songsInPlaylist.any { song ->
+        song.contentUriString.startsWith("netease://") || song.contentUriString.startsWith("qqmusic://")
+    }
+    val downloadableSongCount = songsInPlaylist.count { song ->
+        song.contentUriString.startsWith("netease://") || song.contentUriString.startsWith("qqmusic://")
     }
 
     var showAddSongsSheet by remember { mutableStateOf(false) }
@@ -200,15 +201,14 @@ fun PlaylistDetailScreen(
     var showPlaylistOptionsSheet by remember { mutableStateOf(false) }
     var showEditPlaylistDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showDownloadPlaylistConfirmation by remember { mutableStateOf(false) }
+    val selectedPlaylistSongs = remember { mutableStateMapOf<String, Song>() }
+    val selectedSongs = selectedPlaylistSongs.values.toList()
+    val isSongSelectionMode = selectedPlaylistSongs.isNotEmpty()
 
-    val m3uExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("audio/x-mpegurl")
-    ) { uri ->
-        uri?.let {
-            currentPlaylist?.let { playlist ->
-                playlistViewModel.exportM3u(playlist, it, context)
-            }
-        }
+    LaunchedEffect(playlistId) {
+        playlistViewModel.loadPlaylistDetails(playlistId)
+        selectedPlaylistSongs.clear()
     }
 
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -446,7 +446,65 @@ fun PlaylistDetailScreen(
                     }
                 }
 
-                if (!isFolderPlaylist) {
+                if (!isFolderPlaylist && isSongSelectionMode) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 20.dp, bottom = 8.dp, top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                selectedPlaylistSongs.clear()
+                                localReorderableSongs.forEach { selectedPlaylistSongs[it.id] = it }
+                            },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier.height(actionButtonsHeight)
+                        ) {
+                            Text(stringResource(R.string.common_select_all))
+                        }
+
+                        Button(
+                            onClick = { selectedPlaylistSongs.clear() },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.height(actionButtonsHeight)
+                        ) {
+                            Text(stringResource(R.string.playlist_action_cancel_selection))
+                        }
+
+                        Button(
+                            onClick = {
+                                playerViewModel.downloadSelectedSongs(selectedSongs)
+                                selectedPlaylistSongs.clear()
+                            },
+                            enabled = selectedSongs.any {
+                                it.contentUriString.startsWith("netease://") || it.contentUriString.startsWith("qqmusic://")
+                            },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            ),
+                            modifier = Modifier.height(actionButtonsHeight)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.download_action))
+                        }
+                    }
+                } else if (!isFolderPlaylist) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -546,7 +604,42 @@ fun PlaylistDetailScreen(
                                 modifier = Modifier.horizontalScroll(scrollState),
                                 content = {
                                     Button(
-                                        onClick = { isRemoveModeEnabled = !isRemoveModeEnabled },
+                                        onClick = { showDownloadPlaylistConfirmation = true },
+                                        enabled = hasDownloadableSongs,
+                                        shape = RoundedCornerShape(12.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
+                                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        ),
+                                        modifier = Modifier
+                                            .height(actionButtonsHeight)
+                                            .animateContentSize()
+                                            .clip(RoundedCornerShape(12.dp))
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Download,
+                                            contentDescription = stringResource(R.string.download_action),
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            modifier = Modifier.padding(end = 4.dp),
+                                            text = stringResource(R.string.download_action),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            selectedPlaylistSongs.clear()
+                                            isRemoveModeEnabled = !isRemoveModeEnabled
+                                            if (isRemoveModeEnabled) isReorderModeEnabled = false
+                                        },
                                         shape = RoundedCornerShape(removeCornerRadius),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         colors = ButtonDefaults.buttonColors(
@@ -576,7 +669,11 @@ fun PlaylistDetailScreen(
                                     }
 
                                     Button(
-                                        onClick = { isReorderModeEnabled = !isReorderModeEnabled },
+                                        onClick = {
+                                            selectedPlaylistSongs.clear()
+                                            isReorderModeEnabled = !isReorderModeEnabled
+                                            if (isReorderModeEnabled) isRemoveModeEnabled = false
+                                        },
                                         shape = RoundedCornerShape(reorderCornerRadius),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         colors = ButtonDefaults.buttonColors(
@@ -731,15 +828,31 @@ fun PlaylistDetailScreen(
                                                 scaleY = scale
                                             },
                                         onClick = {
-                                            playerViewModel.playSongs(
-                                                localReorderableSongs,
-                                                song,
-                                                currentPlaylist.name,
-                                                currentPlaylist.id
-                                            )
+                                            if (isSongSelectionMode) {
+                                                if (selectedPlaylistSongs.containsKey(song.id)) {
+                                                    selectedPlaylistSongs.remove(song.id)
+                                                } else {
+                                                    selectedPlaylistSongs[song.id] = song
+                                                }
+                                            } else {
+                                                playerViewModel.playSongs(
+                                                    localReorderableSongs,
+                                                    song,
+                                                    currentPlaylist.name,
+                                                    currentPlaylist.id
+                                                )
+                                            }
+                                        },
+                                        onLongClick = if (!isFolderPlaylist && !isReorderModeEnabled && !isRemoveModeEnabled) {
+                                            {
+                                                selectedPlaylistSongs[song.id] = song
+                                            }
+                                        } else {
+                                            null
                                         },
                                         song = song,
                                         isCurrentSong = playerStableState.currentSong?.id == song.id,
+                                        isSelected = selectedPlaylistSongs.containsKey(song.id),
                                         isPlaying = playerStableState.isPlaying,
                                         isDragging = isDragging,
                                         onRemoveClick = {
@@ -815,7 +928,8 @@ fun PlaylistDetailScreen(
         )
     }
     if (showPlaylistOptionsSheet && !isFolderPlaylist) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
 
         ModalBottomSheet(
             onDismissRequest = { showPlaylistOptionsSheet = false },
@@ -874,15 +988,6 @@ fun PlaylistDetailScreen(
                     onClick = {
                         showPlaylistOptionsSheet = false
                         navController.navigateSafely(Screen.EditTransition.createRoute(playlistId))
-                    }
-                )
-                PlaylistActionItem(
-                    icon = painterResource(R.drawable.rounded_attach_file_24),
-                    label = exportPlaylistLabel,
-                    onClick = {
-                        showPlaylistOptionsSheet = false
-                        val sanitizedName = PlaylistViewModel.sanitizeFileName(currentPlaylist?.name ?: fallbackPlaylistName)
-                        m3uExportLauncher.launch("$sanitizedName.m3u")
                     }
                 )
             }
@@ -954,6 +1059,41 @@ fun PlaylistDetailScreen(
         )
     }
 
+    if (showDownloadPlaylistConfirmation && currentPlaylist != null) {
+        AlertDialog(
+            onDismissRequest = { showDownloadPlaylistConfirmation = false },
+            title = { Text(stringResource(R.string.playlist_download_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.playlist_download_confirm_body,
+                        downloadableSongCount
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDownloadPlaylistConfirmation = false
+                        playerViewModel.downloadSelectedSongs(localReorderableSongs)
+                    },
+                    enabled = downloadableSongCount > 0
+                ) {
+                    Text(
+                        stringResource(R.string.playlist_download_confirm_action),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadPlaylistConfirmation = false }) {
+                    Text(stringResource(R.string.common_cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        )
+    }
+
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
         val isFavorite = remember(currentSong?.id, favoriteIds) {
@@ -1011,15 +1151,7 @@ fun PlaylistDetailScreen(
                     )
                     showSongInfoBottomSheet = false
                 },
-                onNavigateToGenre = {
-                    currentSong.genre?.let {
-                        navController.navigateSafelyReplacing(
-                            route = Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")),
-                            patternToPop = Screen.GenreDetail.route
-                        )
-                    }
-                    showSongInfoBottomSheet = false
-                },
+                onNavigateToGenre = {},
                 onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                     playerViewModel.editSongMetadata(
                         currentSong,

@@ -12,6 +12,7 @@ import com.theveloper.pixelplay.data.ai.AiSystemPromptType
 import com.theveloper.pixelplay.data.ai.provider.AiProviderException
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.StorageFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +64,7 @@ class AiStateHolder @Inject constructor(
     private var _lastPlaylistPrompt: String? = null
     private var _lastMinLength: Int = 5
     private var _lastMaxLength: Int = 15
+    private var _lastStorageFilter: StorageFilter = StorageFilter.ALL
 
     // Metadata Retry Cache: Stores parameters for the last metadata generation
     private var _lastMetadataSong: Song? = null
@@ -119,7 +121,7 @@ class AiStateHolder @Inject constructor(
     fun retryLastPlaylistGeneration() {
         // Safe retry using cached prompt and length constraints
         val prompt = _lastPlaylistPrompt ?: return
-        generateAiPlaylist(prompt, _lastMinLength, _lastMaxLength)
+        generateAiPlaylist(prompt, _lastMinLength, _lastMaxLength, storageFilter = _lastStorageFilter)
     }
 
     fun retryLastMetadataGeneration() {
@@ -145,16 +147,19 @@ class AiStateHolder @Inject constructor(
         minLength: Int,
         maxLength: Int,
         saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
+        playlistName: String? = null,
+        storageFilter: StorageFilter = StorageFilter.ALL
     ) {
         _lastPlaylistPrompt = prompt
         _lastMinLength = minLength
         _lastMaxLength = maxLength
+        _lastStorageFilter = storageFilter
 
         val scope = this.scope ?: return
 
         scope.launch {
-            val allSongs = allSongsProvider?.invoke() ?: emptyList()
+            val allSongs = (allSongsProvider?.invoke() ?: emptyList())
+                .filter { it.matchesStorageFilter(storageFilter) }
             val favoriteIds = favoriteSongIdsProvider?.invoke() ?: emptySet()
             _isGeneratingAiPlaylist.value = true
             _aiError.value = null
@@ -240,6 +245,21 @@ class AiStateHolder @Inject constructor(
                 _isGeneratingAiPlaylist.value = false
                 _aiStatus.value = null
             }
+        }
+    }
+
+    private fun Song.matchesStorageFilter(filter: StorageFilter): Boolean {
+        val uri = contentUriString.trim().lowercase()
+        val isOnline = uri.startsWith("telegram://") ||
+            uri.startsWith("netease://") ||
+            uri.startsWith("gdrive://") ||
+            uri.startsWith("qqmusic://") ||
+            uri.startsWith("navidrome://") ||
+            uri.startsWith("jellyfin://")
+        return when (filter) {
+            StorageFilter.ALL -> true
+            StorageFilter.ONLINE -> isOnline
+            StorageFilter.OFFLINE -> !isOnline
         }
     }
 

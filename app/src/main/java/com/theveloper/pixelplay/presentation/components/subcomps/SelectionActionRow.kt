@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.ButtonDefaults
@@ -63,7 +64,9 @@ fun SelectionActionRow(
     onSelectAll: () -> Unit,
     onDeselect: () -> Unit,
     onOptionsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showDownloadButton: Boolean = false,
+    onDownloadClick: (() -> Unit)? = null
 ) {
     val leftSegmentShape = AbsoluteSmoothCornerShape(
         cornerRadiusTL = segmentedOuterCornerRadius,
@@ -161,7 +164,32 @@ fun SelectionActionRow(
             }
         }
         
-        //Spacer(modifier = Modifier.width(optionsGap))
+        if (showDownloadButton && onDownloadClick != null) {
+            Spacer(modifier = Modifier.width(optionsGap))
+            FilledTonalButton(
+                onClick = onDownloadClick,
+                shape = optionsShape,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                modifier = Modifier.height(buttonHeight)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.download_action),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = GoogleSansRounded
+                )
+            }
+        }
         
         // Options button
         FilledTonalButton(

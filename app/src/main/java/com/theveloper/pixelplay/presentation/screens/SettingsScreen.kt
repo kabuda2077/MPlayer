@@ -66,8 +66,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import android.text.format.Formatter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -80,6 +82,7 @@ import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.model.SettingsCategory
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.presentation.viewmodel.DownloadManagerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -97,7 +100,8 @@ fun SettingsScreen(
         navController: NavController,
         playerViewModel: PlayerViewModel,
         onNavigationIconClick: () -> Unit,
-        settingsViewModel: SettingsViewModel = hiltViewModel()
+        settingsViewModel: SettingsViewModel = hiltViewModel(),
+        downloadManagerViewModel: DownloadManagerViewModel = hiltViewModel()
 ) {
 
     // Animation effects
@@ -119,6 +123,7 @@ fun SettingsScreen(
             ) { if (it) 0.dp else 40.dp }
 
     val density = LocalDensity.current
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
 
@@ -130,6 +135,10 @@ fun SettingsScreen(
     val maxTopBarHeightPx = with(density) { maxTopBarHeight.toPx() }
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val downloadStats by downloadManagerViewModel.stats.collectAsStateWithLifecycle()
+    val downloadSizeLabel = remember(context, downloadStats.totalSizeBytes) {
+        Formatter.formatShortFileSize(context, downloadStats.totalSizeBytes)
+    }
     val launchTab = uiState.launchTab
     val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
 
@@ -219,7 +228,7 @@ fun SettingsScreen(
                         it != SettingsCategory.DEVICE_CAPABILITIES
                     }
 
-                    val totalItems = mainCategories.size + 4 // Device + Accounts + Plugins + About
+                    val totalItems = mainCategories.size + 5 // Device + Accounts + Plugins + Downloads + About
                     fun shapeFor(index: Int) =
                         when {
                             totalItems == 1 -> RoundedCornerShape(24.dp)
@@ -288,6 +297,23 @@ fun SettingsScreen(
                     }
                     itemIndex++
 
+                    ExpressiveNavigationItem(
+                        title = stringResource(R.string.settings_download_manager_title),
+                        subtitle = stringResource(
+                            R.string.settings_download_manager_subtitle,
+                            downloadStats.completedCount,
+                            downloadSizeLabel
+                        ),
+                        iconRes = R.drawable.rounded_download_24,
+                        colors = getDownloadColors(isDark),
+                        onClick = { navController.navigateSafely(Screen.Downloads.route) },
+                        shape = shapeFor(itemIndex)
+                    )
+                    if (itemIndex < totalItems - 1) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    itemIndex++
+
                     ExpressiveCategoryItem(
                         category = SettingsCategory.ABOUT,
                         customColors = getCategoryColors(SettingsCategory.ABOUT, isDark),
@@ -333,7 +359,8 @@ fun SettingsScreen(
 fun ExpressiveNavigationItem(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconRes: Int? = null,
     colors: Pair<Color, Color>,
     onClick: () -> Unit,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
@@ -355,12 +382,21 @@ fun ExpressiveNavigationItem(
                     .clip(CircleShape)
                     .background(colors.first)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = colors.second,
-                    modifier = Modifier.size(24.dp)
-                )
+                if (iconRes != null) {
+                    Icon(
+                        painter = painterResource(iconRes),
+                        contentDescription = null,
+                        tint = colors.second,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = colors.second,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -482,6 +518,14 @@ private fun getPluginColors(isDark: Boolean): Pair<Color, Color> {
         Color(0xFF4A4458) to Color(0xFFE8DEF8)
     } else {
         Color(0xFFE8DEF8) to Color(0xFF4A4458)
+    }
+}
+
+private fun getDownloadColors(isDark: Boolean): Pair<Color, Color> {
+    return if (isDark) {
+        Color(0xFF3F4A2A) to Color(0xFFDCE8B7)
+    } else {
+        Color(0xFFDCE8B7) to Color(0xFF2E371B)
     }
 }
 

@@ -1,7 +1,9 @@
 package com.theveloper.pixelplay.data.stream
 
+import android.content.ContentResolver
 import android.net.Uri
 import com.theveloper.pixelplay.BuildConfig
+import com.theveloper.pixelplay.data.download.DownloadRepository
 import com.theveloper.pixelplay.data.plugin.PluginResolveException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -40,7 +42,9 @@ import java.util.concurrent.ConcurrentHashMap
  */
 abstract class CloudStreamProxy<K : Any>(
     private val okHttpClient: OkHttpClient,
-    private val onlineAudioCacheManager: OnlineAudioCacheManager? = null
+    private val onlineAudioCacheManager: OnlineAudioCacheManager? = null,
+    private val downloadRepository: DownloadRepository? = null,
+    private val contentResolver: ContentResolver? = null
 ) {
     // ─── Subclass Configuration ────────────────────────────────────────
 
@@ -76,6 +80,9 @@ abstract class CloudStreamProxy<K : Any>(
 
     /** Called whenever a stream is made available, including cache hits. */
     protected open fun onStreamAvailable(id: K, stream: ResolvedStream) = Unit
+
+    /** Canonical library URI for this route ID. Used by user-managed downloads. */
+    protected open fun contentUriFor(id: K): String = "$uriScheme://${formatIdForUrl(id)}"
 
     // ─── Server State ──────────────────────────────────────────────────
 
@@ -281,11 +288,24 @@ abstract class CloudStreamProxy<K : Any>(
             }
 
             val initialCacheKey = cacheKeyFor(id)
+            downloadRepository?.getCompletedAudio(contentUriFor(id))?.let { downloaded ->
+                if (BuildConfig.DEBUG) {
+                    Timber.d("$proxyTag downloaded audio hit id=$id size=${downloaded.sizeBytes}")
+                }
+                writeDownloadedAudioStream(
+                    downloaded = downloaded,
+                    rangeHeader = rangeValidation.normalizedHeader,
+                    headOnly = request.method == "HEAD",
+                    output = output
+                )
+                return
+            }
+
             onlineAudioCacheManager?.get(initialCacheKey)?.let { cached ->
                 if (BuildConfig.DEBUG) {
                     Timber.d("$proxyTag audio cache hit id=$id key=$initialCacheKey")
                 }
-                writeCachedStream(cached, rangeValidation.normalizedHeader, request.method == "HEAD", output)
+                writeLocalFileStream(cached.file, cached.mimeType, rangeValidation.normalizedHeader, request.method == "HEAD", output)
                 return
             }
 
@@ -315,7 +335,7 @@ abstract class CloudStreamProxy<K : Any>(
                         if (BuildConfig.DEBUG) {
                             Timber.d("$proxyTag audio cache hit id=$id key=$streamCacheKey")
                         }
-                        writeCachedStream(cached, rangeValidation.normalizedHeader, request.method == "HEAD", output)
+                        writeLocalFileStream(cached.file, cached.mimeType, rangeValidation.normalizedHeader, request.method == "HEAD", output)
                         return
                     }
                 }
@@ -325,7 +345,7 @@ abstract class CloudStreamProxy<K : Any>(
             if (BuildConfig.DEBUG) {
                 Timber.d(
                     "$proxyTag resolved id=$id upstream=${describeUrl(streamUrl)} " +
-                        "headers=${stream.headers.size} quality=${stream.quality.orEmpty()} " +
+                        "headers=${stream.headers.size} source=${stream.source.orEmpty()} quality=${stream.quality.orEmpty()} " +
                         "trial=${stream.isTrial}"
                 )
             }
@@ -477,7 +497,7 @@ abstract class CloudStreamProxy<K : Any>(
                         cacheKey = cacheKey,
                         contentLength = contentLength?.toLongOrNull(),
                         mimeType = headers["Content-Type"] ?: "application/octet-stream",
-                        source = uriScheme,
+                        source = stream.source ?: uriScheme,
                         quality = stream.quality
                     )
                 } else {
@@ -527,13 +547,14 @@ abstract class CloudStreamProxy<K : Any>(
         }
     }
 
-    private fun writeCachedStream(
-        entry: OnlineAudioCacheEntry,
+    private fun writeLocalFileStream(
+        file: java.io.File,
+        mimeType: String,
         rangeHeader: String?,
         headOnly: Boolean,
         output: BufferedOutputStream
     ) {
-        val fileLength = entry.file.length()
+        val fileLength = file.length()
         val byteRange = parseByteRange(rangeHeader, fileLength)
         if (byteRange == null) {
             writeTextResponse(output, 416, "Range Not Satisfiable", "Invalid range header")
@@ -546,7 +567,7 @@ abstract class CloudStreamProxy<K : Any>(
         val headers = linkedMapOf(
             "Accept-Ranges" to "bytes",
             "Connection" to "close",
-            "Content-Type" to entry.mimeType,
+            "Content-Type" to mimeType,
             "Content-Length" to contentLength.toString()
         )
         if (partial) {
@@ -560,7 +581,7 @@ abstract class CloudStreamProxy<K : Any>(
         )
 
         if (!headOnly) {
-            entry.file.inputStream().use { input ->
+            file.inputStream().use { input ->
                 var skipped = 0L
                 while (skipped < start) {
                     val step = input.skip(start - skipped)
@@ -571,6 +592,96 @@ abstract class CloudStreamProxy<K : Any>(
                 var remaining = contentLength
                 while (remaining > 0L) {
                     val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    remaining -= read
+                }
+            }
+        }
+        output.flush()
+    }
+
+    private fun writeDownloadedAudioStream(
+        downloaded: com.theveloper.pixelplay.data.download.DownloadedAudioFile,
+        rangeHeader: String?,
+        headOnly: Boolean,
+        output: BufferedOutputStream
+    ) {
+        val uri = downloaded.publicUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        val resolver = contentResolver
+        if (uri == null || resolver == null) {
+            writeTextResponse(output, 404, "Not Found", "Downloaded file is unavailable")
+            return
+        }
+        writeContentUriStream(
+            resolver = resolver,
+            uri = uri,
+            sizeBytes = downloaded.sizeBytes,
+            mimeType = downloaded.mimeType,
+            rangeHeader = rangeHeader,
+            headOnly = headOnly,
+            output = output
+        )
+    }
+
+    private fun writeContentUriStream(
+        resolver: ContentResolver,
+        uri: Uri,
+        sizeBytes: Long,
+        mimeType: String,
+        rangeHeader: String?,
+        headOnly: Boolean,
+        output: BufferedOutputStream
+    ) {
+        val fileLength = sizeBytes.takeIf { it > 0L } ?: runCatching {
+            resolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+        }.getOrNull()?.takeIf { it > 0L } ?: 0L
+        val byteRange = parseByteRange(rangeHeader, fileLength)
+        if (byteRange == null) {
+            writeTextResponse(output, 416, "Range Not Satisfiable", "Invalid range header")
+            return
+        }
+        val inputForBody = if (!headOnly) {
+            resolver.openInputStream(uri)
+        } else {
+            null
+        }
+        if (!headOnly && inputForBody == null) {
+            writeTextResponse(output, 404, "Not Found", "Downloaded file is unavailable")
+            return
+        }
+
+        val (start, end) = byteRange
+        val partial = rangeHeader != null
+        val contentLength = end - start + 1
+        val headers = linkedMapOf(
+            "Accept-Ranges" to "bytes",
+            "Connection" to "close",
+            "Content-Type" to mimeType,
+            "Content-Length" to contentLength.toString()
+        )
+        if (partial) {
+            headers["Content-Range"] = "bytes $start-$end/$fileLength"
+        }
+        writeHeaders(
+            output = output,
+            statusCode = if (partial) 206 else 200,
+            reason = if (partial) "Partial Content" else "OK",
+            headers = headers
+        )
+
+        if (!headOnly) {
+            inputForBody?.use { source ->
+                var skipped = 0L
+                while (skipped < start) {
+                    val step = source.skip(start - skipped)
+                    if (step <= 0L) break
+                    skipped += step
+                }
+                val buffer = ByteArray(64 * 1024)
+                var remaining = contentLength
+                while (remaining > 0L) {
+                    val read = source.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
                     if (read == -1) break
                     output.write(buffer, 0, read)
                     remaining -= read

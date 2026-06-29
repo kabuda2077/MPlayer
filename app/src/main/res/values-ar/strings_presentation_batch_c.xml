@@ -14,7 +14,6 @@
     <!-- Library action row -->
     <string name="library_action_new">جديد</string>
     <string name="cd_create_new_playlist">إنشاء قائمة تشغيل جديدة</string>
-    <string name="cd_import_m3u_playlist">استيراد قائمة تشغيل M3U</string>
     <string name="cd_locate_current_song">تحديد موقع الأغنية الحالية</string>
     <string name="library_storage_filter_all_songs">جميع الأغاني</string>
     <string name="library_storage_filter_online">سحابي</string>

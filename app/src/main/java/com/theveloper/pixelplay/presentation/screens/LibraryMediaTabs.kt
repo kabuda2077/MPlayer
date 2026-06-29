@@ -106,6 +106,7 @@ fun LibraryAlbumsTab(
     val dummyGridState = rememberLazyGridState()
     val context = LocalContext.current
     val imageLoader = context.imageLoader
+    val reserveScrollbarSpace = LocalShowScrollbar.current
 
     val albumFastScrollLabelProvider = remember(albums, currentAlbumSortOption) {
         { index: Int ->
@@ -220,7 +221,7 @@ fun LibraryAlbumsTab(
 
     when {
         refreshState is LoadState.Error && albums.itemCount == 0 -> {
-            val error = (refreshState as LoadState.Error).error
+            val error = refreshState.error
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -327,7 +328,7 @@ fun LibraryAlbumsTab(
                             val activeListState = if (albums.itemCount > 0) listState else dummyListState
                             LazyColumn(
                                 modifier = Modifier
-                                    .padding(start = 14.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 24.dp else 14.dp, bottom = 6.dp)
+                                    .padding(start = 14.dp, end = if (reserveScrollbarSpace) 24.dp else 14.dp, bottom = 6.dp)
                                     .clip(
                                         RoundedCornerShape(
                                             topStart = 16.dp,
@@ -395,7 +396,7 @@ fun LibraryAlbumsTab(
                             val activeGridState = if (albums.itemCount > 0) gridState else dummyGridState
                             LazyVerticalGrid(
                                 modifier = Modifier
-                                    .padding(start = 14.dp, end = if (LocalShowScrollbar.current && (activeGridState.canScrollForward || activeGridState.canScrollBackward)) 24.dp else 14.dp, bottom = 6.dp)
+                                    .padding(start = 14.dp, end = if (reserveScrollbarSpace) 24.dp else 14.dp, bottom = 6.dp)
                                     .clip(
                                         RoundedCornerShape(
                                             topStart = 16.dp,
@@ -491,6 +492,7 @@ fun LibraryArtistsTab(
 
     val listState = rememberLazyListState()
     val dummyListState = rememberLazyListState()
+    val reserveScrollbarSpace = LocalShowScrollbar.current
     val artistFastScrollLabelProvider = remember(artists, currentArtistSortOption) {
         { index: Int ->
             artistFastScrollLabel(
@@ -531,7 +533,7 @@ fun LibraryArtistsTab(
 
     when {
         refreshState is LoadState.Error && artists.itemCount == 0 -> {
-            val error = (refreshState as LoadState.Error).error
+            val error = refreshState.error
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -610,7 +612,7 @@ fun LibraryArtistsTab(
                         val activeListState = if (artists.itemCount > 0) listState else dummyListState
                         LazyColumn(
                             modifier = Modifier
-                                .padding(start = 12.dp, end = if (LocalShowScrollbar.current && (activeListState.canScrollForward || activeListState.canScrollBackward)) 22.dp else 12.dp, bottom = 6.dp)
+                                .padding(start = 12.dp, end = if (reserveScrollbarSpace) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
                                     RoundedCornerShape(
                                         topStart = 26.dp,

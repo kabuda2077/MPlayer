@@ -29,7 +29,6 @@ import coil.compose.AsyncImagePainter
 import com.theveloper.pixelplay.presentation.components.MultiSelectionBottomSheet
 import com.theveloper.pixelplay.presentation.components.AlbumMultiSelectionOptionSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistMultiSelectionBottomSheet
-import com.theveloper.pixelplay.presentation.components.GenreMultiSelectionOptionSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.SelectionActionRow
 import com.theveloper.pixelplay.presentation.components.subcomps.SelectionCountPill
 import androidx.compose.foundation.BorderStroke
@@ -62,13 +61,16 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.DockedSearchBar
-import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,12 +90,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.data.model.Album
-import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Playlist
+import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
+import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
 import com.theveloper.pixelplay.data.model.SearchFilterType
+import com.theveloper.pixelplay.data.model.SearchMode
 import com.theveloper.pixelplay.data.model.SearchHistoryItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.Song
@@ -102,6 +107,7 @@ import com.theveloper.pixelplay.presentation.components.SmartImageListTargetSize
 import com.theveloper.pixelplay.presentation.components.SongInfoBottomSheet
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import android.util.Log
+import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.PlaylistPlay
@@ -124,16 +130,19 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
+import com.theveloper.pixelplay.presentation.components.LibraryHeaderScaffold
+import com.theveloper.pixelplay.presentation.components.LibraryHeaderHorizontalPadding
+import com.theveloper.pixelplay.presentation.components.LibraryHeaderTabOuterPadding
 import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistCover
 import com.theveloper.pixelplay.presentation.components.resolveMainScreenBottomGradientHeight
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
 import com.theveloper.pixelplay.presentation.navigation.Screen
-import com.theveloper.pixelplay.presentation.screens.search.components.GenreCategoriesGrid
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import com.theveloper.pixelplay.utils.formatSongCount
 import kotlinx.collections.immutable.ImmutableList
@@ -153,7 +162,12 @@ private const val MAX_ALBUM_MULTI_SELECTION = 6
 
 private data class SearchUiSlice(
     val selectedSearchFilter: SearchFilterType = SearchFilterType.ALL,
-    val searchResults: ImmutableList<SearchResultItem> = persistentListOf()
+    val searchResults: ImmutableList<SearchResultItem> = persistentListOf(),
+    val onlineSearchResults: ImmutableList<OnlineSearchResultItem> = persistentListOf(),
+    val searchMode: SearchMode = SearchMode.ONLINE,
+    val onlineSearchPlatform: OnlineSearchPlatform = OnlineSearchPlatform.NETEASE,
+    val onlineSearchLoading: Boolean = false,
+    val onlineSearchError: String? = null
 )
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -163,7 +177,7 @@ fun SearchScreen(
     paddingValues: PaddingValues,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
-    navController: NavHostController,
+    navController: NavController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
     var searchQuery by rememberSaveable { mutableStateOf(playerViewModel.searchQuery) }
@@ -197,25 +211,11 @@ fun SearchScreen(
     val selectedPlaylistIds by playlistSelectionState.selectedPlaylistIds.collectAsStateWithLifecycle()
     var showPlaylistMultiSelectionSheet by remember { mutableStateOf(false) }
 
-    // Multi-selection state for genres
-    var selectedGenres by remember { mutableStateOf<List<Genre>>(emptyList()) }
-    val selectedGenreIds = remember(selectedGenres) { selectedGenres.map { it.id }.toSet() }
-    val isGenreSelectionMode = selectedGenres.isNotEmpty()
-    var showGenreMultiSelectionSheet by remember { mutableStateOf(false) }
-
     // Playlist bottom sheet songs helper state
     var playlistSheetSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
 
     // Any selection mode check
-    val anySelectionMode = isSongSelectionMode || isPlaylistSelectionMode || isAlbumSelectionMode || isGenreSelectionMode
-
-    // BackHandler to clear selections
-    BackHandler(enabled = anySelectionMode) {
-        multiSelectionState.clearSelection()
-        playlistSelectionState.clearSelection()
-        selectedAlbums = emptyList()
-        selectedGenres = emptyList()
-    }
+    val rawSelectionMode = isSongSelectionMode || isPlaylistSelectionMode || isAlbumSelectionMode
 
     // Long press and toggle callbacks for songs
     val onSongLongPress: (Song) -> Unit = remember(multiSelectionState, haptic) {
@@ -229,13 +229,28 @@ fun SearchScreen(
             .map { uiState ->
                 SearchUiSlice(
                     selectedSearchFilter = uiState.selectedSearchFilter,
-                    searchResults = uiState.searchResults
+                    searchResults = uiState.searchResults,
+                    onlineSearchResults = uiState.onlineSearchResults,
+                    searchMode = uiState.searchMode,
+                    onlineSearchPlatform = uiState.onlineSearchPlatform,
+                    onlineSearchLoading = uiState.onlineSearchLoading,
+                    onlineSearchError = uiState.onlineSearchError
                 )
             }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = SearchUiSlice())
     val currentFilter = searchUiState.selectedSearchFilter
-    val genres by playerViewModel.genres.collectAsStateWithLifecycle()
+    val currentSearchMode = SearchMode.ONLINE
+    val currentOnlinePlatform = searchUiState.onlineSearchPlatform
+    val isOnlineSearchMode = true
+    val anySelectionMode = false
+
+    // BackHandler to clear selections
+    BackHandler(enabled = anySelectionMode) {
+        multiSelectionState.clearSelection()
+        playlistSelectionState.clearSelection()
+        selectedAlbums = emptyList()
+    }
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -245,6 +260,7 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
+        playerViewModel.updateSearchMode(SearchMode.ONLINE)
     }
 
     LaunchedEffect(playerViewModel, keyboardController) {
@@ -256,16 +272,16 @@ fun SearchScreen(
     }
 
     // Search debouncing is centralized in SearchStateHolder.
-    LaunchedEffect(searchQuery, currentFilter) {
+    LaunchedEffect(searchQuery, currentFilter, currentSearchMode, currentOnlinePlatform) {
         playerViewModel.performSearch(searchQuery)
     }
     val searchResults = searchUiState.searchResults
+    val onlineSearchResults = searchUiState.onlineSearchResults
+    var selectedOnlineSongForActions by remember { mutableStateOf<Song?>(null) }
     val handleSongMoreOptionsClick: (Song) -> Unit = { song ->
         playerViewModel.selectSongForInfo(song)
         showSongInfoBottomSheet = true
     }
-
-    val searchbarCornerRadius = 28.dp
 
     val dm = LocalPixelPlayDarkTheme.current
 
@@ -302,376 +318,133 @@ fun SearchScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    val headerContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    val onlinePlatforms = remember {
+        listOf(
+            OnlineSearchPlatform.NETEASE,
+            OnlineSearchPlatform.QQ,
+            OnlineSearchPlatform.KUGOU,
+            OnlineSearchPlatform.KUWO
+        )
+    }
+    val selectedOnlinePlatformIndex = onlinePlatforms
+        .indexOf(currentOnlinePlatform)
+        .takeIf { it >= 0 }
+        ?: 0
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+    LibraryHeaderScaffold(
+        gradientBrush = gradientBrush,
+        headerContainerColor = headerContainerColor,
+        searchBarVisible = true,
+        searchQuery = searchQuery,
+        onSearchQueryChange = {
+            searchQuery = it
+            playerViewModel.updateSearchQuery(it)
+        },
+        onSearch = { query ->
+            if (query.isNotBlank()) {
+                playerViewModel.onSearchQuerySubmitted(query)
+            }
+            keyboardController?.hide()
+        },
+        onClearSearch = {
+            searchQuery = ""
+            playerViewModel.updateSearchQuery("")
+        },
+        searchInputModifier = Modifier.focusRequester(searchInputFocusRequester),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        modifier = Modifier.padding(start = 8.dp),
+                        text = stringResource(R.string.nav_bar_search),
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 40.sp,
+                        letterSpacing = 1.sp
+                    )
+                },
+                actions = {
+                    FilledIconButton(
+                        modifier = Modifier.padding(end = 14.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        onClick = { navController.navigateSafely(Screen.Settings.route) }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_settings_24),
+                            contentDescription = stringResource(R.string.library_cd_open_settings)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
+            )
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, top = statusBarTopInset + 12.dp, end = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = LibraryHeaderHorizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                val searchBarInputFieldColors = SearchBarDefaults.inputFieldColors(
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
-
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .background(color = Color.Transparent)
-                ) {
-                    DockedSearchBar(
-                        inputField = {
-                            SearchBarDefaults.InputField(
-                                modifier = Modifier.focusRequester(searchInputFocusRequester),
-                                query = searchQuery,
-                                onQueryChange = {
-                                    searchQuery = it
-                                    playerViewModel.updateSearchQuery(it)
-                                },
-                                onSearch = { query ->
-                                    if (query.isNotBlank()) {
-                                        playerViewModel.onSearchQuerySubmitted(query)
-                                    }
-                                    keyboardController?.hide()
-                                },
-                                expanded = false,
-                                onExpandedChange = {},
-                                placeholder = {
-                                    Text(
-                                        stringResource(R.string.search_placeholder),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Search,
-                                        contentDescription = stringResource(R.string.search_cd_search_icon),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (searchQuery.isNotBlank()) {
-                                        IconButton(
-                                            onClick = {
-                                                searchQuery = ""
-                                                playerViewModel.updateSearchQuery("")
-                                            },
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-                                                )
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Close,
-                                                contentDescription = stringResource(R.string.search_cd_clear_search_query),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
-                                },
-                                colors = searchBarInputFieldColors
-                            )
-                        },
-                        expanded = false,
-                        onExpandedChange = {},
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(searchbarCornerRadius)),
-                        colors = SearchBarDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                            dividerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            inputFieldColors = searchBarInputFieldColors
-                        ),
-                        content = {}
-                    )
-                }
-
-                FilledIconButton(
-                    modifier = Modifier.padding(bottom = 2.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    onClick = { navController.navigateSafely(Screen.Settings.route) }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_settings_24),
-                        contentDescription = stringResource(R.string.library_cd_open_settings)
-                    )
-                }
-            }
-
-            val showGenreBrowse by remember(searchQuery) { derivedStateOf { searchQuery.isBlank() } }
-            AnimatedContent(
-                targetState = showGenreBrowse,
-                transitionSpec = {
-                    val switchingToGenre = targetState
-                    val enter = fadeIn(animationSpec = tween(durationMillis = 320, delayMillis = 70)) +
-                        slideInVertically(animationSpec = tween(durationMillis = 320)) { fullHeight ->
-                            if (switchingToGenre) -fullHeight / 10 else fullHeight / 10
+                onlinePlatforms.forEachIndexed { index, platform ->
+                    TabAnimation(
+                        modifier = Modifier.weight(1f),
+                        index = index,
+                        title = platform.name,
+                        selectedIndex = selectedOnlinePlatformIndex,
+                        outerPadding = PaddingValues(vertical = 5.dp),
+                        onClick = {
+                            playerViewModel.updateOnlineSearchPlatform(platform)
                         }
-                    val exit = fadeOut(animationSpec = tween(durationMillis = 220)) +
-                        slideOutVertically(animationSpec = tween(durationMillis = 220)) { fullHeight ->
-                            if (switchingToGenre) fullHeight / 12 else -fullHeight / 12
-                        }
-                    (enter togetherWith exit).using(SizeTransform(clip = false))
-                },
-                label = "search_mode_transition"
-            ) { isGenreMode ->
-                if (isGenreMode) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        if (isGenreSelectionMode) {
-                            SelectionActionRow(
-                                selectedCount = selectedGenres.size,
-                                onSelectAll = {
-                                    selectedGenres = genres
-                                },
-                                onDeselect = { selectedGenres = emptyList() },
-                                onOptionsClick = { showGenreMultiSelectionSheet = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                            )
-                        }
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            GenreCategoriesGrid(
-                                genres = genres,
-                                onGenreClick = { genre ->
-                                    Timber.tag("SearchScreen")
-                                        .d("Genre clicked: ${genre.name} (ID: ${genre.id})")
-                                    val encodedGenreId = java.net.URLEncoder.encode(genre.id, "UTF-8")
-                                    navController.navigateSafely(Screen.GenreDetail.createRoute(encodedGenreId))
-                                },
-                                playerViewModel = playerViewModel,
-                                modifier = Modifier.padding(top = 12.dp),
-                                isSelectionMode = isGenreSelectionMode,
-                                selectedGenreIds = selectedGenreIds,
-                                onGenreLongPress = { genre ->
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (selectedGenres.any { it.id == genre.id }) {
-                                        selectedGenres = selectedGenres.filterNot { it.id == genre.id }
-                                    } else {
-                                        selectedGenres = selectedGenres + genre
-                                    }
-                                },
-                                onGenreSelectionToggle = { genre ->
-                                    if (selectedGenres.any { it.id == genre.id }) {
-                                        selectedGenres = selectedGenres.filterNot { it.id == genre.id }
-                                    } else {
-                                        selectedGenres = selectedGenres + genre
-                                    }
-                                },
-                                getSelectionIndex = { genreId ->
-                                    val idx = selectedGenres.indexOfFirst { it.id == genreId }
-                                    if (idx >= 0) idx + 1 else null
-                                }
-                            )
-
-                            SelectionCountPill(
-                                selectedCount = selectedGenres.size,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(2f)
-                                    .padding(top = 16.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
                     ) {
-                        if (anySelectionMode) {
-                            val count = when {
-                                isSongSelectionMode -> selectedSongs.size
-                                isPlaylistSelectionMode -> selectedPlaylists.size
-                                isAlbumSelectionMode -> selectedAlbums.size
-                                else -> 0
-                            }
-                            SelectionActionRow(
-                                selectedCount = count,
-                                onSelectAll = {
-                                    when {
-                                        isSongSelectionMode -> {
-                                            val songsToSelect = searchResults.filterIsInstance<SearchResultItem.SongItem>().map { it.song }
-                                            multiSelectionState.selectAll(songsToSelect)
-                                        }
-                                        isPlaylistSelectionMode -> {
-                                            val playlistsToSelect = searchResults.filterIsInstance<SearchResultItem.PlaylistItem>().map { it.playlist }
-                                            playlistSelectionState.selectAll(playlistsToSelect)
-                                        }
-                                        isAlbumSelectionMode -> {
-                                            val albumsToSelect = searchResults.filterIsInstance<SearchResultItem.AlbumItem>().map { it.album }
-                                            val remaining = MAX_ALBUM_MULTI_SELECTION - selectedAlbums.size
-                                            if (remaining <= 0) {
-                                                playerViewModel.sendToast(
-                                                    context.getString(
-                                                        R.string.library_toast_max_albums_selection,
-                                                        MAX_ALBUM_MULTI_SELECTION
-                                                    )
-                                                )
-                                            } else {
-                                                val toAdd = albumsToSelect.filterNot { selectedAlbumIds.contains(it.id) }.take(remaining)
-                                                selectedAlbums = selectedAlbums + toAdd
-                                            }
-                                        }
-                                    }
-                                },
-                                onDeselect = {
-                                    multiSelectionState.clearSelection()
-                                    playlistSelectionState.clearSelection()
-                                    selectedAlbums = emptyList()
-                                },
-                                onOptionsClick = {
-                                    when {
-                                        isSongSelectionMode -> showMultiSelectionSheet = true
-                                        isPlaylistSelectionMode -> showPlaylistMultiSelectionSheet = true
-                                        isAlbumSelectionMode -> showAlbumMultiSelectionSheet = true
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp, horizontal = 8.dp)
-                            )
-                        } else {
-                            FlowRow(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp, horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(0.dp)
-                            ) {
-                                SearchFilterChip(SearchFilterType.ALL, currentFilter, playerViewModel)
-                                SearchFilterChip(SearchFilterType.SONGS, currentFilter, playerViewModel)
-                                SearchFilterChip(SearchFilterType.ALBUMS, currentFilter, playerViewModel)
-                                SearchFilterChip(SearchFilterType.ARTISTS, currentFilter, playerViewModel)
-                                SearchFilterChip(SearchFilterType.PLAYLISTS, currentFilter, playerViewModel)
-                            }
-                        }
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Crossfade(
-                                targetState = searchResults.isEmpty(),
-                                animationSpec = tween(durationMillis = 190),
-                                label = "search_results_fade"
-                            ) { isEmpty ->
-                                if (isEmpty) {
-                                    EmptySearchResults(
-                                        searchQuery = searchQuery,
-                                        colorScheme = colorScheme
-                                    )
-                                } else {
-                                    SearchResultsList(
-                                        results = searchResults,
-                                        searchQuery = searchQuery,
-                                        playerViewModel = playerViewModel,
-                                        onItemSelected = {
-                                            if (searchQuery.isNotBlank()) {
-                                                playerViewModel.onSearchQuerySubmitted(searchQuery)
-                                            }
-                                        },
-                                        currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                        isPlaying = stablePlayerState.isPlaying,
-                                        onSongMoreOptionsClick = handleSongMoreOptionsClick,
-                                        navController = navController,
-                                        isSelectionMode = isSongSelectionMode,
-                                        selectedSongIds = selectedSongIds,
-                                        getSelectionIndex = { songId -> multiSelectionState.getSelectionIndex(songId) },
-                                        onSongLongPress = onSongLongPress,
-                                        selectedAlbums = selectedAlbums,
-                                        selectedPlaylists = selectedPlaylists,
-                                        isAlbumSelectionMode = isAlbumSelectionMode,
-                                        isPlaylistSelectionMode = isPlaylistSelectionMode,
-                                        onAlbumLongPress = { album ->
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            if (selectedAlbums.any { it.id == album.id }) {
-                                                selectedAlbums = selectedAlbums.filterNot { it.id == album.id }
-                                            } else if (selectedAlbums.size >= MAX_ALBUM_MULTI_SELECTION) {
-                                                playerViewModel.sendToast(
-                                                    context.getString(
-                                                        R.string.library_toast_max_albums_selection,
-                                                        MAX_ALBUM_MULTI_SELECTION
-                                                    )
-                                                )
-                                            } else {
-                                                selectedAlbums = selectedAlbums + album
-                                            }
-                                        },
-                                        onAlbumSelectionToggle = { album ->
-                                            if (selectedAlbums.any { it.id == album.id }) {
-                                                selectedAlbums = selectedAlbums.filterNot { it.id == album.id }
-                                            } else if (selectedAlbums.size >= MAX_ALBUM_MULTI_SELECTION) {
-                                                playerViewModel.sendToast(
-                                                    context.getString(
-                                                        R.string.library_toast_max_albums_selection,
-                                                        MAX_ALBUM_MULTI_SELECTION
-                                                    )
-                                                )
-                                            } else {
-                                                selectedAlbums = selectedAlbums + album
-                                            }
-                                        },
-                                        getAlbumSelectionIndex = { albumId ->
-                                            val idx = selectedAlbums.indexOfFirst { it.id == albumId }
-                                            if (idx >= 0) idx + 1 else null
-                                        },
-                                        onPlaylistLongPress = { playlist ->
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            playlistSelectionState.toggleSelection(playlist)
-                                        },
-                                        onPlaylistSelectionToggle = { playlist ->
-                                            playlistSelectionState.toggleSelection(playlist)
-                                        },
-                                        getPlaylistSelectionIndex = { playlistId ->
-                                            playlistSelectionState.getSelectionIndex(playlistId)
-                                        }
-                                    )
-                                }
-                            }
-
-                            val count = when {
-                                isSongSelectionMode -> selectedSongs.size
-                                isPlaylistSelectionMode -> selectedPlaylists.size
-                                isAlbumSelectionMode -> selectedAlbums.size
-                                else -> 0
-                            }
-                            SelectionCountPill(
-                                selectedCount = count,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(2f)
-                                    .padding(top = 16.dp)
-                            )
-                        }
+                        Text(
+                            text = platform.label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (index == selectedOnlinePlatformIndex) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.Medium
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
+        },
+        bottomOverlay = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .height(bottomGradientHeight)
+                    .background(brush = bottomGradientBrush)
+            )
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(bottomGradientHeight)
-                .background(brush = bottomGradientBrush)
-        )
-
-
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            OnlineSearchResultsPane(
+                results = onlineSearchResults,
+                searchQuery = searchQuery,
+                isLoading = searchUiState.onlineSearchLoading,
+                errorMessage = searchUiState.onlineSearchError,
+                playerViewModel = playerViewModel,
+                onItemSelected = {
+                    if (searchQuery.isNotBlank()) {
+                        playerViewModel.onSearchQuerySubmitted(searchQuery)
+                    }
+                },
+                currentPlayingSongId = stablePlayerState.currentSong?.id,
+                isPlaying = stablePlayerState.isPlaying,
+                onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song }
+            )
+        }
     }
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
@@ -730,12 +503,7 @@ fun SearchScreen(
                     )
                     showSongInfoBottomSheet = false
                 },
-                onNavigateToGenre = {
-                    currentSong.genre?.let {
-                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                    }
-                    showSongInfoBottomSheet = false
-                },
+                onNavigateToGenre = {},
                 onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                     playerViewModel.editSongMetadata(
                         currentSong,
@@ -758,6 +526,25 @@ fun SearchScreen(
                 },
             )
         }
+    }
+
+    selectedOnlineSongForActions?.let { onlineSong ->
+        OnlineSongActionsSheet(
+            song = onlineSong,
+            onDismiss = { selectedOnlineSongForActions = null },
+            onPlayNext = {
+                playerViewModel.addSongNextToQueue(onlineSong)
+                selectedOnlineSongForActions = null
+            },
+            onAddToQueue = {
+                playerViewModel.addSongToQueue(onlineSong)
+                selectedOnlineSongForActions = null
+            },
+            onDownload = {
+                playerViewModel.downloadSelectedSongs(listOf(onlineSong))
+                selectedOnlineSongForActions = null
+            }
+        )
     }
 
     // Multi-Selection Bottom Sheet
@@ -847,8 +634,6 @@ fun SearchScreen(
 
     // Playlist Multi-Selection Bottom Sheet
     if (showPlaylistMultiSelectionSheet && selectedPlaylists.isNotEmpty()) {
-        val activity = context as? android.app.Activity
-
         PlaylistMultiSelectionBottomSheet(
             selectedPlaylists = selectedPlaylists,
             onDismiss = {
@@ -859,53 +644,9 @@ fun SearchScreen(
                 showPlaylistMultiSelectionSheet = false
                 playlistSelectionState.clearSelection()
             },
-            onExportAll = {
-                playlistViewModel.exportPlaylistsAsM3u(selectedPlaylistIds.toList())
-                showPlaylistMultiSelectionSheet = false
-                playlistSelectionState.clearSelection()
-            },
             onMergeAll = {
                 showPlaylistMultiSelectionSheet = false
                 playlistSelectionState.clearSelection()
-            },
-            onShareAll = {
-                activity?.let {
-                    playlistViewModel.shareSelectedPlaylistsAsZip(selectedPlaylistIds.toList(), it)
-                }
-                showPlaylistMultiSelectionSheet = false
-                playlistSelectionState.clearSelection()
-            }
-        )
-    }
-
-    // Genre Multi-Selection Option Sheet
-    if (showGenreMultiSelectionSheet && selectedGenres.isNotEmpty()) {
-        GenreMultiSelectionOptionSheet(
-            selectedGenres = selectedGenres,
-            onDismiss = { showGenreMultiSelectionSheet = false },
-            onPlay = {
-                playerViewModel.playSelectedGenres(selectedGenres)
-                selectedGenres = emptyList()
-                showGenreMultiSelectionSheet = false
-            },
-            onPlayNext = {
-                playerViewModel.addSelectedGenresAsNext(selectedGenres)
-                selectedGenres = emptyList()
-                showGenreMultiSelectionSheet = false
-            },
-            onAddToQueue = {
-                playerViewModel.addSelectedGenresToQueue(selectedGenres)
-                selectedGenres = emptyList()
-                showGenreMultiSelectionSheet = false
-            },
-            onAddToPlaylist = {
-                scope.launch {
-                    val songs = playerViewModel.getSongsForGenres(selectedGenres)
-                    playlistSheetSongs = songs
-                    showPlaylistBottomSheet = true
-                    selectedGenres = emptyList()
-                    showGenreMultiSelectionSheet = false
-                }
             }
         )
     }
@@ -1069,6 +810,147 @@ fun EmptySearchResults(searchQuery: String, colorScheme: ColorScheme) {
     }
 }
 
+@Composable
+fun OnlineSearchResultsPane(
+    results: List<OnlineSearchResultItem>,
+    searchQuery: String,
+    isLoading: Boolean,
+    errorMessage: String?,
+    playerViewModel: PlayerViewModel,
+    onItemSelected: () -> Unit,
+    currentPlayingSongId: String?,
+    isPlaying: Boolean,
+    onSongMoreOptionsClick: (Song) -> Unit
+) {
+    val localDensity = LocalDensity.current
+    val songs = remember(results) { results.map { it.song } }
+    val queueName = remember(searchQuery) {
+        searchQuery.trim()
+            .takeIf { it.isNotEmpty() }
+            ?.let { "Online Search: $it" }
+            ?: "Online Search"
+    }
+    val imePadding = WindowInsets.ime.getBottom(localDensity).dp
+    val systemBarPaddingBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 94.dp
+
+    when {
+        isLoading && results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        errorMessage != null && results.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = errorMessage.ifBlank { stringResource(R.string.search_online_error) },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        results.isEmpty() -> {
+            EmptySearchResults(
+                searchQuery = searchQuery,
+                colorScheme = MaterialTheme.colorScheme
+            )
+        }
+        else -> {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 28.dp,
+                            topEnd = 28.dp
+                        )
+                    ),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = if (imePadding <= 8.dp) (MiniPlayerHeight + systemBarPaddingBottom) else imePadding
+                )
+            ) {
+                items(
+                    count = results.size,
+                    key = { index -> "online_${results[index].song.id}_${results[index].platform.name}" },
+                    contentType = { "online_search_song" }
+                ) { index ->
+                    val item = results[index]
+                    val song = item.song
+                    Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                        EnhancedSongListItem(
+                            song = song,
+                            isPlaying = isPlaying,
+                            isCurrentSong = currentPlayingSongId == song.id,
+                            onMoreOptionsClick = onSongMoreOptionsClick,
+                            onClick = {
+                                val playbackQueue = if (songs.any { it.id == song.id }) songs else listOf(song)
+                                playerViewModel.showAndPlaySong(song, playbackQueue, queueName)
+                                onItemSelected()
+                            },
+                            sourceLabel = item.platform.label
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun OnlineSongActionsSheet(
+    song: Song,
+    onDismiss: () -> Unit,
+    onPlayNext: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onDownload: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = song.displayArtist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onPlayNext, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.search_online_action_play_next))
+            }
+            TextButton(onClick = onAddToQueue, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.search_online_action_add_to_queue))
+            }
+            TextButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.download_action))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -1080,7 +962,7 @@ fun SearchResultsList(
     currentPlayingSongId: String?,
     isPlaying: Boolean,
     onSongMoreOptionsClick: (Song) -> Unit,
-    navController: NavHostController,
+    navController: NavController,
     isSelectionMode: Boolean = false,
     selectedSongIds: Set<String> = emptySet(),
     getSelectionIndex: (String) -> Int? = { null },
@@ -1223,6 +1105,7 @@ fun SearchResultsList(
                                     isSelected = isSelected,
                                     selectionIndex = selectionIndex,
                                     isSelectionMode = isSelectionMode,
+                                    sourceLabel = searchSourceLabel(item.song),
                                     onLongPress = { onSongLongPress(item.song) }
                                 )
                             }
@@ -1693,6 +1576,97 @@ fun SearchResultPlaylistItem(
             }
         }
     }
+}
+
+@Composable
+private fun searchSourceLabel(song: Song): String {
+    val uri = song.contentUriString.trim().lowercase()
+    return when {
+        uri.startsWith("netease://") -> stringResource(R.string.auth_netease_title)
+        uri.startsWith("qqmusic://") -> stringResource(R.string.auth_qq_title)
+        uri.startsWith("kugou://") -> OnlineSearchPlatform.KUGOU.label
+        uri.startsWith("kuwo://") -> OnlineSearchPlatform.KUWO.label
+        uri.startsWith("telegram://") -> "Telegram"
+        uri.startsWith("gdrive://") -> "Google Drive"
+        uri.startsWith("navidrome://") -> "Navidrome"
+        uri.startsWith("jellyfin://") -> "Jellyfin"
+        else -> stringResource(R.string.library_storage_filter_offline)
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun SearchModeChip(
+    mode: SearchMode,
+    currentMode: SearchMode,
+    playerViewModel: PlayerViewModel,
+    modifier: Modifier = Modifier
+) {
+    val selected = mode == currentMode
+    val labelResId = when (mode) {
+        SearchMode.LIBRARY -> R.string.search_mode_library
+        SearchMode.ONLINE -> R.string.search_mode_online
+    }
+
+    FilterChip(
+        selected = selected,
+        onClick = { playerViewModel.updateSearchMode(mode) },
+        label = {
+            Text(
+                stringResource(labelResId),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        modifier = modifier.heightIn(min = 36.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            selectedBorderColor = Color.Transparent
+        )
+    )
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun OnlinePlatformChip(
+    platform: OnlineSearchPlatform,
+    currentPlatform: OnlineSearchPlatform,
+    playerViewModel: PlayerViewModel,
+    modifier: Modifier = Modifier
+) {
+    val selected = platform == currentPlatform
+    FilterChip(
+        selected = selected,
+        onClick = { playerViewModel.updateOnlineSearchPlatform(platform) },
+        label = {
+            Text(
+                platform.label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        modifier = modifier.heightIn(min = 36.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            selectedBorderColor = Color.Transparent
+        )
+    )
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)

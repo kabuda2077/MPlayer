@@ -272,6 +272,8 @@ class SongInfoBottomSheetViewModel @Inject constructor(
             normalized.startsWith("telegram://") || normalized.startsWith("telegram:") -> "Telegram"
             normalized.startsWith("netease://") || normalized.startsWith("netease:") -> "Netease Music"
             normalized.startsWith("qqmusic://") || normalized.startsWith("qqmusic:") -> "QQ Music"
+            normalized.startsWith("kugou://") || normalized.startsWith("kugou:") -> "Kugou"
+            normalized.startsWith("kuwo://") || normalized.startsWith("kuwo:") -> "Kuwo"
             normalized.startsWith("navidrome://") || normalized.startsWith("navidrome:") -> "Navidrome"
             normalized.startsWith("gdrive://") || normalized.startsWith("gdrive:") -> "Google Drive"
             normalized.startsWith("jellyfin://") || normalized.startsWith("jellyfin:") -> "Jellyfin"

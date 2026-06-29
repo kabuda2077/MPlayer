@@ -275,6 +275,10 @@ class SyncManager @Inject constructor(
         )
     }
 
+    fun notifyPublicDownloadCompleted() {
+        scheduleLocalAutoSync()
+    }
+
     private fun observeStorageChanges() {
         sharingScope.launch {
             mediaStoreObserver.externalMediaStoreChanges.collect {

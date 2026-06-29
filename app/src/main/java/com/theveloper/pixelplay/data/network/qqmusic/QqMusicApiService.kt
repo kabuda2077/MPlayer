@@ -34,6 +34,7 @@ class QqMusicApiService @Inject constructor(
         val title: String,
         val artist: String,
         val album: String,
+        val albumArtUrl: String?,
         val durationMs: Long
     )
 
@@ -253,13 +254,20 @@ class QqMusicApiService @Inject constructor(
                 val song = items.optJSONObject(index) ?: continue
                 val singers = song.optJSONArray("singer")
                 val artist = buildArtistName(singers)
+                val albumObject = song.optJSONObject("album")
+                val albumMid = song.optString("albummid")
+                    .ifBlank { albumObject?.optString("mid").orEmpty() }
+                    .ifBlank { albumObject?.optString("pmid").orEmpty() }
                 add(
                     SearchSongResult(
                         id = song.opt("id")?.toString().orEmpty(),
                         mid = song.optString("mid"),
                         title = song.optString("title"),
                         artist = artist.ifBlank { "Unknown Artist" },
-                        album = song.optJSONObject("album")?.optString("name").orEmpty(),
+                        album = albumObject?.optString("name").orEmpty(),
+                        albumArtUrl = albumMid
+                            .takeIf { it.isNotBlank() }
+                            ?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" },
                         durationMs = song.optLong("interval", 0L) * 1000L
                     )
                 )

@@ -42,7 +42,7 @@ class AudioSourcePluginViewModel @Inject constructor(
         pluginRepository.runtimeState,
         userPreferencesRepository.audioSourcePluginPreferredQualityFlow
     ) { plugins, runtimeState, preferredQualityValue ->
-        Triple(plugins, runtimeState, preferredQualityValue)
+        PluginSettingsData(plugins, runtimeState, preferredQualityValue)
     }
 
     val uiState: StateFlow<AudioSourcePluginUiState> = combine(
@@ -123,4 +123,10 @@ class AudioSourcePluginViewModel @Inject constructor(
             busy.value = false
         }
     }
+
+    private data class PluginSettingsData(
+        val plugins: List<PluginEntity>,
+        val runtimeState: PluginRuntimeState,
+        val preferredQuality: PluginQuality
+    )
 }

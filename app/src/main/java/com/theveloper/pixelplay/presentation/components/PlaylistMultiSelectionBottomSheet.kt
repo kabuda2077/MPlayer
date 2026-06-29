@@ -27,14 +27,12 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Merge
 import androidx.compose.material.icons.rounded.MicExternalOn
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Piano
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +42,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,9 +73,7 @@ import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
  * @param selectedPlaylists List of selected playlists
  * @param onDismiss Callback when sheet is dismissed
  * @param onDeleteAll Delete all selected playlists
- * @param onExportAll Export all selected playlists as M3U files
  * @param onMergeAll Merge all selected playlists into one
- * @param onShareAll Share all selected playlists as ZIP file
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -84,11 +81,10 @@ fun PlaylistMultiSelectionBottomSheet(
     selectedPlaylists: List<Playlist>,
     onDismiss: () -> Unit,
     onDeleteAll: () -> Unit,
-    onExportAll: () -> Unit,
-    onMergeAll: () -> Unit,
-    onShareAll: () -> Unit
+    onMergeAll: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
     val evenCornerRadius = 26.dp
     val buttonShape = AbsoluteSmoothCornerShape(
         cornerRadiusTR = evenCornerRadius, smoothnessAsPercentBR = 60,
@@ -167,7 +163,7 @@ fun PlaylistMultiSelectionBottomSheet(
                     contentPadding = PaddingValues(bottom = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Row 1: Delete, Export
+                    // Row 1: Delete, Merge
                     item {
                         Row(
                             modifier = Modifier
@@ -210,46 +206,6 @@ fun PlaylistMultiSelectionBottomSheet(
                                     .weight(0.5f)
                                     .heightIn(min = 66.dp),
                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                ),
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = CircleShape,
-                                onClick = {
-                                    onExportAll()
-                                    onDismiss()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Rounded.FileDownload,
-                                    contentDescription = stringResource(R.string.common_export_all)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                TightWrapText(
-                                    text = stringResource(R.string.common_export),
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    overflow = TextOverflow.Ellipsis,
-                                    maxLines = 2,
-                                    lineHeight = 22.sp,
-                                )
-                            }
-                        }
-                    }
-
-                    // Row 2: Merge, Share
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(IntrinsicSize.Min),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            FilledTonalButton(
-                                modifier = Modifier
-                                    .weight(0.5f)
-                                    .heightIn(min = 66.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 ),
@@ -267,35 +223,6 @@ fun PlaylistMultiSelectionBottomSheet(
                                 Spacer(Modifier.width(6.dp))
                                 TightWrapText(
                                     text = stringResource(R.string.common_merge),
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    overflow = TextOverflow.Ellipsis,
-                                    maxLines = 2,
-                                    lineHeight = 22.sp,
-                                )
-                            }
-
-                            FilledTonalButton(
-                                modifier = Modifier
-                                    .weight(0.5f)
-                                    .heightIn(min = 66.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = CircleShape,
-                                onClick = {
-                                    onShareAll()
-                                    onDismiss()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Share,
-                                    contentDescription = stringResource(R.string.common_share_all)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                TightWrapText(
-                                    text = stringResource(R.string.common_share),
                                     modifier = Modifier.padding(end = 4.dp),
                                     overflow = TextOverflow.Ellipsis,
                                     maxLines = 2,

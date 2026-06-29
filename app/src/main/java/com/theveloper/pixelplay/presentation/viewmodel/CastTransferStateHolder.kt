@@ -1027,13 +1027,14 @@ class CastTransferStateHolder @Inject constructor(
     ): Boolean = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         runCatching {
-            connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            val openedConnection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 150
                 readTimeout = 150
                 instanceFollowRedirects = false
                 requestMethod = method
             }
-            val code = connection?.responseCode ?: -1
+            connection = openedConnection
+            val code = openedConnection.responseCode
             code in 200..299
         }.getOrDefault(false).also {
             connection?.disconnect()

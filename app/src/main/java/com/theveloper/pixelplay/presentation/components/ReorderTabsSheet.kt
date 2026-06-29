@@ -35,7 +35,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -106,7 +107,8 @@ fun ReorderTabsSheet(
         )
     }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val view = LocalView.current
@@ -121,7 +123,7 @@ fun ReorderTabsSheet(
             performAppCompatHapticFeedback(
                 view,
                 appHapticsConfig,
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                ignoreGlobalHapticSettingFlag()
             )
         },
         lazyListState = listState
@@ -286,3 +288,7 @@ fun FloatingToolBar(
         }
     }
 }
+
+@Suppress("DEPRECATION")
+private fun ignoreGlobalHapticSettingFlag(): Int =
+    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING

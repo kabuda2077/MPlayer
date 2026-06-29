@@ -55,6 +55,7 @@ import androidx.paging.compose.itemContentType
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.SongListViewMode
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
@@ -84,10 +85,13 @@ fun LibraryFavoritesTab(
     onSongSelectionToggle: (Song) -> Unit = {},
     getSelectionIndex: (String) -> Int? = { null },
     sortOption: SortOption,
+    songListViewMode: SongListViewMode = SongListViewMode.LIST,
+    groupedSongs: List<Song> = emptyList(),
     onLocateCurrentSongVisibilityChanged: (Boolean) -> Unit = {},
     onRegisterLocateCurrentSongAction: ((() -> Unit)?) -> Unit = {},
     storageFilter: StorageFilter = StorageFilter.ALL,
-    hasCurrentSong: Boolean = false
+    hasCurrentSong: Boolean = false,
+    artistArtworkByName: Map<String, String?> = emptyMap()
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -109,6 +113,32 @@ fun LibraryFavoritesTab(
             .map { it.currentSong?.id }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = null)
+
+    if (songListViewMode != SongListViewMode.LIST) {
+        GroupedSongsView(
+            songs = groupedSongs,
+            isLoading = favoriteSongs.loadState.refresh is LoadState.Loading,
+            playerViewModel = playerViewModel,
+            bottomBarHeight = bottomBarHeight,
+            onMoreOptionsClick = onMoreOptionsClick,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            sortOption = sortOption,
+            viewMode = songListViewMode,
+            isSelectionMode = isSelectionMode,
+            selectedSongIds = selectedSongIds,
+            onSongLongPress = onSongLongPress,
+            onSongSelectionToggle = onSongSelectionToggle,
+            getSelectionIndex = getSelectionIndex,
+            onLocateCurrentSongVisibilityChanged = onLocateCurrentSongVisibilityChanged,
+            onRegisterLocateCurrentSongAction = onRegisterLocateCurrentSongAction,
+            storageFilter = storageFilter,
+            hasCurrentSong = hasCurrentSong,
+            artistArtworkByName = artistArtworkByName,
+            queueName = stringResource(R.string.library_tab_liked)
+        )
+        return
+    }
 
     val currentSongListIndex = remember(favoriteSongs.itemCount, currentSongId) {
         if (currentSongId == null) -1

@@ -320,7 +320,7 @@ fun LyricsMoreBottomSheet(
             // Control Settings Group
             val isSyncModeVisible = lyrics != null
             val isSyncVisible = showSyncedLyrics && hasSyncedLyrics
-            val isRomanizationVisible = hasRomanizedLyrics
+            val isRomanizationVisible = false
             val isTranslationVisible = hasTranslatedLyrics
             val isKeepScreenOnVisible = true
 

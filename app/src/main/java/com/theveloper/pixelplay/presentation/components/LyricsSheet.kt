@@ -20,7 +20,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.util.lerp
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import androidx.compose.animation.AnimatedVisibility
@@ -66,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -420,8 +422,8 @@ fun LyricsSheet(
     }
 
     var showMoreSheet by remember { mutableStateOf(false) }
-    val moreSheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
+    val moreSheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded,
     )
 
     // Swipe Gesture State
@@ -859,13 +861,19 @@ fun LyricsSheet(
                         animationSpec = spring(stiffness = Spring.StiffnessLow),
                         label = "playPauseShape"
                     )
+                    val playPauseShape = RoundedCornerShape(playPauseCornerRadius)
 
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .offset(y = (-4).dp)
                             .size(62.dp)
-                            .clip(RoundedCornerShape(playPauseCornerRadius))
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = playPauseShape,
+                                clip = false
+                            )
+                            .clip(playPauseShape)
                             .background(playPauseColor)
                             .clickable {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)

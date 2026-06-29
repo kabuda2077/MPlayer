@@ -65,7 +65,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -114,6 +115,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
+import com.theveloper.pixelplay.data.download.DownloadEntity
+import com.theveloper.pixelplay.data.download.DownloadStatus
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.plugin.PluginQuality
@@ -210,6 +213,8 @@ fun FullPlayerContent(
     isPlayingProvider: () -> Boolean,
     playWhenReadyProvider: () -> Boolean,
     isFavoriteProvider: () -> Boolean,
+    downloadStateProvider: () -> DownloadEntity? = { null },
+    isDownloadSupportedProvider: () -> Boolean = { false },
     repeatModeProvider: () -> Int,
     isShuffleEnabledProvider: () -> Boolean,
     totalDurationProvider: () -> Long,
@@ -228,6 +233,7 @@ fun FullPlayerContent(
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit,
     onShowCastClicked: () -> Unit,
+    onDownloadClick: () -> Unit = {},
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit
@@ -560,6 +566,9 @@ fun FullPlayerContent(
             shuffleTransitionInProgress = shuffleTransitionInProgress,
             repeatModeProvider = repeatModeProvider,
             isFavoriteProvider = isFavoriteProvider,
+            downloadStateProvider = downloadStateProvider,
+            isDownloadSupportedProvider = isDownloadSupportedProvider,
+            onDownloadClick = onDownloadClick,
             onShuffleToggle = onShuffleToggle,
             onRepeatToggle = onRepeatToggle,
             onFavoriteToggle = onFavoriteToggle
@@ -975,7 +984,8 @@ fun FullPlayerContent(
         )
     }
 
-    val artistPickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val artistPickerSheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
     if (showArtistPicker && currentSongArtists.isNotEmpty()) {
         PlayerArtistPickerBottomSheet(
             song = song,
@@ -1116,6 +1126,9 @@ private fun FullPlayerControlsSection(
     shuffleTransitionInProgress: Boolean,
     repeatModeProvider: () -> Int,
     isFavoriteProvider: () -> Boolean,
+    downloadStateProvider: () -> DownloadEntity?,
+    isDownloadSupportedProvider: () -> Boolean,
+    onDownloadClick: () -> Unit,
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit
@@ -1173,12 +1186,15 @@ private fun FullPlayerControlsSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 66.dp, max = 86.dp)
-                    .padding(horizontal = 26.dp, vertical = 0.dp)
+                    .padding(horizontal = 12.dp, vertical = 0.dp)
                     .padding(bottom = 6.dp),
+                downloadState = downloadStateProvider(),
+                isDownloadSupported = isDownloadSupportedProvider(),
                 isShuffleEnabled = isShuffleEnabledProvider(),
                 isShuffleTransitionInProgress = shuffleTransitionInProgress,
                 repeatMode = repeatModeProvider(),
                 isFavoriteProvider = isFavoriteProvider,
+                onDownloadClick = onDownloadClick,
                 onShuffleToggle = onShuffleToggle,
                 onRepeatToggle = onRepeatToggle,
                 onFavoriteToggle = onFavoriteToggle
@@ -2592,15 +2608,32 @@ private fun expressiveSkipButtonColors(colorScheme: ColorScheme): TransportButto
 @Composable
 private fun BottomToggleRow(
     modifier: Modifier,
+    downloadState: DownloadEntity?,
+    isDownloadSupported: Boolean,
     isShuffleEnabled: Boolean,
     isShuffleTransitionInProgress: Boolean,
     repeatMode: Int,
     isFavoriteProvider: () -> Boolean,
+    onDownloadClick: () -> Unit,
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
     onFavoriteToggle: () -> Unit
 ) {
     val isFavorite = isFavoriteProvider()
+    val downloadStatus = downloadState?.status
+    val isDownloadActive = downloadStatus == DownloadStatus.QUEUED ||
+        downloadStatus == DownloadStatus.DOWNLOADING ||
+        downloadStatus == DownloadStatus.COMPLETED ||
+        downloadStatus == DownloadStatus.FAILED ||
+        downloadStatus == DownloadStatus.CANCELED
+    val downloadActiveColor = when (downloadStatus) {
+        DownloadStatus.FAILED -> LocalMaterialTheme.current.errorContainer
+        else -> LocalMaterialTheme.current.primaryFixed
+    }
+    val downloadActiveContentColor = when (downloadStatus) {
+        DownloadStatus.FAILED -> LocalMaterialTheme.current.onErrorContainer
+        else -> LocalMaterialTheme.current.onPrimaryFixed
+    }
     val rowCorners = 60.dp
     val inactiveBg = LocalMaterialTheme.current.onSurface.copy(alpha = 0.07f)
     val inactiveContentColor = LocalMaterialTheme.current.onSurface
@@ -2643,6 +2676,19 @@ private fun BottomToggleRow(
         ) {
             val commonModifier = Modifier.weight(1f)
 
+            ToggleSegmentButton(
+                modifier = commonModifier,
+                active = isDownloadActive,
+                enabled = isDownloadSupported,
+                activeColor = downloadActiveColor,
+                activeCornerRadius = rowCorners,
+                activeContentColor = downloadActiveContentColor,
+                inactiveColor = inactiveBg,
+                inactiveContentColor = inactiveContentColor,
+                onClick = onDownloadClick,
+                iconId = R.drawable.rounded_download_24,
+                contentDesc = "下载"
+            )
             ToggleSegmentButton(
                 modifier = commonModifier,
                 active = isShuffleEnabled,

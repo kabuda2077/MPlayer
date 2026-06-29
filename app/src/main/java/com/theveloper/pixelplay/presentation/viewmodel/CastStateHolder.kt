@@ -183,6 +183,7 @@ class CastStateHolder @Inject constructor(
     
     // MediaRouter State
     private val mediaRouter: MediaRouter = MediaRouter.getInstance(context)
+    @Suppress("OVERRIDE_DEPRECATION")
     private val mediaRouterCallback = object : MediaRouter.Callback() {
         override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
             updateRoutes()

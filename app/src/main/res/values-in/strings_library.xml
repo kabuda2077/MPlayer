@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Baru</string>
     <string name="library_cd_create_new_playlist">Buat playlist baru</string>
-    <string name="library_cd_import_m3u_playlist">Impor playlist M3U</string>
     <string name="library_cd_locate_current_song">Temukan lagu saat ini</string>
     <string name="library_storage_filter_all_songs">Semua lagu</string>
     <string name="library_storage_filter_online">CLOUD</string>

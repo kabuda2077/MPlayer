@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Neu</string>
     <string name="library_cd_create_new_playlist">Neue Playlist erstellen</string>
-    <string name="library_cd_import_m3u_playlist">M3U-Playlist importieren</string>
     <string name="library_cd_locate_current_song">Aktuellen Song anzeigen</string>
     <string name="library_storage_filter_all_songs">Alle Songs</string>
     <string name="library_storage_filter_online">CLOUD</string>

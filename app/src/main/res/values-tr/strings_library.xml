@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Yeni</string>
     <string name="library_cd_create_new_playlist">Yeni çalma listesi oluştur</string>
-    <string name="library_cd_import_m3u_playlist">M3U çalma listesi içe aktar</string>
     <string name="library_cd_locate_current_song">Mevcut şarkıyı bul</string>
     <string name="library_storage_filter_all_songs">Tüm şarkılar</string>
     <string name="library_storage_filter_online">BULUT</string>

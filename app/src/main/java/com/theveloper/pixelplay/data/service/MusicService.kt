@@ -1715,6 +1715,8 @@ class MusicService : MediaLibraryService() {
         return when (route) {
             "netease" -> id.toLongOrNull()?.let { "netease://$it" }
             "qqmusic" -> "qqmusic://$id"
+            "kugou" -> "kugou://$id"
+            "kuwo" -> "kuwo://$id"
             "navidrome" -> "navidrome://$id"
             "jellyfin" -> "jellyfin://$id"
             "gdrive" -> "gdrive://$id"

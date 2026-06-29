@@ -4,6 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.theveloper.pixelplay.data.download.DownloadDao
+import com.theveloper.pixelplay.data.download.DownloadEntity
 
 @Database(
     entities = [
@@ -35,9 +37,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JellyfinPlaylistEntity::class,
         AiCacheEntity::class,
         AiUsageEntity::class,
-        PluginEntity::class
+        PluginEntity::class,
+        DownloadEntity::class
     ],
-    version = 43,
+    version = 45,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -58,6 +61,7 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
     abstract fun pluginDao(): PluginDao
+    abstract fun downloadDao(): DownloadDao
 
     companion object {
         // Gap-bridging no-op migrations for missing version ranges.
@@ -293,19 +297,19 @@ abstract class PixelPlayDatabase : RoomDatabase() {
         }
 
         val MIGRATION_18_19 = object : Migration(18, 19) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "CREATE TABLE IF NOT EXISTS `lyrics` (`songId` INTEGER NOT NULL, `content` TEXT NOT NULL, `isSynced` INTEGER NOT NULL DEFAULT 0, `source` TEXT, PRIMARY KEY(`songId`))"
                 )
-                database.execSQL(
+                db.execSQL(
                     "INSERT INTO lyrics (songId, content) SELECT id, lyrics FROM songs WHERE lyrics IS NOT NULL AND lyrics != ''"
                 )
             }
         }
 
         val MIGRATION_14_15 = object : Migration(14, 15) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE album_art_themes ADD COLUMN paletteStyle TEXT NOT NULL DEFAULT 'tonal_spot'"
                 )
 
@@ -334,14 +338,14 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 val prefixes = listOf("light_", "dark_")
                 prefixes.forEach { prefix ->
                     newRoleColumns.forEach { role ->
-                        database.execSQL(
+                        db.execSQL(
                             "ALTER TABLE album_art_themes ADD COLUMN ${prefix}${role} TEXT NOT NULL DEFAULT '#00000000'"
                         )
                     }
                 }
 
                 // The table is a cache; wipe stale rows so we always regenerate with full token data.
-                database.execSQL("DELETE FROM album_art_themes")
+                db.execSQL("DELETE FROM album_art_themes")
             }
         }
 
@@ -769,6 +773,61 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_audio_source_plugins_enabled ON audio_source_plugins(enabled)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_audio_source_plugins_updated_at ON audio_source_plugins(updated_at)")
+            }
+        }
+
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                        CREATE TABLE IF NOT EXISTS downloads (
+                            content_uri_string TEXT NOT NULL PRIMARY KEY,
+                            song_id INTEGER NOT NULL,
+                            title TEXT NOT NULL,
+                            artist TEXT NOT NULL,
+                            album TEXT NOT NULL,
+                            album_art_uri_string TEXT,
+                            duration INTEGER NOT NULL,
+                            source TEXT NOT NULL,
+                            platform_song_id TEXT NOT NULL,
+                            requested_quality TEXT NOT NULL,
+                            actual_quality TEXT,
+                            status INTEGER NOT NULL,
+                            progress REAL NOT NULL,
+                            size_bytes INTEGER NOT NULL,
+                            mime_type TEXT,
+                            file_path TEXT,
+                            error_message TEXT,
+                            created_at INTEGER NOT NULL,
+                            updated_at INTEGER NOT NULL
+                        )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_song_id ON downloads(song_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_status ON downloads(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_updated_at ON downloads(updated_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_source_platform_song_id ON downloads(source, platform_song_id)")
+            }
+        }
+
+        val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val columns = getTableColumns(db, "downloads")
+                if ("public_uri" !in columns) {
+                    db.execSQL("ALTER TABLE downloads ADD COLUMN public_uri TEXT")
+                }
+                if ("relative_path" !in columns) {
+                    db.execSQL("ALTER TABLE downloads ADD COLUMN relative_path TEXT")
+                }
+                if ("display_name" !in columns) {
+                    db.execSQL("ALTER TABLE downloads ADD COLUMN display_name TEXT")
+                }
+                if ("storage_mode" !in columns) {
+                    db.execSQL("ALTER TABLE downloads ADD COLUMN storage_mode TEXT NOT NULL DEFAULT 'PUBLIC_MEDIASTORE'")
+                }
+                if ("local_song_id" !in columns) {
+                    db.execSQL("ALTER TABLE downloads ADD COLUMN local_song_id INTEGER")
+                }
             }
         }
 

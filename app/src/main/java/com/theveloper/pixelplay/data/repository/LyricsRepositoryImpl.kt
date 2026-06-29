@@ -596,14 +596,17 @@ class LyricsRepositoryImpl @Inject constructor(
                         songId = songId,
                         content = persistedContent,
                         isSynced = !payload.lyrics.synced.isNullOrEmpty(),
-                        source = payload.sourceTag
-                    )
-                )
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to persist remote lyrics for ${song.id}: ${error.message}")
-            }
+                source = persistedSourceTag(payload.sourceTag)
+            )
+        )
+    }.onFailure { error ->
+        Log.w(TAG, "Failed to persist remote lyrics for ${song.id}: ${error.message}")
+    }
         }
     }
+
+    private fun persistedSourceTag(sourceTag: String): String =
+        if (sourceTag == "netease_official") "netease_official_v2" else sourceTag
 
     private fun lyricsToPersistedContent(payload: RemoteLyricsPayload): String {
         if (payload.rawLyrics.startsWith("qqlyrics://")) return payload.rawLyrics
@@ -1366,6 +1369,7 @@ class LyricsRepositoryImpl @Inject constructor(
         fun acceptedStoredLyrics(rawLyrics: String, sourceTag: String): Pair<Lyrics, String>? {
             val parsed = parseStoredLyrics(rawLyrics) ?: return null
             if (shouldBypassOnlinePlainOnlyStoredLyrics(song, parsed, sourceTag)) return null
+            if (shouldBypassLegacyNeteaseStoredLyrics(song, parsed, sourceTag)) return null
             return parsed to rawLyrics
         }
 
@@ -1377,11 +1381,11 @@ class LyricsRepositoryImpl @Inject constructor(
             }
 
         song.id.toLongOrNull()
-            ?.let { lyricsDao.getLyrics(it)?.content }
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { rawLyrics ->
-                acceptedStoredLyrics(rawLyrics, "lyrics_db")?.let { return@withContext it }
+            ?.let { lyricsDao.getLyrics(it) }
+            ?.let { entity ->
+                val rawLyrics = entity.content.trim().takeIf { it.isNotBlank() } ?: return@let
+                val sourceTag = entity.source?.takeIf { it.isNotBlank() } ?: "lyrics_db"
+                acceptedStoredLyrics(rawLyrics, sourceTag)?.let { return@withContext it }
             }
 
         readLyricsJsonCache(song)
@@ -1422,6 +1426,39 @@ class LyricsRepositoryImpl @Inject constructor(
             song.title
         )
         return true
+    }
+
+    private fun shouldBypassLegacyNeteaseStoredLyrics(
+        song: Song,
+        lyrics: Lyrics,
+        sourceTag: String
+    ): Boolean {
+        if (!isNeteaseSong(song)) return false
+        if (sourceTag != "netease_official" && sourceTag != "json_cache") return false
+        if (lyrics.synced.isNullOrEmpty()) return false
+        if (lyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() }) return false
+        if (!lyricsLookTranslatable(lyrics)) return false
+
+        Timber.d(
+            "Lyrics[Stored][Bypass] reason=legacy_netease_without_translation source=%s song=%s - %s",
+            sourceTag,
+            song.displayArtist,
+            song.title
+        )
+        return true
+    }
+
+    private fun lyricsLookTranslatable(lyrics: Lyrics): Boolean {
+        val text = lyrics.synced.orEmpty()
+            .asSequence()
+            .map { it.line }
+            .filter { it.isNotBlank() }
+            .take(12)
+            .joinToString(" ")
+        if (text.isBlank()) return false
+        val latinCount = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val cjkCount = text.count { it in '\u4E00'..'\u9FFF' }
+        return latinCount >= 12 && cjkCount == 0
     }
 
     private fun parseStoredLyrics(rawLyrics: String): Lyrics? =

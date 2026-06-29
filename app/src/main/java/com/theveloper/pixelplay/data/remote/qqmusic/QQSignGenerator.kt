@@ -60,6 +60,7 @@ class QQSignGenerator(private val context: Context) {
         }.getOrNull()
     }
 
+    @Suppress("DEPRECATION")
     private fun ensureWebView(): WebView {
         webView?.let { return it }
 

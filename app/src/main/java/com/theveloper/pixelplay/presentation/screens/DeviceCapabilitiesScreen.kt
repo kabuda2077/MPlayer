@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.presentation.screens
 
+import android.content.ClipData
 import android.content.Intent
 import android.text.format.Formatter
 import android.widget.Toast
@@ -75,11 +76,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -304,7 +305,8 @@ private fun PerformanceReportCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val copiedMessage = stringResource(R.string.settings_devcaps_report_copied)
     val shareTitle = stringResource(R.string.settings_devcaps_report_share_title)
     val lagMarkedMessage = stringResource(R.string.settings_devcaps_advanced_diagnostics_marked)
@@ -368,8 +370,12 @@ private fun PerformanceReportCard(
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(report))
-                        Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                            clipboard.setClipEntry(
+                                ClipEntry(ClipData.newPlainText(shareTitle, report))
+                            )
+                            Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                        }
                     }
                 ) {
                     Icon(

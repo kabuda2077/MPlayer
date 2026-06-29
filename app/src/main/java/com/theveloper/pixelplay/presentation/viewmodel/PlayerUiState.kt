@@ -7,9 +7,13 @@ import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.MusicFolder
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SearchResultItem
+import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
+import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
+import com.theveloper.pixelplay.data.model.SearchMode
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.SearchFilterType
 import com.theveloper.pixelplay.data.model.SearchHistoryItem
+import com.theveloper.pixelplay.data.model.SongListViewMode
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -21,6 +25,11 @@ data class PlayerUiState(
     // val albums: ImmutableList<Album> = persistentListOf(), // REMOVED
     // val artists: ImmutableList<Artist> = persistentListOf(), // REMOVED
     val searchResults: ImmutableList<SearchResultItem> = persistentListOf(),
+    val onlineSearchResults: ImmutableList<OnlineSearchResultItem> = persistentListOf(),
+    val searchMode: SearchMode = SearchMode.ONLINE,
+    val onlineSearchPlatform: OnlineSearchPlatform = OnlineSearchPlatform.NETEASE,
+    val onlineSearchLoading: Boolean = false,
+    val onlineSearchError: String? = null,
     val musicFolders: ImmutableList<MusicFolder> = persistentListOf(),
     val sortOption: SortOption = SortOption.SongDefaultOrder,
     val isLoadingInitialSongs: Boolean = true,
@@ -44,7 +53,9 @@ data class PlayerUiState(
     val preparingSongId: String? = null,
     val isLoadingLibraryCategories: Boolean = true,
     val isAlbumsListView: Boolean = false,
-    val currentFavoriteSortOption: SortOption = SortOption.LikedSongDateLiked,
+    val songListViewMode: SongListViewMode = SongListViewMode.LIST,
+    val favoriteSongListViewMode: SongListViewMode = SongListViewMode.LIST,
+    val currentFavoriteSortOption: SortOption = SortOption.LikedSongTitleAZ,
     val currentAlbumSortOption: SortOption = SortOption.AlbumTitleAZ,
     val currentArtistSortOption: SortOption = SortOption.ArtistNameAZ,
     val currentFolderSortOption: SortOption = SortOption.FolderNameAZ,

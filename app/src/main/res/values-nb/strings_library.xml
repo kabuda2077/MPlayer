@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Ny</string>
     <string name="library_cd_create_new_playlist">Opprett ny spilleliste</string>
-    <string name="library_cd_import_m3u_playlist">Importer M3U-spilleliste</string>
     <string name="library_cd_locate_current_song">Finn gjeldende sang</string>
     <string name="library_storage_filter_all_songs">Alle sanger</string>
     <string name="library_storage_filter_online">SKY</string>

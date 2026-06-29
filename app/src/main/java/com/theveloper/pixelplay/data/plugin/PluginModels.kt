@@ -2,15 +2,35 @@ package com.theveloper.pixelplay.data.plugin
 
 import com.theveloper.pixelplay.data.model.Song
 
-enum class PluginSource(val lxSource: String, val uriScheme: String) {
-    NETEASE("wy", "netease"),
-    QQ_MUSIC("tx", "qqmusic");
+enum class PluginSource(
+    val lxSource: String,
+    val uriScheme: String,
+    val displayName: String,
+    val aliases: Set<String>
+) {
+    NETEASE("wy", "netease", "网易云", setOf("wy", "netease", "163", "163music", "neteasecloud")),
+    KUGOU("kg", "kugou", "酷狗", setOf("kg", "kugou")),
+    KUWO("kw", "kuwo", "酷我", setOf("kw", "kuwo")),
+    QQ_MUSIC("tx", "qqmusic", "QQ音乐", setOf("tx", "qq", "qqmusic")),
+    MIGU("mg", "migu", "咪咕", setOf("mg", "migu"));
 
     companion object {
+        val fallbackPriority = listOf(NETEASE, KUGOU, KUWO, QQ_MUSIC)
+
         fun fromUri(uriString: String): PluginSource? = when {
             uriString.startsWith("netease://") -> NETEASE
+            uriString.startsWith("kugou://") -> KUGOU
+            uriString.startsWith("kuwo://") -> KUWO
             uriString.startsWith("qqmusic://") -> QQ_MUSIC
+            uriString.startsWith("migu://") -> MIGU
             else -> null
+        }
+
+        fun fromAlias(value: String?): PluginSource? {
+            val normalized = value?.trim()?.lowercase() ?: return null
+            return entries.firstOrNull { source ->
+                source.lxSource == normalized || source.aliases.any { it == normalized }
+            }
         }
     }
 }
@@ -61,6 +81,18 @@ enum class PluginQuality(
         aliases = setOf("master", "jm", "jymaster", "viperclear", "viper_clear")
     );
 
+    val rank: Int
+        get() = when (this) {
+            LOW -> 1
+            HIGH -> 2
+            LOSSLESS -> 3
+            HI_RES -> 4
+            HIRES -> 5
+            ATMOS -> 6
+            ATMOS_PLUS -> 7
+            MASTER -> 8
+        }
+
     companion object {
         val preferenceOrder = listOf(MASTER, ATMOS_PLUS, ATMOS, HIRES, HI_RES, LOSSLESS, HIGH, LOW)
 
@@ -98,7 +130,10 @@ data class PluginMusicInfo(
     val durationMs: Long,
     val albumArtUrl: String?,
     val rawContentUri: String,
-    val platformSongId: String
+    val platformSongId: String,
+    val sourceSongId: String = platformSongId,
+    val sourceSongMid: String? = null,
+    val sourceSongHash: String? = null
 )
 
 data class PluginAudioResolveResult(
@@ -111,6 +146,19 @@ data class PluginAudioResolveResult(
     val durationMs: Long? = null,
     val bitrate: Int? = null,
     val mimeType: String? = null
+)
+
+data class PluginPlatformCandidate(
+    val source: PluginSource,
+    val id: String,
+    val songMid: String? = null,
+    val hash: String? = null,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val matchScore: Double = 1.0,
+    val matchType: String = "id"
 )
 
 data class PluginSourceCapability(
@@ -189,5 +237,8 @@ fun Song.toPluginMusicInfo(source: PluginSource, platformSongId: String): Plugin
         durationMs = duration,
         albumArtUrl = albumArtUriString,
         rawContentUri = contentUriString,
-        platformSongId = platformSongId
+        platformSongId = platformSongId,
+        sourceSongId = platformSongId,
+        sourceSongMid = if (source == PluginSource.QQ_MUSIC) platformSongId else null,
+        sourceSongHash = if (source == PluginSource.KUGOU) platformSongId else null
     )

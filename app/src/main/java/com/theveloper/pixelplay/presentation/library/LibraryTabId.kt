@@ -23,10 +23,6 @@ enum class LibraryTabId(
         sortOptions = listOf(
             SortOption.SongTitleAZ,
             SortOption.SongTitleZA,
-            SortOption.SongArtist,
-            SortOption.SongArtistDesc,
-            SortOption.SongAlbum,
-            SortOption.SongAlbumDesc,
             SortOption.SongDateAdded,
             SortOption.SongDateAddedAsc,
             SortOption.SongDuration,
@@ -40,11 +36,12 @@ enum class LibraryTabId(
         sortOptions = listOf(
             SortOption.AlbumTitleAZ,
             SortOption.AlbumTitleZA,
-            SortOption.AlbumArtist,
-            SortOption.AlbumArtistDesc,
             SortOption.AlbumReleaseYear,
             SortOption.AlbumReleaseYearAsc,
-            SortOption.AlbumDateAdded
+            SortOption.AlbumDateAdded,
+            SortOption.AlbumDateAddedAsc,
+            SortOption.AlbumSizeDesc,
+            SortOption.AlbumSizeAsc
         )
     ),
     Artists(
@@ -54,6 +51,8 @@ enum class LibraryTabId(
         sortOptions = listOf(
             SortOption.ArtistNameAZ,
             SortOption.ArtistNameZA,
+            SortOption.ArtistDateAdded,
+            SortOption.ArtistDateAddedAsc,
             SortOption.ArtistNumSongsDesc,
             SortOption.ArtistNumSongsAsc
         )
@@ -89,12 +88,10 @@ enum class LibraryTabId(
         sortOptions = listOf(
             SortOption.LikedSongTitleAZ,
             SortOption.LikedSongTitleZA,
-            SortOption.LikedSongArtist,
-            SortOption.LikedSongArtistDesc,
-            SortOption.LikedSongAlbum,
-            SortOption.LikedSongAlbumDesc,
-            SortOption.LikedSongDateLiked,
-            SortOption.LikedSongDateLikedAsc
+            SortOption.LikedSongDateAdded,
+            SortOption.LikedSongDateAddedAsc,
+            SortOption.LikedSongDuration,
+            SortOption.LikedSongDurationAsc
         )
     );
 

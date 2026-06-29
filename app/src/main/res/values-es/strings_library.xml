@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Nuevo</string>
     <string name="library_cd_create_new_playlist">Crear lista nueva</string>
-    <string name="library_cd_import_m3u_playlist">Importar lista M3U</string>
     <string name="library_cd_locate_current_song">Localizar canción actual</string>
     <string name="library_storage_filter_all_songs">Todas</string>
     <string name="library_storage_filter_online">NUBE</string>

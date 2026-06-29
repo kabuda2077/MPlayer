@@ -130,7 +130,12 @@ class PluginRuntime @Inject constructor(
                         JSONObject()
                             .put("type", quality)
                             .put("musicInfo", info.toJson())
-                            .put("id", info.platformSongId)
+                            .put("id", info.sourceSongId)
+                            .put("songId", info.sourceSongId)
+                            .put("songmid", info.pluginSongMid())
+                            .put("songMid", info.pluginSongMid())
+                            .put("mid", info.pluginSongMid())
+                            .put("hash", info.pluginHash())
                             .put("name", info.title)
                             .put("singer", info.artist)
                             .put("albumName", info.album)
@@ -371,24 +376,22 @@ class PluginRuntime @Inject constructor(
 
     private fun parseCapabilities(info: JSONObject?): PluginCapabilities {
         val sourcesObject = info?.optJSONObject("sources") ?: return PluginCapabilities()
-        val sources = buildMap {
-            sourcesObject.keys().forEach { source ->
-                val sourceObject = sourcesObject.optJSONObject(source) ?: return@forEach
-                val actions = sourceObject.optJSONArray("actions")?.toStringSet().orEmpty()
-                val qualities = sourceObject.optJSONArray("qualitys")?.toStringSet()
-                    ?: sourceObject.optJSONArray("qualities")?.toStringSet()
-                    ?: emptySet()
-                put(
-                    source,
-                    PluginSourceCapability(
-                        source = source,
-                        actions = actions,
-                        qualities = qualities.mapTo(linkedSetOf()) { quality ->
-                            PluginQuality.canonicalize(quality) ?: quality
-                        }
-                    )
-                )
-            }
+        val sources = linkedMapOf<String, PluginSourceCapability>()
+        sourcesObject.keys().forEach { rawSource ->
+            val sourceObject = sourcesObject.optJSONObject(rawSource) ?: return@forEach
+            val canonicalSource = PluginSource.fromAlias(rawSource)?.lxSource ?: rawSource
+            val actions = sourceObject.optJSONArray("actions")?.toStringSet().orEmpty()
+            val qualities = sourceObject.optJSONArray("qualitys")?.toStringSet()
+                ?: sourceObject.optJSONArray("qualities")?.toStringSet()
+                ?: emptySet()
+            val current = sources[canonicalSource]
+            sources[canonicalSource] = PluginSourceCapability(
+                source = canonicalSource,
+                actions = current?.actions.orEmpty() + actions,
+                qualities = current?.qualities.orEmpty() + qualities.mapNotNullTo(linkedSetOf()) { quality ->
+                    PluginQuality.canonicalize(quality) ?: quality
+                }
+            )
         }
         return PluginCapabilities(sources)
     }
@@ -463,12 +466,18 @@ class PluginRuntime @Inject constructor(
     }
 }
 
-private fun PluginMusicInfo.toJson(): JSONObject =
-    JSONObject()
-        .put("id", id)
+private fun PluginMusicInfo.toJson(): JSONObject {
+    val hashValue = pluginHash()
+    val songMidValue = pluginSongMid()
+    return JSONObject()
+        .put("id", sourceSongId)
+        .put("songId", sourceSongId)
+        .put("originId", id)
         .put("source", source.lxSource)
-        .put("hash", platformSongId)
-        .put("songmid", platformSongId)
+        .put("hash", hashValue)
+        .put("songmid", songMidValue)
+        .put("songMid", songMidValue)
+        .put("mid", songMidValue)
         .put("name", title)
         .put("singer", artist)
         .put("albumName", album)
@@ -483,6 +492,19 @@ private fun PluginMusicInfo.toJson(): JSONObject =
         .put("albumArtUrl", albumArtUrl)
         .put("rawContentUri", rawContentUri)
         .put("platformSongId", platformSongId)
+        .put("sourceSongId", sourceSongId)
+        .put("sourceSongMid", sourceSongMid)
+        .put("sourceSongHash", sourceSongHash)
+}
+
+private fun PluginMusicInfo.pluginHash(): String? =
+    when (source) {
+        PluginSource.KUGOU -> sourceSongHash ?: sourceSongId
+        else -> sourceSongHash
+    }
+
+private fun PluginMusicInfo.pluginSongMid(): String =
+    sourceSongMid ?: sourceSongId
 
 private fun org.json.JSONArray.toStringSet(): Set<String> =
     (0 until length()).mapNotNull { optString(it).takeIf(String::isNotBlank) }.toSet()

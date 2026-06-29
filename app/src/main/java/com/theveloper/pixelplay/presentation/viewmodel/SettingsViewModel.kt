@@ -82,6 +82,7 @@ data class SettingsUiState(
     val enableOnlineTtmlLyrics: Boolean = true,
     val enableQqLyrics: Boolean = true,
     val localSongsAllowQqLyrics: Boolean = true,
+    val showLyricsRomanization: Boolean = false,
     val blockedDirectories: Set<String> = emptySet(),
     val availableModels: List<GeminiModel> = emptyList(),
     val isLoadingModels: Boolean = false,
@@ -170,6 +171,7 @@ private sealed interface SettingsUiUpdate {
         val enableOnlineTtmlLyrics: Boolean,
         val enableQqLyrics: Boolean,
         val localSongsAllowQqLyrics: Boolean,
+        val showLyricsRomanization: Boolean,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
         val animatedLyricsBlurEnabled: Boolean,
@@ -565,6 +567,7 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.enableOnlineTtmlLyricsFlow,
                 userPreferencesRepository.enableQqLyricsFlow,
                 userPreferencesRepository.localSongsAllowQqLyricsFlow,
+                userPreferencesRepository.showLyricsRomanizationFlow,
                 userPreferencesRepository.blockedDirectoriesFlow,
                 userPreferencesRepository.hapticsEnabledFlow,
                 userPreferencesRepository.animatedLyricsBlurEnabledFlow,
@@ -587,12 +590,13 @@ class SettingsViewModel @Inject constructor(
                     enableOnlineTtmlLyrics = values[11] as Boolean,
                     enableQqLyrics = values[12] as Boolean,
                     localSongsAllowQqLyrics = values[13] as Boolean,
-                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[14] as Set<String>),
-                    hapticsEnabled = values[15] as Boolean,
-                    animatedLyricsBlurEnabled = values[16] as Boolean,
-                    animatedLyricsBlurStrength = values[17] as Float,
-                    disableBlurAllOver = values[18] as Boolean,
-                    showScrollbar = values[19] as Boolean
+                    showLyricsRomanization = values[14] as Boolean,
+                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[15] as Set<String>),
+                    hapticsEnabled = values[16] as Boolean,
+                    animatedLyricsBlurEnabled = values[17] as Boolean,
+                    animatedLyricsBlurStrength = values[18] as Float,
+                    disableBlurAllOver = values[19] as Boolean,
+                    showScrollbar = values[20] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -611,6 +615,7 @@ class SettingsViewModel @Inject constructor(
                         enableOnlineTtmlLyrics = update.enableOnlineTtmlLyrics,
                         enableQqLyrics = update.enableQqLyrics,
                         localSongsAllowQqLyrics = update.localSongsAllowQqLyrics,
+                        showLyricsRomanization = update.showLyricsRomanization,
                         blockedDirectories = update.blockedDirectories,
                         hapticsEnabled = update.hapticsEnabled,
                         animatedLyricsBlurEnabled = update.animatedLyricsBlurEnabled,
@@ -1052,6 +1057,12 @@ class SettingsViewModel @Inject constructor(
     fun setAnimatedLyricsBlurStrength(strength: Float) {
         viewModelScope.launch {
             userPreferencesRepository.setAnimatedLyricsBlurStrength(strength)
+        }
+    }
+
+    fun setShowLyricsRomanization(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowLyricsRomanization(enabled)
         }
     }
 

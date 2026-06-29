@@ -515,7 +515,7 @@ class NavidromeApiService @Inject constructor(
         params["state"] = state
         params["playbackRate"] = playbackRate.toString()
         params["ignoreScrobble"] = ignoreScrobble.toString()
-        return requestAndParse("reportPlayback", params).map { Unit }
+        return requestAndParse("reportPlayback", params).map { }
     }
 
     /**

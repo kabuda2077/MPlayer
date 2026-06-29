@@ -240,6 +240,11 @@ interface MusicRepository {
     fun searchArtists(query: String): Flow<List<Artist>>
     suspend fun searchPlaylists(query: String): List<Playlist> // Mantener suspend, ya que no hay Flow aún
     fun searchAll(query: String, filterType: SearchFilterType): Flow<List<SearchResultItem>>
+    fun searchAll(
+        query: String,
+        filterType: SearchFilterType,
+        storageFilter: com.theveloper.pixelplay.data.model.StorageFilter
+    ): Flow<List<SearchResultItem>>
 
     // Search History
     suspend fun addSearchHistoryItem(query: String)

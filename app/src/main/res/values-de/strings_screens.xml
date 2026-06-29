@@ -117,7 +117,6 @@
     <string name="playlist_dialog_delete_title">Playlist löschen?</string>
     <string name="playlist_dialog_delete_body">Diese Playlist wirklich löschen?</string>
     <string name="playlist_action_set_default_transition">Standardübergang festlegen</string>
-    <string name="playlist_action_export_playlist">Playlist exportieren</string>
     <string name="playlist_song_duration_line">%1$s • %2$s</string>
     <string name="playlist_action_play_it">Abspielen</string>
     <string name="playlist_action_add_songs">Hinzufügen</string>

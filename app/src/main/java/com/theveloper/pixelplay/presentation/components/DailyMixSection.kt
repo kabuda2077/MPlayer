@@ -138,10 +138,7 @@ fun DailyMixSection(
                 onNavigateToArtist(song)
                 showSongInfoSheet = false
             },
-            onNavigateToGenre = {
-                onNavigateToGenre(song)
-                showSongInfoSheet = false
-            },
+            onNavigateToGenre = {},
             onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                 playerViewModel.editSongMetadata(
                     song,

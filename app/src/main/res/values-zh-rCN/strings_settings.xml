@@ -50,6 +50,9 @@
     <string name="settings_online_audio_cache_size_subtitle">当前占用 %1$s。</string>
     <string name="settings_action_clear_online_audio_cache">清空在线歌曲缓存</string>
     <string name="settings_online_audio_cache_cleared">已清空在线歌曲缓存</string>
+    <string name="settings_download_manager_title">下载管理</string>
+    <string name="settings_download_manager_subtitle">已下载 %1$d 首，占用 %2$s。</string>
+    <string name="settings_action_open_downloads">打开下载管理</string>
     <string name="settings_sync_scanning_section">同步与扫描</string>
     <string name="settings_refresh_library_title">刷新媒体库</string>
     <string name="settings_refresh_library_subtitle">扫描整个媒体库以查找新增和修改的文件。</string>
@@ -77,6 +80,8 @@
     <string name="settings_lyrics_enable_qq_subtitle">在线歌曲自动获取歌词，并允许手动在线搜索歌词。</string>
     <string name="settings_lyrics_local_allow_qq_title">本地歌曲允许使用 QQ 歌词</string>
     <string name="settings_lyrics_local_allow_qq_subtitle">本地文件没有内嵌或同目录歌词时，尝试使用 QQ 音乐补全歌词。</string>
+    <string name="settings_lyrics_show_romanization_title">显示罗马音</string>
+    <string name="settings_lyrics_show_romanization_subtitle">歌词包含拼音、罗马字等发音辅助时，在歌词界面中显示。</string>
     <string name="settings_reset_imported_lyrics_title">重置已导入的歌词</string>
     <string name="settings_reset_imported_lyrics_subtitle">从数据库中移除所有已导入的歌词。</string>
     <string name="settings_dialog_reset_imported_lyrics_title">重置已导入的歌词？</string>
@@ -218,7 +223,7 @@
     <string name="settings_navigation_bar_section">导航栏</string>
     <string name="settings_navbar_style_title">导航栏样式</string>
     <string name="settings_navbar_style_subtitle">选择导航栏的外观。</string>
-    <string name="settings_navbar_style_default">默认</string>
+    <string name="settings_navbar_style_default">悬浮模糊</string>
     <string name="settings_navbar_style_full_width">全宽</string>
     <string name="settings_compact_mode_title">紧凑模式</string>
     <string name="settings_compact_mode_subtitle">仅显示图标并降低导航栏高度。</string>

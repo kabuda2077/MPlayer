@@ -49,8 +49,8 @@ fun StreamingProviderSheet(
     onNavigateToNavidromeDashboard: () -> Unit = {},
     isJellyfinLoggedIn: Boolean = false,
     onNavigateToJellyfinDashboard: () -> Unit = {},
-    sheetState: SheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
+    sheetState: SheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded,
     )
 ) {
     val context = LocalContext.current

@@ -182,6 +182,15 @@ sealed class SortOption(
         methodKey = "album_date_added",
         direction = SortDirection.Descending
     )
+    object AlbumDateAddedAsc : SortOption(
+        storageKey = "album_date_added_asc",
+        displayName = "Date Added (Oldest First)",
+        displayNameRes = R.string.sort_display_date_added_oldest,
+        methodLabel = "Date Added",
+        methodLabelRes = R.string.sort_method_date_added,
+        methodKey = "album_date_added",
+        direction = SortDirection.Ascending
+    )
     object AlbumSizeAsc : SortOption(
         storageKey = "album_size_asc",
         displayName = "Fewest Songs",
@@ -219,6 +228,24 @@ sealed class SortOption(
         methodLabelRes = R.string.sort_method_name,
         methodKey = "artist_name",
         direction = SortDirection.Descending
+    )
+    object ArtistDateAdded : SortOption(
+        storageKey = "artist_date_added",
+        displayName = "Date Added",
+        displayNameRes = R.string.sort_display_date_added,
+        methodLabel = "Date Added",
+        methodLabelRes = R.string.sort_method_date_added,
+        methodKey = "artist_date_added",
+        direction = SortDirection.Descending
+    )
+    object ArtistDateAddedAsc : SortOption(
+        storageKey = "artist_date_added_asc",
+        displayName = "Date Added (Oldest First)",
+        displayNameRes = R.string.sort_display_date_added_oldest,
+        methodLabel = "Date Added",
+        methodLabelRes = R.string.sort_method_date_added,
+        methodKey = "artist_date_added",
+        direction = SortDirection.Ascending
     )
     object ArtistNumSongsDesc : SortOption(
         storageKey = "artist_num_songs_desc",
@@ -332,6 +359,42 @@ sealed class SortOption(
         methodKey = "liked_album",
         direction = SortDirection.Descending
     )
+    object LikedSongDateAdded : SortOption(
+        storageKey = "liked_date_added",
+        displayName = "Date Added",
+        displayNameRes = R.string.sort_display_date_added,
+        methodLabel = "Date Added",
+        methodLabelRes = R.string.sort_method_date_added,
+        methodKey = "liked_date_added",
+        direction = SortDirection.Descending
+    )
+    object LikedSongDateAddedAsc : SortOption(
+        storageKey = "liked_date_added_asc",
+        displayName = "Date Added (Oldest First)",
+        displayNameRes = R.string.sort_display_date_added_oldest,
+        methodLabel = "Date Added",
+        methodLabelRes = R.string.sort_method_date_added,
+        methodKey = "liked_date_added",
+        direction = SortDirection.Ascending
+    )
+    object LikedSongDuration : SortOption(
+        storageKey = "liked_duration",
+        displayName = "Duration",
+        displayNameRes = R.string.sort_display_duration,
+        methodLabel = "Duration",
+        methodLabelRes = R.string.sort_method_duration,
+        methodKey = "liked_duration",
+        direction = SortDirection.Descending
+    )
+    object LikedSongDurationAsc : SortOption(
+        storageKey = "liked_duration_asc",
+        displayName = "Duration (Shortest First)",
+        displayNameRes = R.string.sort_display_duration_shortest,
+        methodLabel = "Duration",
+        methodLabelRes = R.string.sort_method_duration,
+        methodKey = "liked_duration",
+        direction = SortDirection.Ascending
+    )
     object LikedSongDateLiked : SortOption(
         storageKey = "liked_date_liked",
         displayName = "Date Liked",
@@ -442,7 +505,21 @@ sealed class SortOption(
                 SongDateAdded,
                 SongDateAddedAsc,
                 SongDuration,
-                SongDurationAsc
+                SongDurationAsc,
+                ArtistNameAZ,
+                ArtistNameZA,
+                ArtistDateAdded,
+                ArtistDateAddedAsc,
+                ArtistNumSongsDesc,
+                ArtistNumSongsAsc,
+                AlbumTitleAZ,
+                AlbumTitleZA,
+                AlbumReleaseYear,
+                AlbumReleaseYearAsc,
+                AlbumDateAdded,
+                AlbumDateAddedAsc,
+                AlbumSizeDesc,
+                AlbumSizeAsc
             )
         }
 
@@ -450,13 +527,12 @@ sealed class SortOption(
             listOf(
                 AlbumTitleAZ,
                 AlbumTitleZA,
-                AlbumArtist,
-                AlbumArtistDesc,
                 AlbumReleaseYear,
                 AlbumReleaseYearAsc,
                 AlbumDateAdded,
-                AlbumSizeAsc,
-                AlbumSizeDesc
+                AlbumDateAddedAsc,
+                AlbumSizeDesc,
+                AlbumSizeAsc
             )
         }
 
@@ -464,6 +540,8 @@ sealed class SortOption(
             listOf(
                 ArtistNameAZ,
                 ArtistNameZA,
+                ArtistDateAdded,
+                ArtistDateAddedAsc,
                 ArtistNumSongsDesc,
                 ArtistNumSongsAsc
             )
@@ -497,8 +575,24 @@ sealed class SortOption(
                 LikedSongArtistDesc,
                 LikedSongAlbum,
                 LikedSongAlbumDesc,
-                LikedSongDateLiked,
-                LikedSongDateLikedAsc
+                LikedSongDateAdded,
+                LikedSongDateAddedAsc,
+                LikedSongDuration,
+                LikedSongDurationAsc,
+                ArtistNameAZ,
+                ArtistNameZA,
+                ArtistDateAdded,
+                ArtistDateAddedAsc,
+                ArtistNumSongsDesc,
+                ArtistNumSongsAsc,
+                AlbumTitleAZ,
+                AlbumTitleZA,
+                AlbumReleaseYear,
+                AlbumReleaseYearAsc,
+                AlbumDateAdded,
+                AlbumDateAddedAsc,
+                AlbumSizeDesc,
+                AlbumSizeAsc
             )
         }
 

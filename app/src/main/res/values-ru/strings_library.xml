@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">Создать</string>
     <string name="library_cd_create_new_playlist">Создать новый плейлист</string>
-    <string name="library_cd_import_m3u_playlist">Импортировать плейлист M3U</string>
     <string name="library_cd_locate_current_song">Найти текущий трек</string>
     <string name="library_storage_filter_all_songs">Все треки</string>
     <string name="library_storage_filter_online">ОБЛАКО</string>

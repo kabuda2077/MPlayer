@@ -17,6 +17,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1877,11 +1878,14 @@ fun SaveQueueAsPlaylistSheet(
     }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun QueuePlaylistSongItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     song: Song,
     isCurrentSong: Boolean,
+    isSelected: Boolean = false,
     isPlaying: Boolean? = null,
     isDragging: Boolean,
     onRemoveClick: () -> Unit,
@@ -1916,9 +1920,20 @@ fun QueuePlaylistSongItem(
         label = "elevationAnimation"
     )
 
-    val backgroundColor = colors.surfaceContainerLowest
-    val mvContainerColor = if (isCurrentSong) colors.tertiaryContainer else colors.surfaceContainerHigh
-    val mvContentColor = if (isCurrentSong) colors.onTertiaryContainer else colors.onSurface
+    val backgroundColor = when {
+        isSelected -> colors.primaryContainer
+        else -> colors.surfaceContainerLowest
+    }
+    val mvContainerColor = when {
+        isSelected -> colors.primary
+        isCurrentSong -> colors.tertiaryContainer
+        else -> colors.surfaceContainerHigh
+    }
+    val mvContentColor = when {
+        isSelected -> colors.onPrimary
+        isCurrentSong -> colors.onTertiaryContainer
+        else -> colors.onSurface
+    }
     val hapticView = LocalView.current
     val appHapticsConfig = LocalAppHapticsConfig.current
     val dismissScope = rememberCoroutineScope()
@@ -2012,11 +2027,21 @@ fun QueuePlaylistSongItem(
                 }
                 .padding(horizontal = 12.dp)
                 .clip(itemShape)
-                .clickable(
-                    enabled = currentOffsetPx == 0f
-                ) {
-                    onClick()
-                },
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            enabled = currentOffsetPx == 0f,
+                            onClick = onClick,
+                            onLongClick = onLongClick
+                        )
+                    } else {
+                        Modifier.clickable(
+                            enabled = currentOffsetPx == 0f
+                        ) {
+                            onClick()
+                        }
+                    }
+                ),
             shape = itemShape,
             color = backgroundColor,
             tonalElevation = elevation,

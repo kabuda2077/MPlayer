@@ -6,6 +6,9 @@ data class ResolvedStream(
     val expireAt: Long? = null,
     val isTrial: Boolean = false,
     val quality: String? = null,
+    val source: String? = null,
+    val candidateId: String? = null,
+    val candidateMatchScore: Double? = null,
     val mimeType: String? = null,
     val cacheKeySuffix: String? = null
 ) {

@@ -75,6 +75,8 @@ class LibraryStateHolder @Inject constructor(
     val currentSongSortOption = _currentSongSortOption.asStateFlow()
 
     // Filter Options
+    private val _selectedStorageFilter = MutableStateFlow(com.theveloper.pixelplay.data.model.StorageFilter.ALL)
+    private val _routeStorageFilter = MutableStateFlow<com.theveloper.pixelplay.data.model.StorageFilter?>(null)
     private val _currentStorageFilter = MutableStateFlow(com.theveloper.pixelplay.data.model.StorageFilter.ALL)
     val currentStorageFilter = _currentStorageFilter.asStateFlow()
 
@@ -85,11 +87,13 @@ class LibraryStateHolder @Inject constructor(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val effectiveStorageFilter: kotlinx.coroutines.flow.Flow<com.theveloper.pixelplay.data.model.StorageFilter> =
         kotlinx.coroutines.flow.combine(
-            _currentStorageFilter,
+            _selectedStorageFilter,
+            _routeStorageFilter,
             userPreferencesRepository.hideLocalMediaFlow
-        ) { filter, hideLocal ->
-            if (hideLocal) com.theveloper.pixelplay.data.model.StorageFilter.ONLINE else filter
+        ) { filter, routeFilter, hideLocal ->
+            routeFilter ?: if (hideLocal) com.theveloper.pixelplay.data.model.StorageFilter.ONLINE else filter
         }
+            .distinctUntilChanged()
 
     private fun effectiveFoldersStorageFilter(
         selectedFilter: com.theveloper.pixelplay.data.model.StorageFilter
@@ -119,7 +123,7 @@ class LibraryStateHolder @Inject constructor(
     private val _currentFolderSortOption = MutableStateFlow<SortOption>(SortOption.FolderNameAZ)
     val currentFolderSortOption = _currentFolderSortOption.asStateFlow()
 
-    private val _currentFavoriteSortOption = MutableStateFlow<SortOption>(SortOption.LikedSongDateLiked)
+    private val _currentFavoriteSortOption = MutableStateFlow<SortOption>(SortOption.LikedSongTitleAZ)
     val currentFavoriteSortOption = _currentFavoriteSortOption.asStateFlow()
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -216,10 +220,16 @@ class LibraryStateHolder @Inject constructor(
             _currentFolderSortOption.value = SortOption.FOLDERS.find { it.storageKey == folderSortKey } ?: SortOption.FolderNameAZ
 
             val likedSortKey = userPreferencesRepository.likedSongsSortOptionFlow.first()
-            _currentFavoriteSortOption.value = SortOption.LIKED.find { it.storageKey == likedSortKey } ?: SortOption.LikedSongDateLiked
+            _currentFavoriteSortOption.value = SortOption.LIKED.find { it.storageKey == likedSortKey } ?: SortOption.LikedSongTitleAZ
 
             // Restore last storage filter (All / Cloud / Local)
-            _currentStorageFilter.value = userPreferencesRepository.lastStorageFilterFlow.first()
+            _selectedStorageFilter.value = userPreferencesRepository.lastStorageFilterFlow.first()
+        }
+
+        scope.launch {
+            effectiveStorageFilter.collect { filter ->
+                _currentStorageFilter.value = filter
+            }
         }
     }
 
@@ -457,6 +467,11 @@ class LibraryStateHolder @Inject constructor(
                     .thenBy { it.title.lowercase() }
                     .thenBy { it.id }
             )
+            SortOption.AlbumDateAddedAsc -> albums.sortedWith(
+                compareBy<Album> { it.dateAdded }
+                    .thenBy { it.title.lowercase() }
+                    .thenBy { it.id }
+            )
             SortOption.AlbumSizeAsc -> albums.sortedWith(
                 compareBy<Album> { it.songCount }
                     .thenBy { it.title.lowercase() }
@@ -559,10 +574,14 @@ class LibraryStateHolder @Inject constructor(
     }
 
     fun setStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter) {
-        _currentStorageFilter.value = filter
+        _selectedStorageFilter.value = filter
         scope?.launch {
             userPreferencesRepository.saveLastStorageFilter(filter)
         }
+    }
+
+    fun setRouteStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter?) {
+        _routeStorageFilter.value = filter
     }
 
     @Suppress("DEPRECATION")

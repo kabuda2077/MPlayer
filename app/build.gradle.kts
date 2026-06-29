@@ -224,6 +224,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.material)
+    implementation(libs.miuix.blur)
     implementation(libs.androidx.appcompat)
 
     // DI & Navigation

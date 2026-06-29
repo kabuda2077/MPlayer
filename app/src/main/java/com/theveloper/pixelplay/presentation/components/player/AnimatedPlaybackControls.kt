@@ -181,22 +181,23 @@ fun AnimatedPlaybackControls(
                 animationSpec = defaultSpatialDpSpec,
                 label = "playCorner"
             )
+            val playPauseShape = AbsoluteSmoothCornerShape(
+                cornerRadiusTL = playCorner,
+                smoothnessAsPercentTR = 60,
+                cornerRadiusBL = playCorner,
+                smoothnessAsPercentTL = 60,
+                cornerRadiusTR = playCorner,
+                smoothnessAsPercentBL = 60,
+                cornerRadiusBR = playCorner,
+                smoothnessAsPercentBR = 60
+            )
             Box(
                 modifier = Modifier
                     .weight(playWeight)
                     .fillMaxHeight()
                     .graphicsLayer {
                         clip = true
-                        shape = AbsoluteSmoothCornerShape(
-                            cornerRadiusTL = playCorner,
-                            smoothnessAsPercentTR = 60,
-                            cornerRadiusBL = playCorner,
-                            smoothnessAsPercentTL = 60,
-                            cornerRadiusTR = playCorner,
-                            smoothnessAsPercentBL = 60,
-                            cornerRadiusBR = playCorner,
-                            smoothnessAsPercentBR = 60
-                        )
+                        shape = playPauseShape
                     }
                     .background(colorPlayPause)
                     .clickable {

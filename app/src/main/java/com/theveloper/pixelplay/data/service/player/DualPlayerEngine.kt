@@ -67,6 +67,8 @@ import okhttp3.OkHttpClient
 
 import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
 import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
+import com.theveloper.pixelplay.data.plugin.KugouStreamProxy
+import com.theveloper.pixelplay.data.plugin.KuwoStreamProxy
 import com.theveloper.pixelplay.data.qqmusic.QqMusicStreamProxy
 import androidx.core.net.toUri
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
@@ -240,6 +242,8 @@ class DualPlayerEngine @Inject constructor(
     private val telegramStreamProxy: com.theveloper.pixelplay.data.telegram.TelegramStreamProxy,
     private val neteaseStreamProxy: NeteaseStreamProxy,
     private val qqMusicStreamProxy: QqMusicStreamProxy,
+    private val kugouStreamProxy: KugouStreamProxy,
+    private val kuwoStreamProxy: KuwoStreamProxy,
     private val navidromeStreamProxy: NavidromeStreamProxy,
     private val jellyfinStreamProxy: com.theveloper.pixelplay.data.jellyfin.JellyfinStreamProxy,
     private val gdriveStreamProxy: com.theveloper.pixelplay.data.gdrive.GDriveStreamProxy,
@@ -258,10 +262,10 @@ class DualPlayerEngine @Inject constructor(
         private const val POST_TRANSITION_OFFLOAD_GUARD_MS = 2_000L
         private const val MAX_AUXILIARY_TIMELINE_ITEMS = 200
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
-        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive")
+        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "kugou", "kuwo", "navidrome", "jellyfin", "gdrive")
         // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
         // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
-        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive")
+        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "kugou", "kuwo", "navidrome", "jellyfin", "gdrive")
         private val LOCAL_PROXY_HOSTS = setOf("127.0.0.1", "localhost", "0.0.0.0", "::1")
     }
 
@@ -1243,6 +1247,8 @@ class DualPlayerEngine @Inject constructor(
             "telegram" -> resolveTelegramUriAsync(canonicalUri, uriString)
             "netease" -> resolveNeteaseUriAsync(uriString)
             "qqmusic" -> resolveQqMusicUriAsync(uriString)
+            "kugou" -> resolveKugouUriAsync(uriString)
+            "kuwo" -> resolveKuwoUriAsync(uriString)
             "navidrome" -> resolveNavidromeUriAsync(uriString)
             "jellyfin" -> resolveJellyfinUriAsync(uriString)
             "gdrive" -> resolveGDriveUriAsync(uriString)
@@ -1269,6 +1275,8 @@ class DualPlayerEngine @Inject constructor(
         return when (route) {
             "netease" -> id.toLongOrNull()?.let { Uri.parse("netease://$it") }
             "qqmusic" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("qqmusic://$it") }
+            "kugou" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("kugou://$it") }
+            "kuwo" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("kuwo://$it") }
             "navidrome" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("navidrome://$it") }
             "jellyfin" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("jellyfin://$it") }
             "gdrive" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("gdrive://$it") }
@@ -1281,6 +1289,8 @@ class DualPlayerEngine @Inject constructor(
         val proxyUrl = when (cloudUri.scheme) {
             "netease" -> neteaseStreamProxy.resolveNeteaseUri(cloudUri.toString())
             "qqmusic" -> qqMusicStreamProxy.resolveQqMusicUri(cloudUri.toString())
+            "kugou" -> kugouStreamProxy.resolveKugouUri(cloudUri.toString())
+            "kuwo" -> kuwoStreamProxy.resolveKuwoUri(cloudUri.toString())
             "navidrome" -> navidromeStreamProxy.resolveNavidromeUri(cloudUri.toString())
             "jellyfin" -> jellyfinStreamProxy.resolveJellyfinUri(cloudUri.toString())
             "gdrive" -> gdriveStreamProxy.resolveGDriveUri(cloudUri.toString())
@@ -1321,6 +1331,18 @@ class DualPlayerEngine @Inject constructor(
         if (!qqMusicStreamProxy.ensureReady(5_000L)) return@withContext null
         qqMusicStreamProxy.warmUpStreamUrl(uriString)
         qqMusicStreamProxy.resolveQqMusicUri(uriString)?.let { Uri.parse(it) }
+    }
+
+    private suspend fun resolveKugouUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
+        if (!kugouStreamProxy.ensureReady(5_000L)) return@withContext null
+        kugouStreamProxy.warmUpStreamUrl(uriString)
+        kugouStreamProxy.resolveKugouUri(uriString)?.let { Uri.parse(it) }
+    }
+
+    private suspend fun resolveKuwoUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
+        if (!kuwoStreamProxy.ensureReady(5_000L)) return@withContext null
+        kuwoStreamProxy.warmUpStreamUrl(uriString)
+        kuwoStreamProxy.resolveKuwoUri(uriString)?.let { Uri.parse(it) }
     }
 
     private suspend fun resolveNavidromeUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {

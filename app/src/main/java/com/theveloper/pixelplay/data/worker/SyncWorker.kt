@@ -29,6 +29,10 @@ import com.theveloper.pixelplay.data.database.resolveAlbumArtUri
 import com.theveloper.pixelplay.data.database.serializeArtistRefs
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
+import com.theveloper.pixelplay.data.download.DownloadDao
+import com.theveloper.pixelplay.data.download.DownloadEntity
+import com.theveloper.pixelplay.data.download.DownloadStatus
+import com.theveloper.pixelplay.data.download.DownloadStorageMode
 import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.media.AudioMetadataReader
@@ -79,6 +83,7 @@ constructor(
         private val telegramDao: TelegramDao,
         private val neteaseDao: NeteaseDao,
         private val qqMusicDao: QqMusicDao,
+        private val downloadDao: DownloadDao,
         private val navidromeRepository: NavidromeRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -175,6 +180,8 @@ constructor(
                     // Detect and remove deleted songs efficiently using ID comparison
                     // We do this for INCREMENTAL and FULL modes. REBUILD clears everything anyway.
                     if (syncMode != SyncMode.REBUILD) {
+                        musicDao.repairSourceTypesFromContentUris()
+
                         // Only compare MediaStore-backed songs; cloud sources are excluded.
                         val localSongIds = musicDao.getAllMediaStoreSongIds().toHashSet()
                         val mediaStoreIds = fetchMediaStoreIds(directoryResolver)
@@ -800,7 +807,7 @@ constructor(
             existing.albumName == raw.album &&
             existing.albumId == raw.albumId &&
             existing.artistId == raw.artistId &&
-            existing.duration == raw.duration &&
+                (existing.duration == raw.duration || (raw.duration <= 0L && existing.duration > 0L)) &&
             existing.trackNumber == raw.trackNumber &&
             existing.discNumber == raw.discNumber &&
             existing.year == raw.year &&
@@ -819,6 +826,14 @@ constructor(
 
         val deepScan = forceMetadata
         val genreMap = fetchGenreMap() // Load genres upfront
+        val completedPublicDownloadsByUri = downloadDao.getAll()
+            .asSequence()
+            .filter {
+                it.status == DownloadStatus.COMPLETED &&
+                    it.storageMode == DownloadStorageMode.PUBLIC_MEDIASTORE &&
+                    !it.publicUri.isNullOrBlank()
+            }
+            .associateBy { it.publicUri.orEmpty() }
 
         val projectionList = mutableListOf(
                 MediaStore.Audio.Media._ID,
@@ -862,14 +877,15 @@ constructor(
         // Phase 1: Fast cursor iteration to collect raw data
         val rawDataList = mutableListOf<RawSongData>()
 
-        contentResolver.query(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        projection,
-                        selection,
-                        selectionArgs,
-                        null
-                )
-                ?.use { cursor ->
+        suspend fun collectRawSongs(querySelection: String?, queryArgs: Array<String>?) {
+            contentResolver.query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            projection,
+                            querySelection,
+                            queryArgs,
+                            null
+                    )
+                    ?.use { cursor ->
                     val totalCount = cursor.count
                     onProgress(0, totalCount, SyncProgress.SyncPhase.FETCHING_MEDIASTORE.ordinal)
 
@@ -940,6 +956,52 @@ constructor(
                         )
                     }
                 }
+        }
+
+        collectRawSongs(selection, selectionArgs)
+
+        if (rawDataList.isEmpty()) {
+            val missingDurationSelection =
+                "(${MediaStore.Audio.Media.DURATION} IS NULL OR ${MediaStore.Audio.Media.DURATION} <= 0) " +
+                    "AND COALESCE(${MediaStore.Audio.Media.TITLE}, '') != '' " +
+                    "AND ${MediaStore.Audio.Media.DATA} IS NOT NULL"
+            collectRawSongs(missingDurationSelection, null)
+            if (rawDataList.isNotEmpty()) {
+                Log.i(TAG, "Recovered ${rawDataList.size} MediaStore songs with missing duration")
+            }
+        }
+
+        if (rawDataList.isEmpty()) {
+            collectRawSongs(null, null)
+            if (rawDataList.isNotEmpty()) {
+                Log.i(TAG, "Recovered ${rawDataList.size} MediaStore songs from unfiltered audio query")
+            }
+        }
+
+        if (rawDataList.isEmpty()) {
+            val visibleAudioIds = mutableListOf<Long>()
+            contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Media._ID),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                while (cursor.moveToNext()) {
+                    visibleAudioIds.add(cursor.getLong(idCol))
+                }
+            }
+            if (visibleAudioIds.isNotEmpty()) {
+                Log.i(TAG, "MediaStore ID-only query found ${visibleAudioIds.size} songs; retrying details by id")
+                visibleAudioIds.chunked(200).forEach { ids ->
+                    collectRawSongs(
+                        "${MediaStore.Audio.Media._ID} IN (${ids.joinToString(",")})",
+                        null
+                    )
+                }
+            }
+        }
 
         if (rawDataList.isEmpty()) {
             Log.i(TAG, "MediaStore cursor produced 0 raw songs after directory filtering")
@@ -964,7 +1026,8 @@ constructor(
                 
                 batch.forEach { raw ->
                     val existing = existingMap[raw.id]
-                    if (!isSongUnchanged(raw, existing)) {
+                    val publicUri = contentUriStringForMediaId(raw.id)
+                    if (publicUri in completedPublicDownloadsByUri || !isSongUnchanged(raw, existing)) {
                         results.add(raw)
                     }
                 }
@@ -1008,22 +1071,28 @@ constructor(
                                     raw = raw,
                                     genreMap = genreMap,
                                     deepScan = deepScan,
-                                    forceAlbumArtRefresh = deepScan || localSong != null
+                                    forceAlbumArtRefresh = deepScan || localSong != null,
+                                    completedPublicDownloadsByUri = completedPublicDownloadsByUri
                                 )
 
+                            val isManagedDownload = mediaStoreSong.contentUriString in completedPublicDownloadsByUri
                             val song = if (localSong != null) {
                                 // Preserve user-edited fields
                                 mediaStoreSong.copy(
                                     dateAdded = localSong.dateAdded,
                                     lyrics = localSong.lyrics,
-                                    title = if (localSong.title.isNotBlank() && localSong.title != mediaStoreSong.title) localSong.title else mediaStoreSong.title,
-                                    artistName = choosePreferredArtistName(
-                                        localArtistName = localSong.artistName,
-                                        mediaStoreArtistName = mediaStoreSong.artistName,
-                                        artistDelimiters = artistDelimiters,
-                                        wordDelimiters = artistWordDelimiters
-                                    ),
-                                    albumName = if (localSong.albumName.isNotBlank() && localSong.albumName != mediaStoreSong.albumName) localSong.albumName else mediaStoreSong.albumName,
+                                    title = if (!isManagedDownload && localSong.title.isNotBlank() && localSong.title != mediaStoreSong.title) localSong.title else mediaStoreSong.title,
+                                    artistName = if (isManagedDownload) {
+                                        mediaStoreSong.artistName
+                                    } else {
+                                        choosePreferredArtistName(
+                                            localArtistName = localSong.artistName,
+                                            mediaStoreArtistName = mediaStoreSong.artistName,
+                                            artistDelimiters = artistDelimiters,
+                                            wordDelimiters = artistWordDelimiters
+                                        )
+                                    },
+                                    albumName = if (!isManagedDownload && localSong.albumName.isNotBlank() && localSong.albumName != mediaStoreSong.albumName) localSong.albumName else mediaStoreSong.albumName,
                                     genre = localSong.genre ?: mediaStoreSong.genre,
                                     trackNumber = if (localSong.trackNumber != 0) localSong.trackNumber else mediaStoreSong.trackNumber,
                                     discNumber = localSong.discNumber ?: mediaStoreSong.discNumber,
@@ -1042,7 +1111,7 @@ constructor(
                     }
                 }.awaitAll()
             }
-            songs.addAll(batchResults)
+            songs.addAll(batchResults.filter(::shouldKeepProcessedLocalSong))
         }
 
         Trace.endSection()
@@ -1071,12 +1140,12 @@ constructor(
             raw: RawSongData,
             genreMap: Map<Long, String>,
             deepScan: Boolean,
-            forceAlbumArtRefresh: Boolean
+            forceAlbumArtRefresh: Boolean,
+            completedPublicDownloadsByUri: Map<String, DownloadEntity>
     ): SongEntity {
         val parentDir = java.io.File(raw.filePath).parent ?: ""
-        val contentUriString =
-                ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, raw.id)
-                        .toString()
+        val contentUriString = contentUriStringForMediaId(raw.id)
+        val downloadMetadata = completedPublicDownloadsByUri[contentUriString]
 
         var albumArtUriString =
                 AlbumArtUtils.getAlbumArtUriForLibraryScan(
@@ -1098,14 +1167,17 @@ constructor(
         var discNumber = raw.discNumber
         var year = raw.year
         var genre: String? = genreMap[raw.id] ?: raw.genre // Use mapped genre as default, or direct genre from main cursor
+        var duration = raw.duration
 
         val shouldAugmentMetadata =
                 deepScan ||
+                        raw.duration <= 0L ||
                         raw.filePath.endsWith(".wav", true) ||
                         raw.filePath.endsWith(".opus", true) ||
                         raw.filePath.endsWith(".ogg", true) ||
                         raw.filePath.endsWith(".oga", true) ||
                         raw.filePath.endsWith(".aiff", true) ||
+                        downloadMetadata != null ||
                         // Fallback: if MediaStore returned default/missing metadata,
                         // try TagLib+JAudioTagger to read actual tags from the file.
                         // MediaStore uses "<unknown>" for unreadable fields;
@@ -1129,11 +1201,28 @@ constructor(
                         if (meta.trackNumber != null) trackNumber = meta.trackNumber
                         if (meta.discNumber != null) discNumber = meta.discNumber
                         if (meta.year != null) year = meta.year
+                        if (meta.durationMs != null && meta.durationMs > 0L) duration = meta.durationMs
 
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to read metadata via TagLib for ${raw.filePath}", e)
                 }
+            }
+        }
+        if (downloadMetadata != null) {
+            if (downloadMetadata.title.isNotBlank()) title = downloadMetadata.title
+            if (downloadMetadata.artist.isNotBlank()) artist = downloadMetadata.artist
+            if (downloadMetadata.album.isNotBlank()) album = downloadMetadata.album
+            albumArtist = resolveAlbumArtist(
+                rawAlbumArtist = albumArtist,
+                metadataAlbumArtist = downloadMetadata.artist
+            )
+            if (downloadMetadata.duration > 0L) duration = downloadMetadata.duration
+            if (
+                !downloadMetadata.albumArtUriString.isNullOrBlank() &&
+                !AlbumArtUtils.hasCachedAlbumArt(applicationContext, raw.id)
+            ) {
+                albumArtUriString = downloadMetadata.albumArtUriString
             }
         }
 
@@ -1147,7 +1236,7 @@ constructor(
                 albumId = raw.albumId,
                 contentUriString = contentUriString,
                 albumArtUriString = albumArtUriString,
-                duration = raw.duration,
+                duration = duration,
                 genre = genre,
                 filePath = raw.filePath,
                 parentDirectoryPath = parentDir,
@@ -1164,6 +1253,21 @@ constructor(
                 bitrate = audioMetadata?.bitrate,
                 sourceType = SourceType.LOCAL
         )
+    }
+
+    private fun contentUriStringForMediaId(mediaId: Long): String =
+        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaId).toString()
+
+    private fun shouldKeepProcessedLocalSong(song: SongEntity): Boolean {
+        if (song.duration >= minSongDurationMs) return true
+        val path = song.filePath.lowercase()
+        val mimeType = song.mimeType?.lowercase().orEmpty()
+        return path.endsWith(".mid") ||
+            path.endsWith(".midi") ||
+            mimeType == "audio/midi" ||
+            mimeType == "audio/x-midi" ||
+            mimeType == "audio/sp-midi" ||
+            mimeType == "audio/x-mid"
     }
 
     /**

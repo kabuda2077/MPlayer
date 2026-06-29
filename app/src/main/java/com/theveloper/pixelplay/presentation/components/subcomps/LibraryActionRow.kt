@@ -3,13 +3,9 @@ package com.theveloper.pixelplay.presentation.components.subcomps
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -68,7 +64,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,9 +84,7 @@ fun LibraryActionRow(
     onLocateClick: () -> Unit = {},
     showSortButton: Boolean,
     showLocateButton: Boolean = false,
-    showImportButton: Boolean = true,
     isPlaylistTab: Boolean,
-    onImportM3uClick: () -> Unit = {},
     isFoldersTab: Boolean,
     modifier: Modifier = Modifier,
     // Breadcrumb parameters
@@ -106,8 +99,6 @@ fun LibraryActionRow(
     currentStorageFilter: com.theveloper.pixelplay.data.model.StorageFilter = com.theveloper.pixelplay.data.model.StorageFilter.ALL,
     onStorageFilterClick: () -> Unit = {}
 ) {
-    val shouldShowImport = isPlaylistTab && showImportButton
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -139,17 +130,12 @@ fun LibraryActionRow(
                 )
             } else {
                 val outerCorner = 26.dp
-                val innerCorner = 8.dp
 
                 val newButtonEndCorner by animateDpAsState(
-                    targetValue = if (shouldShowImport) innerCorner else outerCorner,
+                    targetValue = outerCorner,
                     label = "NewButtonEndCorner"
                 )
 
-                val importButtonStartCorner by animateDpAsState(
-                    targetValue = innerCorner,
-                    label = "ImportButtonStartCorner"
-                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Determine button colors based on shuffle state (not for playlist tab)
                     val buttonContainerColor = MaterialTheme.colorScheme.tertiaryContainer
@@ -197,70 +183,6 @@ fun LibraryActionRow(
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Medium
                             )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = shouldShowImport,
-                        enter = fadeIn() + expandHorizontally(
-                            expandFrom = Alignment.Start,
-                            clip = false, // <— evita el 「corte」 durante la expansión
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
-                        ),
-                        exit = fadeOut() + shrinkHorizontally(
-                            shrinkTowards = Alignment.Start,
-                            clip = false, // <— evita el 「corte」 durante la expansión
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
-                        )
-                    ) {
-                        Row(modifier = Modifier.height(genHeight), verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            FilledTonalButton(
-                                onClick = onImportM3uClick,
-                                shape = RoundedCornerShape(
-                                    topStart = importButtonStartCorner,
-                                    bottomStart = importButtonStartCorner,
-                                    topEnd = 26.dp,
-                                    bottomEnd = 26.dp
-                                ),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = 4.dp,
-                                    pressedElevation = 6.dp
-                                ),
-                                contentPadding = PaddingValues(
-                                    horizontal = 14.dp,
-                                    vertical = 10.dp
-                                ),
-                                modifier = Modifier.height(genHeight)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.rounded_upload_file_24),
-                                        contentDescription = stringResource(R.string.library_cd_import_m3u_playlist),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.common_import),
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
                         }
                     }
                 }

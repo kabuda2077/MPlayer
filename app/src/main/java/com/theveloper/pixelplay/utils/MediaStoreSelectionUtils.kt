@@ -12,7 +12,6 @@ private val MIDI_EXTENSION_SELECTION_ARGS = arrayOf(
     "%.mid",
     "%.midi"
 )
-
 /**
  * Builds the baseline MediaStore selection for user-facing local audio.
  *
@@ -20,8 +19,12 @@ private val MIDI_EXTENSION_SELECTION_ARGS = arrayOf(
  * and scanners leave valid songs flagged as non-music, which makes library sync and folder
  * browsing appear to "cap out" below the real file count for specific users.
  *
+ * Some Android MediaStore implementations index valid FLAC/MP3/etc. entries with null/zero
+ * duration. Those entries are allowed through the first query and their real duration is recovered
+ * during sync before they are inserted into the app database.
+ *
  * MIDI files may be indexed with incomplete duration metadata, so explicit MIDI MIME/path
- * matches bypass the duration floor and are left to playback capability checks.
+ * matches always bypass the duration floor and are left to playback capability checks.
  */
 fun buildLocalAudioSelection(minDurationMs: Int): Pair<String, Array<String>> {
     val clampedMinDurationMs = minDurationMs.coerceAtLeast(0)
@@ -32,6 +35,8 @@ fun buildLocalAudioSelection(minDurationMs: Int): Pair<String, Array<String>> {
     val selection = buildString {
         append("(")
         append("${MediaStore.Audio.Media.DURATION} >= ?")
+        append(" OR ${MediaStore.Audio.Media.DURATION} IS NULL")
+        append(" OR ${MediaStore.Audio.Media.DURATION} <= 0")
         append(" OR LOWER(COALESCE(${MediaStore.Audio.Media.MIME_TYPE}, '')) IN ($midiMimePlaceholders)")
         append(" OR $midiExtensionSelection")
         append(")")

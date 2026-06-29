@@ -13,6 +13,7 @@ import com.theveloper.pixelplay.data.database.NeteasePlaylistEntity
 import com.theveloper.pixelplay.data.database.NeteaseSongEntity
 import com.theveloper.pixelplay.data.database.SongArtistCrossRef
 import com.theveloper.pixelplay.data.database.SongEntity
+import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.toSong
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
@@ -624,6 +625,7 @@ class NeteaseRepository @Inject constructor(
             }
         }
         val album = track.optJSONObject("al")
+        val albumArtUrl = normalizeArtworkUrl(album?.optString("picUrl"))
 
         return NeteaseSongEntity(
             id = "${playlistId}_${track.optLong("id")}",
@@ -634,7 +636,7 @@ class NeteaseRepository @Inject constructor(
             album = album?.optString("name", "Unknown Album") ?: "Unknown Album",
             albumId = album?.optLong("id") ?: -1L,
             duration = track.optLong("dt"),
-            albumArtUrl = album?.optString("picUrl"),
+            albumArtUrl = albumArtUrl,
             mimeType = "audio/mpeg",
             bitrate = null,
             dateAdded = track.optLong("publishTime", System.currentTimeMillis())
@@ -655,6 +657,7 @@ class NeteaseRepository @Inject constructor(
         }
         val album = track.optJSONObject("al")
         val neteaseId = track.optLong("id")
+        val albumArtUrl = normalizeArtworkUrl(album?.optString("picUrl"))
 
         return Song(
             id = "netease_$neteaseId",
@@ -665,7 +668,7 @@ class NeteaseRepository @Inject constructor(
             albumId = album?.optLong("id") ?: -1L,
             path = "",
             contentUriString = "netease://$neteaseId",
-            albumArtUriString = album?.optString("picUrl"),
+            albumArtUriString = albumArtUrl,
             duration = track.optLong("dt"),
             mimeType = "audio/mpeg",
             bitrate = null,
@@ -676,6 +679,15 @@ class NeteaseRepository @Inject constructor(
             isFavorite = false,
             neteaseId = neteaseId
         )
+    }
+
+    private fun normalizeArtworkUrl(value: String?): String? {
+        val trimmed = value?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return if (trimmed.startsWith("http://", ignoreCase = true)) {
+            "https://${trimmed.removePrefix("http://")}"
+        } else {
+            trimmed
+        }
     }
 
     private suspend fun syncUnifiedLibrarySongsFromNetease() {
@@ -760,7 +772,8 @@ class NeteaseRepository @Inject constructor(
                     bitrate = neteaseSong.bitrate,
                     sampleRate = null,
                     telegramChatId = null,
-                    telegramFileId = null
+                    telegramFileId = null,
+                    sourceType = SourceType.NETEASE
                 )
             )
         }

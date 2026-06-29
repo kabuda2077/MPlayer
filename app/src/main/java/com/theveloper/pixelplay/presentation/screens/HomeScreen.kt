@@ -42,7 +42,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -252,8 +253,8 @@ fun HomeScreen(
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
     var cleanInstallDisclaimerDismissedThisSession by rememberSaveable { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
-    val betaSheetState = rememberModalBottomSheetState()
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
+    val betaSheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
     val scope = rememberCoroutineScope()
     LocalContext.current
 
@@ -444,11 +445,7 @@ fun HomeScreen(
                                     patternToPop = Screen.ArtistDetail.route
                                 )
                             },
-                            onNavigateToGenre = { song ->
-                                song.genre?.let {
-                                    navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                                }
-                            },
+                            onNavigateToGenre = {},
                             playerViewModel = playerViewModel
                         )
                     }

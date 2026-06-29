@@ -73,15 +73,11 @@ object MediaItemBuilder {
         "content",
         "file",
         "android.resource",
-        "http",
-        "https",
     )
     private val SUPPORTED_EXTERNAL_ARTWORK_SCHEMES = setOf(
         "content",
         "file",
         "android.resource",
-        "http",
-        "https",
     )
     const val EXTERNAL_EXTRA_FLAG = EXTERNAL_EXTRA_PREFIX + "FLAG"
     const val EXTERNAL_EXTRA_ALBUM = EXTERNAL_EXTRA_PREFIX + "ALBUM"

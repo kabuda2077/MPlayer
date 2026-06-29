@@ -68,7 +68,6 @@
     <!-- Library action row -->
     <string name="library_action_new">새로 만들기</string>
     <string name="library_cd_create_new_playlist">새 플레이리스트 생성</string>
-    <string name="library_cd_import_m3u_playlist">M3U 플레이리스트 가져오기</string>
     <string name="library_cd_locate_current_song">현재 곡 위치 찾기</string>
     <string name="library_storage_filter_all_songs">모든 곡</string>
     <string name="library_storage_filter_online">온라인</string>

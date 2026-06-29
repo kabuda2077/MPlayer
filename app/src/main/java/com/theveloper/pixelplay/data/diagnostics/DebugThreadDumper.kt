@@ -36,12 +36,12 @@ object DebugThreadDumper {
                 interestingNames.any { name -> thread.name.contains(name, ignoreCase = true) }
             }
             .toSortedMap(
-                compareBy<Thread>({ it.name }, { it.id })
+                compareBy<Thread>({ it.name }, { it.debugId })
             )
 
         Log.w(TAG, "===== thread dump start reason=$reason count=${stacks.size} =====")
         stacks.forEach { (thread, stack) ->
-            val header = "\"${thread.name}\" id=${thread.id} state=${thread.state} priority=${thread.priority}"
+            val header = "\"${thread.name}\" id=${thread.debugId} state=${thread.state} priority=${thread.priority}"
             Log.w(TAG, header)
             stack.take(MAX_STACK_LINES_PER_THREAD).forEach { frame ->
                 Log.w(TAG, "    at $frame")
@@ -56,4 +56,8 @@ object DebugThreadDumper {
     private const val MAX_STACK_LINES_PER_THREAD = 48
     private const val ASYNC_SAMPLE_COUNT = 4
     private const val ASYNC_SAMPLE_DELAY_MS = 500L
+
+    @Suppress("DEPRECATION")
+    private val Thread.debugId: Long
+        get() = id
 }

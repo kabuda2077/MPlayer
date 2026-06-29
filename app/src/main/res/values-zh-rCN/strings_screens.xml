@@ -87,6 +87,12 @@
     <string name="search_nothing_found">未找到任何内容</string>
     <string name="search_try_different_or_filters">尝试不同的搜索词或检查您的过滤条件。</string>
     <string name="search_no_results_found">未找到结果。</string>
+    <string name="search_mode_library">库内</string>
+    <string name="search_mode_online">在线</string>
+    <string name="search_online_songs">在线歌曲</string>
+    <string name="search_online_error">在线搜索失败。</string>
+    <string name="search_online_action_play_next">下一首播放</string>
+    <string name="search_online_action_add_to_queue">加入队列</string>
     <string name="browse_by_genre">按流派浏览</string>
     <string name="no_genres_available">无可用流派。</string>
 
@@ -114,10 +120,13 @@
     <string name="playlist_options_title">播放列表选项</string>
     <string name="playlist_action_edit_playlist">编辑播放列表</string>
     <string name="playlist_action_delete_playlist">删除播放列表</string>
+    <string name="playlist_action_cancel_selection">取消选择</string>
+    <string name="playlist_download_confirm_title">下载此歌单？</string>
+    <string name="playlist_download_confirm_body">将下载 %1$d 首歌曲到 Music/MPlayer。已下载和不支持的歌曲会自动跳过。</string>
+    <string name="playlist_download_confirm_action">开始下载</string>
     <string name="playlist_dialog_delete_title">删除播放列表？</string>
     <string name="playlist_dialog_delete_body">您确定要删除此播放列表吗？</string>
     <string name="playlist_action_set_default_transition">设置默认过渡效果</string>
-    <string name="playlist_action_export_playlist">导出播放列表</string>
     <string name="playlist_song_duration_line">%1$s • %2$s</string>
     <string name="playlist_action_play_it">播放</string>
     <string name="playlist_action_add_songs">添加</string>

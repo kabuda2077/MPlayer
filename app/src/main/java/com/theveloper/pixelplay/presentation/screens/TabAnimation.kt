@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,7 @@ fun TabAnimation(
     selectedIndex: Int,
     onClick: () -> Unit,
     transformOrigin: TransformOrigin = TransformOrigin.Center,
+    outerPadding: PaddingValues = PaddingValues(5.dp),
     content: @Composable () -> Unit
 ) {
     val hapticFeedback = LocalHapticFeedback.current
@@ -102,7 +104,7 @@ fun TabAnimation(
 
     Tab(
         modifier = modifier
-            .padding(all = 5.dp)
+            .padding(outerPadding)
             .graphicsLayer {
                 scaleX = scale.value
                 translationX = offsetX.value

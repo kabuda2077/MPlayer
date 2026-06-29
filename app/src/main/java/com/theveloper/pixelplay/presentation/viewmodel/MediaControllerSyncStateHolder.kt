@@ -10,7 +10,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.EotStateHolder
@@ -40,6 +39,7 @@ import timber.log.Timber
 data class PlaybackAudioMetadata(
     val mediaId: String? = null,
     val streamQuality: String? = null,
+    val streamSource: String? = null,
     val mimeType: String? = null,
     val bitrate: Int? = null,
     val sampleRate: Int? = null,
@@ -84,7 +84,6 @@ class ControllerSyncCallbacks(
  * rebuild with its timeline-signature dedupe, repeat-mode restore, and the playback
  * audio-metadata (format/bitrate/sample-rate) probing shown in the player file info.
  */
-@OptIn(UnstableApi::class)
 @ViewModelScoped
 class MediaControllerSyncStateHolder @Inject constructor(
     private val musicRepository: MusicRepository,
@@ -155,7 +154,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     ?.takeIf { it.isNotBlank() }
 
         return when {
-            metadataArtwork == null && song.albumArtUriString != null -> song.copy(albumArtUriString = null)
             metadataArtwork != null && song.albumArtUriString != metadataArtwork ->
                 song.copy(albumArtUriString = metadataArtwork)
             else -> song
@@ -293,6 +291,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
             if (current.mediaId != mediaId) return@update current
             current.copy(
                 streamQuality = info.quality ?: current.streamQuality,
+                streamSource = info.source ?: current.streamSource,
                 mimeType = current.mimeType ?: info.mimeType
             )
         }
@@ -342,6 +341,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
             val metadata = PlaybackAudioMetadata(
                 mediaId = mediaId,
                 streamQuality = cloudInfo?.quality ?: current?.streamQuality,
+                streamSource = cloudInfo?.source ?: current?.streamSource,
                 mimeType = selectedAudioFormat?.sampleMimeType
                     ?: selectedAudioFormat?.containerMimeType
                     ?: cloudInfo?.mimeType
@@ -399,6 +399,9 @@ class MediaControllerSyncStateHolder @Inject constructor(
                         streamQuality = cloudStreamPlaybackInfoStore
                             .infoFor(contentUriForMediaItem(mediaItem))
                             ?.quality,
+                        streamSource = cloudStreamPlaybackInfoStore
+                            .infoFor(contentUriForMediaItem(mediaItem))
+                            ?.source,
                         mimeType = mimeType,
                         bitrate = bitrate,
                         sampleRate = sampleRate
@@ -413,6 +416,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 if (!isSameMediaItem) return@update current
                 current.copy(
                     streamQuality = current.streamQuality ?: probedMetadata.streamQuality,
+                    streamSource = current.streamSource ?: probedMetadata.streamSource,
                     mimeType = current.mimeType ?: probedMetadata.mimeType,
                     bitrate = current.bitrate ?: probedMetadata.bitrate,
                     sampleRate = current.sampleRate ?: probedMetadata.sampleRate

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 data class CloudStreamPlaybackInfo(
     val contentUriString: String,
     val quality: String?,
+    val source: String?,
     val mimeType: String?,
     val updatedAt: Long = System.currentTimeMillis()
 )
@@ -24,6 +25,7 @@ class CloudStreamPlaybackInfoStore @Inject constructor() {
         val info = CloudStreamPlaybackInfo(
             contentUriString = normalizedUri,
             quality = stream.quality?.takeIf { it.isNotBlank() },
+            source = stream.source?.takeIf { it.isNotBlank() },
             mimeType = stream.mimeType?.takeIf { it.isNotBlank() }
         )
         _infos.update { current ->

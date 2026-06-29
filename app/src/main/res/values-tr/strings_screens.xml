@@ -117,7 +117,6 @@
     <string name="playlist_dialog_delete_title">Çalma listesi silinsin mi?</string>
     <string name="playlist_dialog_delete_body">Bu çalma listesini silmek istediğinizden emin misiniz?</string>
     <string name="playlist_action_set_default_transition">Varsayılan geçişi ayarla</string>
-    <string name="playlist_action_export_playlist">Çalma Listesini Dışa Aktar</string>
     <string name="playlist_song_duration_line">%1$s • %2$s</string>
     <string name="playlist_action_play_it">Çal</string>
     <string name="playlist_action_add_songs">Ekle</string>

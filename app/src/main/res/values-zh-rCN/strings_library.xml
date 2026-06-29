@@ -2,6 +2,8 @@
 <resources>
     <!-- Library Screen -->
     <string name="library_screen_title">音乐库</string>
+    <string name="online_library_screen_title">在线音乐</string>
+    <string name="local_library_screen_title">资料库</string>
     <string name="library_tabs_sheet_title">媒体库选项卡</string>
     <string name="library_tabs_sheet_subtitle">直接跳转到任意选项卡或对它们进行重新排序。</string>
     <string name="library_reorder_tabs_label">重新排序选项卡</string>
@@ -39,6 +41,9 @@
     <string name="library_sort_toggle_playlist_view">播放列表视图</string>
     <string name="library_view_mode_grid">网格</string>
     <string name="library_view_mode_list">列表</string>
+    <string name="library_song_view_mode_group_artist">艺术家</string>
+    <string name="library_song_view_mode_group_album">专辑</string>
+    <string name="library_song_count">%1$d 首歌曲</string>
     <string name="library_storage_internal">内部存储</string>
     <string name="library_storage_sd_card">SD 卡</string>
     <string name="library_storage_sd_card_unavailable">SD 卡目前不可用。</string>
@@ -68,7 +73,6 @@
     <!-- Library action row -->
     <string name="library_action_new">新建</string>
     <string name="library_cd_create_new_playlist">创建新播放列表</string>
-    <string name="library_cd_import_m3u_playlist">导入 M3U 播放列表</string>
     <string name="library_cd_locate_current_song">定位当前歌曲</string>
     <string name="library_storage_filter_all_songs">所有歌曲</string>
     <string name="library_storage_filter_online">云端</string>
@@ -91,6 +95,9 @@
     <string name="library_sync_cache">正在清理专辑封面缓存…</string>
     <string name="library_sync_cloud">正在同步云端数据源…</string>
     <string name="library_sync_lyrics">正在扫描歌词…</string>
+    <string name="library_sync_online_music">正在同步在线音乐…</string>
+    <string name="library_sync_local_music">正在扫描本地音乐…</string>
+    <string name="library_sync_local_lyrics">正在扫描本地歌词…</string>
 
     <!-- Library Empty State -->
     <string name="library_empty_songs_all_title">暂无歌曲</string>

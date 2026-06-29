@@ -79,6 +79,8 @@ object LocalArtworkUri {
         return !normalized.startsWith("telegram://") &&
             !normalized.startsWith("netease://") &&
             !normalized.startsWith("qqmusic://") &&
+            !normalized.startsWith("kugou://") &&
+            !normalized.startsWith("kuwo://") &&
             !normalized.startsWith("navidrome://") &&
             !normalized.startsWith("jellyfin://") &&
             !normalized.startsWith("gdrive://")

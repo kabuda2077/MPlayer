@@ -25,7 +25,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -71,8 +72,8 @@ fun PlaylistBottomSheet(
 
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded,
         confirmValueChange = { true }
     )
 
@@ -173,7 +174,6 @@ fun PlaylistBottomSheet(
                     },
                     iconRotation = 0f,
                     showSortButton = false,
-                    showImportButton = false,
                     onSortClick = { },
                     isPlaylistTab = true,
                     isFoldersTab = false,

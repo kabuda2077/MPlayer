@@ -588,10 +588,66 @@ class MusicRepositoryImpl @Inject constructor(
         }.flowOn(Dispatchers.IO)
     }
 
+    private fun searchSongs(
+        query: String,
+        titleOnly: Boolean,
+        storageFilter: StorageFilter
+    ): Flow<List<Song>> {
+        if (query.isBlank()) return flowOf(emptyList())
+        return combine(
+            userPreferencesRepository.allowedDirectoriesFlow,
+            userPreferencesRepository.blockedDirectoriesFlow
+        ) { allowedDirs, blockedDirs ->
+            allowedDirs to blockedDirs
+        }.flatMapLatest { (allowedDirs, blockedDirs) ->
+            flow {
+                val (allowedParentDirs, applyDirectoryFilter) =
+                    computeAllowedDirs(allowedDirs, blockedDirs)
+                emit(
+                    musicDao.searchSongsLimited(
+                        query = query,
+                        allowedParentDirs = allowedParentDirs,
+                        applyDirectoryFilter = applyDirectoryFilter,
+                        filterMode = storageFilter.toFilterMode(),
+                        limit = SEARCH_RESULTS_LIMIT,
+                        titleOnly = titleOnly
+                    )
+                )
+            }.flatMapLatest { it }
+        }.map { entities ->
+            entities.map { it.toSong() }
+        }.flowOn(Dispatchers.IO)
+    }
+
 
     override fun searchAlbums(query: String, minTracks: Int): Flow<List<Album>> {
         if (query.isBlank()) return flowOf(emptyList())
         return musicDao.searchAlbums(query, emptyList(), false, minTracks).map { entities ->
+            entities.map { it.toAlbum() }
+        }.flowOn(Dispatchers.IO)
+    }
+
+    private fun searchAlbums(
+        query: String,
+        minTracks: Int,
+        storageFilter: StorageFilter
+    ): Flow<List<Album>> {
+        if (query.isBlank()) return flowOf(emptyList())
+        return combine(
+            userPreferencesRepository.allowedDirectoriesFlow,
+            userPreferencesRepository.blockedDirectoriesFlow
+        ) { allowedDirs, blockedDirs ->
+            allowedDirs to blockedDirs
+        }.flatMapLatest { (allowedDirs, blockedDirs) ->
+            val (allowedParentDirs, applyDirectoryFilter) = computeAllowedDirs(allowedDirs, blockedDirs)
+            musicDao.searchAlbums(
+                query = query,
+                allowedParentDirs = allowedParentDirs,
+                applyDirectoryFilter = applyDirectoryFilter,
+                filterMode = storageFilter.toFilterMode(),
+                minTracks = minTracks
+            )
+        }.map { entities ->
             entities.map { it.toAlbum() }
         }.flowOn(Dispatchers.IO)
     }
@@ -603,12 +659,52 @@ class MusicRepositoryImpl @Inject constructor(
         }.flowOn(Dispatchers.IO)
     }
 
+    private fun searchArtists(
+        query: String,
+        storageFilter: StorageFilter
+    ): Flow<List<Artist>> {
+        if (query.isBlank()) return flowOf(emptyList())
+        return combine(
+            userPreferencesRepository.allowedDirectoriesFlow,
+            userPreferencesRepository.blockedDirectoriesFlow
+        ) { allowedDirs, blockedDirs ->
+            allowedDirs to blockedDirs
+        }.flatMapLatest { (allowedDirs, blockedDirs) ->
+            val (allowedParentDirs, applyDirectoryFilter) = computeAllowedDirs(allowedDirs, blockedDirs)
+            musicDao.searchArtists(
+                query = query,
+                allowedParentDirs = allowedParentDirs,
+                applyDirectoryFilter = applyDirectoryFilter,
+                filterMode = storageFilter.toFilterMode()
+            )
+        }.map { entities ->
+            entities.map { it.toArtist() }
+        }.flowOn(Dispatchers.IO)
+    }
+
     override suspend fun searchPlaylists(query: String): List<Playlist> {
         if (query.isBlank()) return emptyList()
         return playlistPreferencesRepository.userPlaylistsFlow.first()
             .filter { playlist ->
                 playlist.name.contains(query, ignoreCase = true)
             }
+    }
+
+    private suspend fun searchPlaylists(query: String, storageFilter: StorageFilter): List<Playlist> {
+        if (query.isBlank()) return emptyList()
+        val matching = searchPlaylists(query)
+        return when (storageFilter) {
+            StorageFilter.ALL -> matching
+            StorageFilter.ONLINE -> matching.filter { playlist ->
+                playlist.source.equals("NETEASE", ignoreCase = true) ||
+                    playlist.source.equals("QQMUSIC", ignoreCase = true) ||
+                    playlist.source.equals("TELEGRAM", ignoreCase = true) ||
+                    playlist.source.equals("GDRIVE", ignoreCase = true) ||
+                    playlist.source.equals("NAVIDROME", ignoreCase = true) ||
+                    playlist.source.equals("JELLYFIN", ignoreCase = true)
+            }
+            StorageFilter.OFFLINE -> emptyList()
+        }
     }
 
     override fun searchAll(query: String, filterType: SearchFilterType): Flow<List<SearchResultItem>> {
@@ -640,6 +736,56 @@ class MusicRepositoryImpl @Inject constructor(
                 SearchFilterType.ALBUMS -> searchAlbums(query, minTracks).map { albums -> albums.map { SearchResultItem.AlbumItem(it) } }
                 SearchFilterType.ARTISTS -> searchArtists(query).map { artists -> artists.map { SearchResultItem.ArtistItem(it) } }
                 SearchFilterType.PLAYLISTS -> playlistsFlow.map { playlists -> playlists.map { SearchResultItem.PlaylistItem(it) } }
+            }
+        }.flowOn(Dispatchers.Default)
+    }
+
+    override fun searchAll(
+        query: String,
+        filterType: SearchFilterType,
+        storageFilter: StorageFilter
+    ): Flow<List<SearchResultItem>> {
+        if (query.isBlank()) return flowOf(emptyList())
+        val playlistsFlow = flow { emit(searchPlaylists(query, storageFilter)) }
+
+        return combine(
+            userPreferencesRepository.minTracksPerAlbumFlow
+        ) { (minTracks) ->
+            minTracks
+        }.flatMapLatest { minTracks ->
+            when (filterType) {
+                SearchFilterType.ALL -> {
+                    combine(
+                        searchSongs(query, titleOnly = false, storageFilter = storageFilter),
+                        searchAlbums(query, minTracks, storageFilter),
+                        searchArtists(query, storageFilter),
+                        playlistsFlow
+                    ) { songs, albums, artists, playlists ->
+                        mutableListOf<SearchResultItem>().apply {
+                            songs.forEach { add(SearchResultItem.SongItem(it)) }
+                            albums.forEach { add(SearchResultItem.AlbumItem(it)) }
+                            artists.forEach { add(SearchResultItem.ArtistItem(it)) }
+                            playlists.forEach { add(SearchResultItem.PlaylistItem(it)) }
+                        }
+                    }
+                }
+                SearchFilterType.SONGS -> searchSongs(
+                    query = query,
+                    titleOnly = true,
+                    storageFilter = storageFilter
+                ).map { songs -> songs.map { SearchResultItem.SongItem(it) } }
+                SearchFilterType.ALBUMS -> searchAlbums(
+                    query = query,
+                    minTracks = minTracks,
+                    storageFilter = storageFilter
+                ).map { albums -> albums.map { SearchResultItem.AlbumItem(it) } }
+                SearchFilterType.ARTISTS -> searchArtists(
+                    query = query,
+                    storageFilter = storageFilter
+                ).map { artists -> artists.map { SearchResultItem.ArtistItem(it) } }
+                SearchFilterType.PLAYLISTS -> playlistsFlow.map { playlists ->
+                    playlists.map { SearchResultItem.PlaylistItem(it) }
+                }
             }
         }.flowOn(Dispatchers.Default)
     }

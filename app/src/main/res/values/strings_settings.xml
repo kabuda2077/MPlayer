@@ -50,6 +50,9 @@
     <string name="settings_online_audio_cache_size_subtitle">Currently using %1$s.</string>
     <string name="settings_action_clear_online_audio_cache">Clear Online Song Cache</string>
     <string name="settings_online_audio_cache_cleared">Online song cache cleared</string>
+    <string name="settings_download_manager_title">Download Management</string>
+    <string name="settings_download_manager_subtitle">%1$d songs downloaded, using %2$s.</string>
+    <string name="settings_action_open_downloads">Open Downloads</string>
     <string name="settings_sync_scanning_section">Sync and Scanning</string>
     <string name="settings_refresh_library_title">Refresh Library</string>
     <string name="settings_refresh_library_subtitle">Scan entire library for new and modified files.</string>
@@ -77,6 +80,8 @@
     <string name="settings_lyrics_enable_qq_subtitle">Automatically fetch online lyrics for cloud songs and allow manual online search.</string>
     <string name="settings_lyrics_local_allow_qq_title">Allow QQ lyrics for local songs</string>
     <string name="settings_lyrics_local_allow_qq_subtitle">When local files have no embedded or sidecar lyrics, try QQ Music as a fallback source.</string>
+    <string name="settings_lyrics_show_romanization_title">Show romanization</string>
+    <string name="settings_lyrics_show_romanization_subtitle">Display pronunciation helpers such as pinyin or romaji when lyrics include them.</string>
     <string name="settings_reset_imported_lyrics_title">Reset Imported Lyrics</string>
     <string name="settings_reset_imported_lyrics_subtitle">Remove all imported lyrics from the database.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Reset imported lyrics?</string>
@@ -218,7 +223,7 @@
     <string name="settings_navigation_bar_section">Navigation Bar</string>
     <string name="settings_navbar_style_title">NavBar Style</string>
     <string name="settings_navbar_style_subtitle">Choose the appearance for the navigation bar.</string>
-    <string name="settings_navbar_style_default">Default</string>
+    <string name="settings_navbar_style_default">Floating blur</string>
     <string name="settings_navbar_style_full_width">Full Width</string>
     <string name="settings_compact_mode_title">Compact mode</string>
     <string name="settings_compact_mode_subtitle">Show only icons and reduce the navbar height.</string>

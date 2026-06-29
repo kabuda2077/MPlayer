@@ -309,7 +309,7 @@ private fun PlatformQualitySelector(
             }
         }
         Text(
-            "解析失败时按所选音质向低音质依次重试。",
+            "播放时会先尝试歌曲原平台；原平台当前音质失败后，按默认顺序查找其他平台候选，然后再向低音质重试。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -337,7 +337,7 @@ private fun EmptyPluginCard() {
 private fun formatTime(timestamp: Long): String =
     SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 
-private val MUSIC_SOURCE_ORDER = listOf("wy", "tx", "kw", "kg", "mg")
+private val MUSIC_SOURCE_ORDER = listOf("wy", "kg", "kw", "tx", "mg")
 
 private fun sourceDisplayName(source: String): String? = when (source) {
     "wy" -> "网易云"

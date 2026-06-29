@@ -17,7 +17,7 @@ class MediaStoreSelectionUtilsTest {
         assertTrue(selection.contains(MediaStore.Audio.Media.TITLE))
         assertArrayEquals(
             arrayOf("10000", "audio/midi", "audio/x-midi", "audio/sp-midi", "audio/x-mid", "%.mid", "%.midi"),
-            selectionArgs
+            selectionArgs.take(7).toTypedArray()
         )
     }
 
@@ -36,5 +36,13 @@ class MediaStoreSelectionUtilsTest {
         assertTrue(selection.contains(MediaStore.Audio.Media.MIME_TYPE))
         assertTrue(selection.contains("audio_media._data") || selection.contains(MediaStore.Audio.Media.DATA))
         assertTrue(selection.contains("LIKE"))
+    }
+
+    @Test
+    fun `buildLocalAudioSelection lets missing duration audio rows reach metadata parsing`() {
+        val (selection, _) = buildLocalAudioSelection(10_000)
+
+        assertTrue(selection.contains("${MediaStore.Audio.Media.DURATION} IS NULL"))
+        assertTrue(selection.contains("${MediaStore.Audio.Media.DURATION} <= 0"))
     }
 }

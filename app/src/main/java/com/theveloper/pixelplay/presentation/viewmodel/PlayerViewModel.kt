@@ -38,6 +38,11 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.ai.SongMetadata
+import com.theveloper.pixelplay.data.download.DownloadEntity
+import com.theveloper.pixelplay.data.download.DownloadRepository
+import com.theveloper.pixelplay.data.download.DownloadStartResult
+import com.theveloper.pixelplay.data.download.DownloadStatus
+import com.theveloper.pixelplay.data.download.DownloadTarget
 import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.data.model.Album
 import com.theveloper.pixelplay.data.model.Artist
@@ -45,8 +50,14 @@ import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.LyricsSourcePreference
+import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
 import com.theveloper.pixelplay.data.model.SearchFilterType
+import com.theveloper.pixelplay.data.model.SearchHistoryItem
+import com.theveloper.pixelplay.data.model.SearchMode
+import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
+import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.SongListViewMode
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import com.theveloper.pixelplay.data.provider.SharedArtworkContentProvider
@@ -124,6 +135,25 @@ private const val ENABLE_FOLDERS_SOURCE_SWITCHING = true
 private const val HOME_MIX_PREVIEW_LIMIT = 48
 private const val EXTERNAL_SONG_ID_PREFIX = "external:"
 
+private data class SearchAggregate(
+    val results: ImmutableList<SearchResultItem>,
+    val onlineResults: ImmutableList<OnlineSearchResultItem>,
+    val mode: SearchMode,
+    val platform: OnlineSearchPlatform,
+    val loading: Boolean,
+    val error: String?,
+    val filter: SearchFilterType,
+    val history: ImmutableList<SearchHistoryItem>
+)
+
+private data class SearchPartialAggregate(
+    val results: ImmutableList<SearchResultItem>,
+    val onlineResults: ImmutableList<OnlineSearchResultItem>,
+    val mode: SearchMode,
+    val platform: OnlineSearchPlatform,
+    val loading: Boolean
+)
+
 internal fun List<Song>.toPlaybackQueue(): ImmutableList<Song> = when (this) {
     is PersistentList<Song> -> this
     is ImmutableList<Song> -> this
@@ -136,21 +166,28 @@ internal fun ImmutableList<Song>.asPersistentPlaybackQueue(): PersistentList<Son
 internal fun ImmutableList<Song>.replaceSong(updatedSong: Song): ImmutableList<Song> {
     val index = indexOfFirst { it.id == updatedSong.id }
     if (index == -1) return this
-    return asPersistentPlaybackQueue().set(index, updatedSong)
+    return toMutableList()
+        .apply { set(index, updatedSong) }
+        .toPersistentList()
 }
 
 private fun ImmutableList<Song>.removeSongById(songId: String): ImmutableList<Song> {
     val index = indexOfFirst { it.id == songId }
     if (index == -1) return this
-    return asPersistentPlaybackQueue().removeAt(index)
+    return toMutableList()
+        .apply { removeAt(index) }
+        .toPersistentList()
 }
 
 private fun ImmutableList<Song>.moveSong(fromIndex: Int, toIndex: Int): ImmutableList<Song> {
     if (fromIndex == toIndex || fromIndex !in indices || toIndex !in indices) return this
     val movedSong = this[fromIndex]
-    return asPersistentPlaybackQueue()
-        .removeAt(fromIndex)
-        .add(toIndex, movedSong)
+    return toMutableList()
+        .apply {
+            removeAt(fromIndex)
+            add(toIndex, movedSong)
+        }
+        .toPersistentList()
 }
 
 private fun moveQueueIndex(index: Int, fromIndex: Int, toIndex: Int): Int {
@@ -218,7 +255,8 @@ class PlayerViewModel @Inject constructor(
     private val playbackDispatchStateHolder: PlaybackDispatchStateHolder,
     private val mediaControllerSyncStateHolder: MediaControllerSyncStateHolder,
     private val sessionToken: SessionToken,
-    private val mediaControllerFactory: com.theveloper.pixelplay.data.media.MediaControllerFactory
+    private val mediaControllerFactory: com.theveloper.pixelplay.data.media.MediaControllerFactory,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     private val _playerUiState = MutableStateFlow(PlayerUiState())
@@ -244,6 +282,17 @@ class PlayerViewModel @Inject constructor(
     val showNoInternetDialog: SharedFlow<Unit> = _showNoInternetDialog.asSharedFlow()
 
     val stablePlayerState: StateFlow<StablePlayerState> = playbackStateHolder.stablePlayerState
+    val currentSongDownloadState: StateFlow<DownloadEntity?> = stablePlayerState
+        .map { state -> state.currentSong?.contentUriString.orEmpty() }
+        .distinctUntilChanged()
+        .flatMapLatest { contentUri ->
+            if (contentUri.isBlank() || DownloadTarget.fromContentUri(contentUri) == null) {
+                flowOf(null)
+            } else {
+                downloadRepository.observeDownload(contentUri)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val albumArtPaletteStyle: StateFlow<AlbumArtPaletteStyle> = themePreferencesRepository
         .albumArtPaletteStyleFlow
         .stateIn(
@@ -640,6 +689,8 @@ class PlayerViewModel @Inject constructor(
     val artistNavigationRequests = _artistNavigationRequests.asSharedFlow()
     private val _searchNavDoubleTapEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val searchNavDoubleTapEvents = _searchNavDoubleTapEvents.asSharedFlow()
+    private val _downloadNavigationRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val downloadNavigationRequests = _downloadNavigationRequests.asSharedFlow()
     
     // New event for scrolling to a specific index in the songs list
     private val _scrollToIndexEvent = MutableSharedFlow<Int>(extraBufferCapacity = 1)
@@ -1036,7 +1087,7 @@ class PlayerViewModel @Inject constructor(
 
     val libraryTabsFlow: StateFlow<List<String>> = userPreferencesRepository.libraryTabsOrderFlow
         .map { orderJson ->
-            if (orderJson != null) {
+            val decoded = if (orderJson != null) {
                 try {
                     Json.decodeFromString<List<String>>(orderJson)
                 } catch (e: Exception) {
@@ -1045,6 +1096,7 @@ class PlayerViewModel @Inject constructor(
             } else {
                 listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED")
             }
+            sanitizeLibraryTabsOrder(decoded)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("SONGS", "ALBUMS", "ARTIST", "PLAYLISTS", "FOLDERS", "LIKED"))
 
@@ -1542,18 +1594,27 @@ class PlayerViewModel @Inject constructor(
 
         viewModelScope.launch {
             combine(
-                userPreferencesRepository.folderBackGestureNavigationFlow,
-                userPreferencesRepository.isAlbumsListViewFlow,
-            ) { gestureNav, albumsList ->
-                Pair(gestureNav, albumsList)
-            }.collect { (gestureNav, albumsList) ->
-                _playerUiState.update {
-                    it.copy(
-                        folderBackGestureNavigationEnabled = gestureNav,
-                        isAlbumsListView = albumsList,
-                    )
+                combine(
+                    userPreferencesRepository.folderBackGestureNavigationFlow,
+                    userPreferencesRepository.isAlbumsListViewFlow
+                ) { gestureNav, albumsList -> gestureNav to albumsList },
+                combine(
+                    userPreferencesRepository.songListViewModeFlow,
+                    userPreferencesRepository.favoriteSongListViewModeFlow
+                ) { songViewMode, favoriteSongViewMode -> songViewMode to favoriteSongViewMode }
+            ) { viewFlags, viewModes -> viewFlags to viewModes }
+                .collect { (viewFlags, viewModes) ->
+                    val (gestureNav, albumsList) = viewFlags
+                    val (songViewMode, favoriteSongViewMode) = viewModes
+                    _playerUiState.update {
+                        it.copy(
+                            folderBackGestureNavigationEnabled = gestureNav,
+                            isAlbumsListView = albumsList,
+                            songListViewMode = songViewMode,
+                            favoriteSongListViewMode = favoriteSongViewMode,
+                        )
+                    }
                 }
-            }
         }
 
         viewModelScope.launch {
@@ -1605,7 +1666,7 @@ class PlayerViewModel @Inject constructor(
             val initialLikedSort = resolveSortOption(
                 userPreferencesRepository.likedSongsSortOptionFlow.first(),
                 SortOption.LIKED,
-                SortOption.LikedSongDateLiked
+                SortOption.LikedSongTitleAZ
             )
 
             _playerUiState.update {
@@ -1718,18 +1779,48 @@ class PlayerViewModel @Inject constructor(
 
         // Collect SearchStateHolder flows
         viewModelScope.launch {
-            combine(
+            val searchPartialFlow = combine(
                 searchStateHolder.searchResults,
+                searchStateHolder.onlineSearchResults,
+                searchStateHolder.searchMode,
+                searchStateHolder.onlineSearchPlatform,
+                searchStateHolder.onlineSearchLoading,
+            ) { results, onlineResults, mode, platform, loading ->
+                SearchPartialAggregate(
+                    results = results,
+                    onlineResults = onlineResults,
+                    mode = mode,
+                    platform = platform,
+                    loading = loading
+                )
+            }
+            combine(
+                searchPartialFlow,
+                searchStateHolder.onlineSearchError,
                 searchStateHolder.selectedSearchFilter,
                 searchStateHolder.searchHistory,
-            ) { results, filter, history ->
-                Triple(results, filter, history)
-            }.collect { (results, filter, history) ->
+            ) { partial, error, filter, history ->
+                SearchAggregate(
+                    results = partial.results,
+                    onlineResults = partial.onlineResults,
+                    mode = partial.mode,
+                    platform = partial.platform,
+                    loading = partial.loading,
+                    error = error,
+                    filter = filter,
+                    history = history
+                )
+            }.collect { aggregate ->
                 _playerUiState.update {
                     it.copy(
-                        searchResults = results,
-                        selectedSearchFilter = filter,
-                        searchHistory = history,
+                        searchResults = aggregate.results,
+                        onlineSearchResults = aggregate.onlineResults,
+                        searchMode = aggregate.mode,
+                        onlineSearchPlatform = aggregate.platform,
+                        onlineSearchLoading = aggregate.loading,
+                        onlineSearchError = aggregate.error,
+                        selectedSearchFilter = aggregate.filter,
+                        searchHistory = aggregate.history,
                     )
                 }
             }
@@ -1949,6 +2040,10 @@ class PlayerViewModel @Inject constructor(
 
     fun setStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter) {
         libraryStateHolder.setStorageFilter(filter)
+    }
+
+    fun setRouteStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter?) {
+        libraryStateHolder.setRouteStorageFilter(filter)
     }
 
     fun setPlaylistPickerStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter) {
@@ -2227,6 +2322,65 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun onDownloadButtonClick() {
+        val currentSong = playbackStateHolder.stablePlayerState.value.currentSong ?: return
+        if (DownloadTarget.fromSong(currentSong) == null) {
+            sendToast(context.getString(R.string.download_unsupported_source))
+            return
+        }
+        viewModelScope.launch {
+            val currentState = currentSongDownloadState.value
+            when (currentState?.status) {
+                DownloadStatus.QUEUED,
+                DownloadStatus.DOWNLOADING -> {
+                    downloadRepository.cancel(currentSong.contentUriString)
+                    sendToast(context.getString(R.string.download_cancelled))
+                }
+                DownloadStatus.COMPLETED -> {
+                    _downloadNavigationRequests.emit(Unit)
+                }
+                DownloadStatus.FAILED,
+                DownloadStatus.CANCELED -> {
+                    downloadRepository.retry(currentState)
+                    sendToast(context.getString(R.string.download_retry_started))
+                }
+                else -> {
+                    when (downloadRepository.startDownload(currentSong)) {
+                        DownloadStartResult.STARTED -> sendToast(context.getString(R.string.download_started))
+                        DownloadStartResult.ALREADY_ACTIVE -> sendToast(context.getString(R.string.download_already_active))
+                        DownloadStartResult.ALREADY_DOWNLOADED -> sendToast(context.getString(R.string.download_already_downloaded))
+                    }
+                }
+            }
+        }
+    }
+
+    fun downloadSelectedSongs(songs: List<Song>) {
+        viewModelScope.launch {
+            val downloadable = songs.filter { DownloadTarget.fromSong(it) != null }
+            if (downloadable.isEmpty()) {
+                sendToast(context.getString(R.string.download_unsupported_source))
+                return@launch
+            }
+            var started = 0
+            var skipped = 0
+            downloadable.forEach { song ->
+                when (downloadRepository.startDownload(song)) {
+                    DownloadStartResult.STARTED -> started++
+                    DownloadStartResult.ALREADY_ACTIVE,
+                    DownloadStartResult.ALREADY_DOWNLOADED -> skipped++
+                }
+            }
+            val unsupported = songs.size - downloadable.size
+            val message = when {
+                started > 0 -> context.getString(R.string.download_batch_started, started, skipped + unsupported)
+                skipped + unsupported > 0 -> context.getString(R.string.download_batch_all_skipped, skipped + unsupported)
+                else -> context.getString(R.string.download_unsupported_source)
+            }
+            sendToast(message)
+        }
+    }
+
     fun toggleFavoriteSpecificSong(song: Song, removing: Boolean = false) {
         viewModelScope.launch {
             val favoriteSongId = resolveFavoriteSongId(song) ?: return@launch
@@ -2324,20 +2478,8 @@ class PlayerViewModel @Inject constructor(
     fun shareSelectedAsZip(songs: List<Song>) =
         multiSelectionStateHolder.shareSelectedAsZip(songs, selectionActionCallbacks())
 
-    suspend fun getSongsForGenres(genres: List<Genre>): List<Song> =
-        multiSelectionStateHolder.getSongsForGenres(genres)
-
     suspend fun getSongsForAlbums(albums: List<Album>): List<Song> =
         multiSelectionStateHolder.getSongsForAlbums(albums)
-
-    fun playSelectedGenres(genres: List<Genre>) =
-        multiSelectionStateHolder.playSelectedGenres(genres, selectionActionCallbacks())
-
-    fun addSelectedGenresToQueue(genres: List<Genre>) =
-        multiSelectionStateHolder.addSelectedGenresToQueue(genres, selectionActionCallbacks())
-
-    fun addSelectedGenresAsNext(genres: List<Genre>) =
-        multiSelectionStateHolder.addSelectedGenresAsNext(genres, selectionActionCallbacks())
 
     /**
      * Deletes all selected songs from device with confirmation.
@@ -2430,6 +2572,14 @@ class PlayerViewModel @Inject constructor(
         return musicRepository.searchSongs(query)
     }
 
+    fun searchLibrary(
+        query: String,
+        filterType: SearchFilterType,
+        storageFilter: com.theveloper.pixelplay.data.model.StorageFilter
+    ): Flow<List<SearchResultItem>> {
+        return musicRepository.searchAll(query, filterType, storageFilter)
+    }
+
     suspend fun getSongs(songIds: List<String>) : List<Song>{
         return musicRepository.getSongsByIds(songIds).first()
     }
@@ -2513,8 +2663,28 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun setSongListViewMode(mode: SongListViewMode) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSongListViewMode(mode)
+        }
+    }
+
+    fun setFavoriteSongListViewMode(mode: SongListViewMode) {
+        viewModelScope.launch {
+            userPreferencesRepository.setFavoriteSongListViewMode(mode)
+        }
+    }
+
     fun updateSearchFilter(filterType: SearchFilterType) {
         searchStateHolder.updateSearchFilter(filterType)
+    }
+
+    fun updateSearchMode(mode: SearchMode) {
+        searchStateHolder.updateSearchMode(mode, searchQuery)
+    }
+
+    fun updateOnlineSearchPlatform(platform: OnlineSearchPlatform) {
+        searchStateHolder.updateOnlineSearchPlatform(platform, searchQuery)
     }
 
     fun loadSearchHistory(limit: Int = 15) {
@@ -2558,14 +2728,16 @@ class PlayerViewModel @Inject constructor(
         minLength: Int,
         maxLength: Int,
         saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
+        playlistName: String? = null,
+        storageFilter: com.theveloper.pixelplay.data.model.StorageFilter = com.theveloper.pixelplay.data.model.StorageFilter.ALL
     ) {
         aiStateHolder.generateAiPlaylist(
             prompt = prompt,
             minLength = minLength,
             maxLength = maxLength,
             saveAsPlaylist = saveAsPlaylist,
-            playlistName = playlistName
+            playlistName = playlistName,
+            storageFilter = storageFilter
         )
     }
 
@@ -2747,10 +2919,10 @@ class PlayerViewModel @Inject constructor(
         libraryTabsStateHolder.hideSortingSheet(_isSortingSheetVisible)
     }
 
-    fun onLibraryTabSelected(tabIndex: Int) {
+    fun onLibraryTabSelected(tabIndex: Int, visibleLibraryTabs: List<String>? = null) {
         libraryTabsStateHolder.onLibraryTabSelected(
             tabIndex = tabIndex,
-            libraryTabs = libraryTabsFlow.value,
+            libraryTabs = visibleLibraryTabs ?: libraryTabsFlow.value,
             loadedTabs = _loadedTabs,
             currentLibraryTabId = _currentLibraryTabId,
             saveLastTabIndex = { index -> userPreferencesRepository.saveLastLibraryTabIndex(index) },
@@ -2764,7 +2936,7 @@ class PlayerViewModel @Inject constructor(
 
     fun saveLibraryTabsOrder(tabs: List<String>) {
         viewModelScope.launch {
-            val orderJson = Json.encodeToString(tabs)
+            val orderJson = Json.encodeToString(sanitizeLibraryTabsOrder(tabs))
             userPreferencesRepository.saveLibraryTabsOrder(orderJson)
         }
     }
@@ -2773,6 +2945,13 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.resetLibraryTabsOrder()
         }
+    }
+
+    private fun sanitizeLibraryTabsOrder(tabs: List<String>): List<String> {
+        val ordered = LinkedHashSet<String>()
+        tabs.mapNotNull { it.toLibraryTabIdOrNull()?.storageKey }.forEach(ordered::add)
+        LibraryTabId.entries.map { it.storageKey }.forEach(ordered::add)
+        return ordered.toList()
     }
 
     fun selectSongForInfo(song: Song) {
@@ -3009,19 +3188,6 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyMap()
         )
-
-    val isGenreGridView: StateFlow<Boolean> = userPreferencesRepository.isGenreGridViewFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
-        )
-
-    fun toggleGenreViewMode() {
-        viewModelScope.launch {
-            userPreferencesRepository.setGenreGridView(!isGenreGridView.value)
-        }
-    }
 
     fun addCustomGenre(genre: String, iconResId: Int? = null) {
         viewModelScope.launch {

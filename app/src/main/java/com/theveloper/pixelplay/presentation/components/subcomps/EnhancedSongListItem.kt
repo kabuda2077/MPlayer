@@ -97,6 +97,7 @@ fun EnhancedSongListItem(
     selectionIndex: Int? = null,
     isSelectionMode: Boolean = false,
     showMoreOptionsButton: Boolean = true,
+    sourceLabel: String? = null,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onClick: () -> Unit
@@ -350,7 +351,7 @@ fun EnhancedSongListItem(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = song.displayArtist,
+                        text = sourceLabel?.let { "${song.displayArtist} · $it" } ?: song.displayArtist,
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor.copy(alpha = 0.7f),
                         maxLines = 1,

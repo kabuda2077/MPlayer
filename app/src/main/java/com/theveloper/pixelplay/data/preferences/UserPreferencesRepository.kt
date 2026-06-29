@@ -213,6 +213,7 @@ class UserPreferencesRepository @Inject constructor(
         val ENABLE_ONLINE_TTML_LYRICS = booleanPreferencesKey("enable_online_ttml_lyrics")
         val ENABLE_QQ_LYRICS = booleanPreferencesKey("enable_qq_lyrics")
         val LOCAL_SONGS_ALLOW_QQ_LYRICS = booleanPreferencesKey("local_songs_allow_qq_lyrics")
+        val SHOW_LYRICS_ROMANIZATION = booleanPreferencesKey("show_lyrics_romanization")
 
         // Developer options
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
@@ -231,8 +232,9 @@ class UserPreferencesRepository @Inject constructor(
         val ANIMATED_LYRICS_BLUR_STRENGTH = androidx.datastore.preferences.core.floatPreferencesKey("animated_lyrics_blur_strength")
         val DISABLE_BLUR_ALL_OVER = booleanPreferencesKey("disable_blur_all_over")
         // View preferences
-        val IS_GENRE_GRID_VIEW = booleanPreferencesKey("is_genre_grid_view")
         val IS_ALBUMS_LIST_VIEW = booleanPreferencesKey("is_albums_list_view")
+        val SONG_LIST_VIEW_MODE = stringPreferencesKey("song_list_view_mode")
+        val FAVORITE_SONG_LIST_VIEW_MODE = stringPreferencesKey("favorite_song_list_view_mode")
 
         // Collage
         val COLLAGE_PATTERN = stringPreferencesKey("collage_pattern")
@@ -680,17 +682,6 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         }
     }
 
-    val isGenreGridViewFlow: Flow<Boolean> =
-        dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.IS_GENRE_GRID_VIEW] ?: true
-        }
-
-    suspend fun setGenreGridView(isGrid: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.IS_GENRE_GRID_VIEW] = isGrid
-        }
-    }
-
     val isAlbumsListViewFlow: Flow<Boolean> =
         dataStore.data.map { preferences ->
             preferences[PreferencesKeys.IS_ALBUMS_LIST_VIEW] ?: false
@@ -699,6 +690,32 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     suspend fun setAlbumsListView(isList: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.IS_ALBUMS_LIST_VIEW] = isList
+        }
+    }
+
+    val songListViewModeFlow: Flow<com.theveloper.pixelplay.data.model.SongListViewMode> =
+        dataStore.data.map { preferences ->
+            com.theveloper.pixelplay.data.model.SongListViewMode.fromStorageKey(
+                preferences[PreferencesKeys.SONG_LIST_VIEW_MODE]
+            )
+        }
+
+    suspend fun setSongListViewMode(mode: com.theveloper.pixelplay.data.model.SongListViewMode) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SONG_LIST_VIEW_MODE] = mode.storageKey
+        }
+    }
+
+    val favoriteSongListViewModeFlow: Flow<com.theveloper.pixelplay.data.model.SongListViewMode> =
+        dataStore.data.map { preferences ->
+            com.theveloper.pixelplay.data.model.SongListViewMode.fromStorageKey(
+                preferences[PreferencesKeys.FAVORITE_SONG_LIST_VIEW_MODE]
+            )
+        }
+
+    suspend fun setFavoriteSongListViewMode(mode: com.theveloper.pixelplay.data.model.SongListViewMode) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FAVORITE_SONG_LIST_VIEW_MODE] = mode.storageKey
         }
     }
 
@@ -790,7 +807,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         pref { SortOption.fromStorageKey(it[PreferencesKeys.FOLDERS_SORT_OPTION], SortOption.FOLDERS, SortOption.FolderNameAZ).storageKey }
 
     val likedSongsSortOptionFlow: Flow<String> =
-        pref { SortOption.fromStorageKey(it[PreferencesKeys.LIKED_SONGS_SORT_OPTION], SortOption.LIKED, SortOption.LikedSongDateLiked).storageKey }
+        pref { SortOption.fromStorageKey(it[PreferencesKeys.LIKED_SONGS_SORT_OPTION], SortOption.LIKED, SortOption.LikedSongTitleAZ).storageKey }
 
     suspend fun setSongsSortOption(optionKey: String) {
         dataStore.edit { preferences ->
@@ -839,7 +856,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
             migrateSortPreference(preferences, PreferencesKeys.ARTISTS_SORT_OPTION, SortOption.ARTISTS, SortOption.ArtistNameAZ)
             migrateSortPreference(preferences, PreferencesKeys.PLAYLISTS_SORT_OPTION, SortOption.PLAYLISTS, SortOption.PlaylistNameAZ)
             migrateSortPreference(preferences, PreferencesKeys.FOLDERS_SORT_OPTION, SortOption.FOLDERS, SortOption.FolderNameAZ)
-            migrateSortPreference(preferences, PreferencesKeys.LIKED_SONGS_SORT_OPTION, SortOption.LIKED, SortOption.LikedSongDateLiked)
+            migrateSortPreference(preferences, PreferencesKeys.LIKED_SONGS_SORT_OPTION, SortOption.LIKED, SortOption.LikedSongTitleAZ)
         }
     }
 
@@ -1116,6 +1133,13 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setLocalSongsAllowQqLyrics(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] = enabled }
+    }
+
+    val showLyricsRomanizationFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.SHOW_LYRICS_ROMANIZATION] ?: false }
+
+    suspend fun setShowLyricsRomanization(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.SHOW_LYRICS_ROMANIZATION] = enabled }
     }
 
     val useAnimatedLyricsFlow: Flow<Boolean> =

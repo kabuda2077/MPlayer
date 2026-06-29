@@ -17,6 +17,8 @@ object CloudStreamSecurity {
 
     private val GDRIVE_FILE_ID_REGEX = Regex("^[A-Za-z0-9_-]{10,200}$")
     private val QQMUSIC_SONG_MID_REGEX = Regex("^[A-Za-z0-9_-]{6,50}$")
+    private val KUGOU_HASH_REGEX = Regex("^[A-Za-z0-9]{16,64}$")
+    private val KUWO_SONG_ID_REGEX = Regex("^[A-Za-z0-9_-]{1,64}$")
     private val NAVIDROME_SONG_ID_REGEX = Regex("^[A-Za-z0-9_-]{1,100}$")
     private val JELLYFIN_ITEM_ID_REGEX = Regex("^[A-Za-z0-9]{1,100}$")
     private val FORBIDDEN_HOSTS = setOf("localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]")
@@ -47,6 +49,10 @@ object CloudStreamSecurity {
     fun validateGDriveFileId(fileId: String): Boolean = GDRIVE_FILE_ID_REGEX.matches(fileId)
 
     fun validateQqMusicSongMid(songMid: String): Boolean = QQMUSIC_SONG_MID_REGEX.matches(songMid)
+
+    fun validateKugouHash(hash: String): Boolean = KUGOU_HASH_REGEX.matches(hash)
+
+    fun validateKuwoSongId(songId: String): Boolean = KUWO_SONG_ID_REGEX.matches(songId.removePrefix("MUSIC_"))
 
     fun validateNavidromeSongId(songId: String): Boolean = NAVIDROME_SONG_ID_REGEX.matches(songId)
 

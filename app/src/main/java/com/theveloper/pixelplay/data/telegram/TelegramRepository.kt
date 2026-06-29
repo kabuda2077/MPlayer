@@ -198,6 +198,7 @@ class TelegramRepository @Inject constructor(
                                 val candidate = when (v) {
                                     is Long -> v
                                     is Int  -> v.toLong()
+                                    null -> 0L
                                     else    -> 0L
                                 }
                                 if (candidate != 0L) {
@@ -222,6 +223,7 @@ class TelegramRepository @Inject constructor(
                                     val candidate = when (val v = f.get(info)) {
                                         is Long -> v
                                         is Int  -> v.toLong()
+                                        null -> 0L
                                         else    -> 0L
                                     }
                                     if (candidate != 0L) {

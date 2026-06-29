@@ -84,6 +84,8 @@ import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetModa
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetOverlayState
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetThemeState
 import com.theveloper.pixelplay.presentation.components.scoped.rememberSheetVisualState
+import com.theveloper.pixelplay.presentation.navigation.Screen
+import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerSheetState
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StablePlayerState
@@ -160,6 +162,11 @@ fun UnifiedPlayerSheetV2(
                     deletePermissionLauncher.launch(
                         androidx.activity.result.IntentSenderRequest.Builder(intentSender).build()
                     )
+                }
+            }
+            launch {
+                playerViewModel.downloadNavigationRequests.collect {
+                    navController.navigateSafely(Screen.Downloads.route)
                 }
             }
         }

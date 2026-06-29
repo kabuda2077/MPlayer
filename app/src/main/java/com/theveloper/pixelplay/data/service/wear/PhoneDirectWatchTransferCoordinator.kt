@@ -14,6 +14,8 @@ import com.google.android.gms.wearable.Wearable
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
 import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
+import com.theveloper.pixelplay.data.plugin.KugouStreamProxy
+import com.theveloper.pixelplay.data.plugin.KuwoStreamProxy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
@@ -64,6 +66,8 @@ class PhoneDirectWatchTransferCoordinator @Inject constructor(
     private val telegramStreamProxy: Lazy<TelegramStreamProxy>,
     private val neteaseStreamProxy: NeteaseStreamProxy,
     private val qqMusicStreamProxy: QqMusicStreamProxy,
+    private val kugouStreamProxy: KugouStreamProxy,
+    private val kuwoStreamProxy: KuwoStreamProxy,
     private val navidromeStreamProxy: NavidromeStreamProxy,
     private val jellyfinStreamProxy: com.theveloper.pixelplay.data.jellyfin.JellyfinStreamProxy,
     private val gDriveStreamProxy: GDriveStreamProxy,
@@ -285,6 +289,9 @@ class PhoneDirectWatchTransferCoordinator @Inject constructor(
         if (
             contentUri.startsWith("telegram://") ||
             contentUri.startsWith("netease://") ||
+            contentUri.startsWith("qqmusic://") ||
+            contentUri.startsWith("kugou://") ||
+            contentUri.startsWith("kuwo://") ||
             contentUri.startsWith("gdrive://")
         ) {
             return false
@@ -403,6 +410,16 @@ class PhoneDirectWatchTransferCoordinator @Inject constructor(
                 qqMusicStreamProxy.warmUpStreamUrl(rawUri)
                 qqMusicStreamProxy.resolveQqMusicUri(rawUri)
             }
+            "kugou" -> {
+                ensureCloudProxyReady(kugouStreamProxy) || return null
+                kugouStreamProxy.warmUpStreamUrl(rawUri)
+                kugouStreamProxy.resolveKugouUri(rawUri)
+            }
+            "kuwo" -> {
+                ensureCloudProxyReady(kuwoStreamProxy) || return null
+                kuwoStreamProxy.warmUpStreamUrl(rawUri)
+                kuwoStreamProxy.resolveKuwoUri(rawUri)
+            }
             "navidrome" -> {
                 ensureCloudProxyReady(navidromeStreamProxy) || return null
                 navidromeStreamProxy.warmUpStreamUrl(rawUri)
@@ -451,6 +468,8 @@ class PhoneDirectWatchTransferCoordinator @Inject constructor(
         return when (proxy) {
             is NeteaseStreamProxy -> proxy.ensureReady(5_000L)
             is QqMusicStreamProxy -> proxy.ensureReady(5_000L)
+            is KugouStreamProxy -> proxy.ensureReady(5_000L)
+            is KuwoStreamProxy -> proxy.ensureReady(5_000L)
             is NavidromeStreamProxy -> proxy.ensureReady(5_000L)
             is com.theveloper.pixelplay.data.jellyfin.JellyfinStreamProxy -> proxy.ensureReady(5_000L)
             else -> false

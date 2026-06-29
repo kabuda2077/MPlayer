@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,6 +29,9 @@ internal fun LibraryPlaybackAwareSongItem(
     song: Song,
     playerViewModel: PlayerViewModel,
     albumArtSize: Dp = 50.dp,
+    showAlbumArt: Boolean = true,
+    customShape: Shape? = null,
+    containerColorOverride: Color? = null,
     isSelected: Boolean = false,
     selectionIndex: Int? = null,
     isSelectionMode: Boolean = false,
@@ -51,7 +56,10 @@ internal fun LibraryPlaybackAwareSongItem(
         isPlaying = playbackUiState.isPlaying,
         isCurrentSong = playbackUiState.isCurrentSong,
         isLoading = false,
+        showAlbumArt = showAlbumArt,
         albumArtSize = albumArtSize,
+        customShape = customShape,
+        containerColorOverride = containerColorOverride,
         isSelected = isSelected,
         selectionIndex = selectionIndex,
         isSelectionMode = isSelectionMode,

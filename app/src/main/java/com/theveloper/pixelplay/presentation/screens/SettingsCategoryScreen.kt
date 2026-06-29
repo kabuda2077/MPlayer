@@ -110,7 +110,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -296,7 +297,8 @@ fun SettingsCategoryScreen(
     var paletteBulkCompletedCount by remember { mutableStateOf(0) }
     var paletteBulkTotalCount by remember { mutableStateOf(0) }
     var paletteSongSearchQuery by remember { mutableStateOf("") }
-    val paletteRegenerateSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val paletteRegenerateSheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Expanded)
     val isAnyPaletteRegenerateRunning = isPaletteRegenerateRunning || isPaletteBulkRegenerateRunning
     val filteredPaletteSongs = remember(paletteRegenerateTargets, paletteSongSearchQuery) {
         val query = paletteSongSearchQuery.trim()
@@ -500,12 +502,12 @@ fun SettingsCategoryScreen(
                                             mb >= 1024 -> "${mb / 1024} GB"
                                             else -> "$mb MB"
                                         }
-                                    }
-                                )
-                                ActionSettingsItem(
-                                    title = stringResource(R.string.settings_online_audio_cache_size_title),
-                                    subtitle = stringResource(
-                                        R.string.settings_online_audio_cache_size_subtitle,
+                            }
+                        )
+                        ActionSettingsItem(
+                            title = stringResource(R.string.settings_online_audio_cache_size_title),
+                            subtitle = stringResource(
+                                R.string.settings_online_audio_cache_size_subtitle,
                                         uiState.onlineAudioCacheSizeLabel
                                     ),
                                     icon = {
@@ -558,6 +560,13 @@ fun SettingsCategoryScreen(
                                     checked = uiState.enableQqLyrics,
                                     onCheckedChange = { settingsViewModel.setOnlineLyricsEnabled(it) },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.settings_lyrics_show_romanization_title),
+                                    subtitle = stringResource(R.string.settings_lyrics_show_romanization_subtitle),
+                                    checked = uiState.showLyricsRomanization,
+                                    onCheckedChange = { settingsViewModel.setShowLyricsRomanization(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.Language, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SettingsItem(
                                     title = stringResource(R.string.settings_reset_imported_lyrics_title),
@@ -701,13 +710,15 @@ fun SettingsCategoryScreen(
                                         )
                                     }
                                 )
-                                SettingsItem(
-                                    title = stringResource(R.string.settings_navbar_corner_title),
-                                    subtitle = stringResource(R.string.settings_navbar_corner_subtitle),
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_rounded_corner_24), null, tint = MaterialTheme.colorScheme.secondary) },
-                                    trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { navController.navigateSafely("nav_bar_corner_radius") }
-                                )
+                                if (uiState.navBarStyle == NavBarStyle.FULL_WIDTH) {
+                                    SettingsItem(
+                                        title = stringResource(R.string.settings_navbar_corner_title),
+                                        subtitle = stringResource(R.string.settings_navbar_corner_subtitle),
+                                        leadingIcon = { Icon(painterResource(R.drawable.rounded_rounded_corner_24), null, tint = MaterialTheme.colorScheme.secondary) },
+                                        trailingIcon = { Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                        onClick = { navController.navigateSafely("nav_bar_corner_radius") }
+                                    )
+                                }
                             }
 
                             SettingsSubsection(

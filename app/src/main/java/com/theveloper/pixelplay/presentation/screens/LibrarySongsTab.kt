@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.SongListViewMode
 import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -70,6 +71,8 @@ fun LibrarySongsTab(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     sortOption: SortOption, // Added sortOption parameter
+    songListViewMode: SongListViewMode = SongListViewMode.LIST,
+    groupedSongs: List<Song> = emptyList(),
     // Multi-selection parameters
     isSelectionMode: Boolean = false,
     selectedSongIds: Set<String> = emptySet(),
@@ -79,7 +82,8 @@ fun LibrarySongsTab(
     onLocateCurrentSongVisibilityChanged: (Boolean) -> Unit = {},
     onRegisterLocateCurrentSongAction: ((() -> Unit)?) -> Unit = {},
     storageFilter: StorageFilter = StorageFilter.ALL,
-    hasCurrentSong: Boolean = false
+    hasCurrentSong: Boolean = false,
+    artistArtworkByName: Map<String, String?> = emptyMap()
 ) {
     val listState = rememberLazyListState()
     val dummyListState = rememberLazyListState()
@@ -103,6 +107,31 @@ fun LibrarySongsTab(
             .map { it.currentSong?.id }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = null)
+
+    if (songListViewMode != SongListViewMode.LIST) {
+        GroupedSongsView(
+            songs = groupedSongs,
+            isLoading = isLoading,
+            playerViewModel = playerViewModel,
+            bottomBarHeight = bottomBarHeight,
+            onMoreOptionsClick = onMoreOptionsClick,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            sortOption = sortOption,
+            viewMode = songListViewMode,
+            isSelectionMode = isSelectionMode,
+            selectedSongIds = selectedSongIds,
+            onSongLongPress = onSongLongPress,
+            onSongSelectionToggle = onSongSelectionToggle,
+            getSelectionIndex = getSelectionIndex,
+            onLocateCurrentSongVisibilityChanged = onLocateCurrentSongVisibilityChanged,
+            onRegisterLocateCurrentSongAction = onRegisterLocateCurrentSongAction,
+            storageFilter = storageFilter,
+            hasCurrentSong = hasCurrentSong,
+            artistArtworkByName = artistArtworkByName
+        )
+        return
+    }
 
     // Check if list is effectively empty (based on Paging state)
     // val isListEmpty = songs.itemCount == 0 && songs.loadState.refresh is LoadState.NotLoading
@@ -222,7 +251,7 @@ fun LibrarySongsTab(
 
     when {
         refreshState is LoadState.Error && songs.itemCount == 0 -> {
-            val error = (refreshState as LoadState.Error).error
+            val error = refreshState.error
             Box(
                 modifier = Modifier
                     .fillMaxSize()

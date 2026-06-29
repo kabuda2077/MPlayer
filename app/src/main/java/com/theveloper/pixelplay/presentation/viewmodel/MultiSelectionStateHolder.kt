@@ -3,7 +3,6 @@ package com.theveloper.pixelplay.presentation.viewmodel
 import android.content.Context
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Album
-import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.utils.ZipShareHelper
@@ -53,7 +52,7 @@ private data class ResolvedAlbumSelection(
  * State holder for multi-selection functionality in LibraryScreen tabs.
  * Manages selection state with order preservation using a LinkedHashSet internally,
  * plus the batch actions performed on the current selection (play/queue/play-next
- * for songs, albums and genres, favorites toggling, and ZIP sharing).
+ * for songs and albums, favorites toggling, and ZIP sharing).
  *
  * Selection order is maintained - the first selected song is at index 0,
  * subsequent selections are appended in the order they were selected.
@@ -392,79 +391,6 @@ class MultiSelectionStateHolder @Inject constructor(
                 )
                 Timber.e(error, "Failed to share selection as ZIP")
             }
-        }
-    }
-
-    fun playSelectedGenres(genres: List<Genre>, callbacks: SelectionActionCallbacks) =
-        launchGenreSelectionAction(
-            genres = genres,
-            callbacks = callbacks,
-            failureLogMessage = "Error playing selected genres",
-            failureMessage = "Could not play selected genres",
-        ) { songs ->
-            callbacks.playSongs(songs, songs.first(), "Selected Genres")
-            callbacks.showSheet()
-            null
-        }
-
-    fun addSelectedGenresToQueue(genres: List<Genre>, callbacks: SelectionActionCallbacks) =
-        launchGenreSelectionAction(
-            genres = genres,
-            callbacks = callbacks,
-            failureLogMessage = "Error adding selected genres to queue",
-            failureMessage = "Could not add selected genres to queue",
-        ) { songs ->
-            songs.forEach(callbacks.addSongToQueue)
-            val n = songs.size
-            context.resources.getQuantityString(R.plurals.player_view_model_n_songs_added_to_queue, n, n)
-        }
-
-    fun addSelectedGenresAsNext(genres: List<Genre>, callbacks: SelectionActionCallbacks) =
-        launchGenreSelectionAction(
-            genres = genres,
-            callbacks = callbacks,
-            failureLogMessage = "Error adding selected genres as next",
-            failureMessage = "Could not add selected genres as next",
-        ) { songs ->
-            songs.reversed().forEach(callbacks.addSongNextToQueue)
-            val n = songs.size
-            context.resources.getQuantityString(R.plurals.player_view_model_n_songs_will_play_next, n, n)
-        }
-
-    /**
-     * Shared shape of the genre batch actions: resolve the songs on IO, bail out
-     * with a toast when nothing is playable, run the action, and toast the message
-     * it returns (null = no success toast).
-     */
-    private fun launchGenreSelectionAction(
-        genres: List<Genre>,
-        callbacks: SelectionActionCallbacks,
-        failureLogMessage: String,
-        failureMessage: String,
-        action: suspend (List<Song>) -> String?,
-    ) {
-        if (genres.isEmpty()) return
-        callbacks.scope.launch {
-            try {
-                val songs = getSongsForGenres(genres)
-                if (songs.isEmpty()) {
-                    callbacks.emitToast(context.getString(R.string.player_view_model_no_playable_songs_in_genres))
-                    return@launch
-                }
-
-                action(songs)?.let { callbacks.emitToast(it) }
-            } catch (e: Exception) {
-                Timber.e(e, failureLogMessage)
-                callbacks.emitToast(failureMessage)
-            }
-        }
-    }
-
-    suspend fun getSongsForGenres(genres: List<Genre>): List<Song> {
-        return withContext(Dispatchers.IO) {
-            genres.flatMap { genre ->
-                musicRepository.getMusicByGenre(genre.name).first()
-            }.distinctBy { it.id }
         }
     }
 

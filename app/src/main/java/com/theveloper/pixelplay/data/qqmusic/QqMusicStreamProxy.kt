@@ -1,6 +1,8 @@
 package com.theveloper.pixelplay.data.qqmusic
 
+import android.content.Context
 import android.net.Uri
+import com.theveloper.pixelplay.data.download.DownloadRepository
 import com.theveloper.pixelplay.data.plugin.PluginAudioSourceResolver
 import com.theveloper.pixelplay.data.plugin.PluginSource
 import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
@@ -12,14 +14,17 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class QqMusicStreamProxy @Inject constructor(
+    @ApplicationContext context: Context,
     private val pluginResolver: PluginAudioSourceResolver,
     private val playbackInfoStore: CloudStreamPlaybackInfoStore,
     onlineAudioCacheManager: OnlineAudioCacheManager,
+    downloadRepository: DownloadRepository,
     okHttpClient: OkHttpClient
-) : CloudStreamProxy<String>(okHttpClient, onlineAudioCacheManager) {
+) : CloudStreamProxy<String>(okHttpClient, onlineAudioCacheManager, downloadRepository, context.contentResolver) {
 
     override val allowedHostSuffixes = emptySet<String>()
     override val cacheExpirationMs = 10L * 60 * 1000

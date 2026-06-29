@@ -7,7 +7,6 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.theveloper.pixelplay.R
@@ -78,7 +77,6 @@ private data class PreparedPlaybackQueueSegments(
  * reuse, hydration, queue-segment batching, external-URI playback, the shuffle-all
  * tile entry point, and the "preparing playback" pill state.
  */
-@OptIn(UnstableApi::class)
 @ViewModelScoped
 class PlaybackDispatchStateHolder @Inject constructor(
     private val musicRepository: MusicRepository,
@@ -914,6 +912,8 @@ class PlaybackDispatchStateHolder @Inject constructor(
             scheme != "telegram" &&
             scheme != "netease" &&
             scheme != "qqmusic" &&
+            scheme != "kugou" &&
+            scheme != "kuwo" &&
             scheme != "navidrome" &&
             scheme != "jellyfin" &&
             scheme != "gdrive"

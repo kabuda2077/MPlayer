@@ -8,9 +8,12 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Search : Screen("search")
     object Library : Screen("library")
+    object OnlineLibrary : Screen("online_library")
+    object LocalLibrary : Screen("local_library")
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
     object AudioSourcePlugins : Screen("audio_source_plugins")
+    object Downloads : Screen("downloads")
     object SettingsCategory : Screen("settings_category/{categoryId}") {
         fun createRoute(categoryId: String) = "settings_category/$categoryId"
     }
@@ -24,9 +27,6 @@ sealed class Screen(val route: String) {
     object  DailyMixScreen : Screen("daily_mix")
     object RecentlyPlayed : Screen("recently_played")
     object Stats : Screen("stats")
-    object GenreDetail : Screen("genre_detail/{genreId}") { // New screen
-        fun createRoute(genreId: String) = "genre_detail/$genreId"
-    }
     object DJSpace : Screen("dj_space")
     // La ruta base es "album_detail". La ruta completa con el argumento se define en AppNavigation.
     object AlbumDetail : Screen("album_detail/{albumId}") {
