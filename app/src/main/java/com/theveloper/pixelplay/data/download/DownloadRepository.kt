@@ -7,7 +7,13 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.TransientOnlineSong
+import com.theveloper.pixelplay.data.model.LibrarySong
 import com.theveloper.pixelplay.data.plugin.PluginSource
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.theveloper.pixelplay.utils.PlaybackTrace
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
+import com.theveloper.pixelplay.utils.PlaybackTraceOrigin
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,10 +36,21 @@ class DownloadRepository @Inject constructor(
 
     suspend fun getCompletedAudio(contentUriString: String): DownloadedAudioFile? {
         val entity = downloadDao.getCompletedByContentUri(contentUriString) ?: return null
-        return publicStore.completedAudio(entity)
+        return publicStore.completedAudio(entity) ?: run {
+            downloadDao.deleteByContentUri(contentUriString)
+            null
+        }
     }
 
-    suspend fun startDownload(song: Song): DownloadStartResult = withContext(Dispatchers.IO) {
+    private suspend fun startDownloadSong(
+        song: Song,
+        libraryId: Long?,
+        traceContext: PlaybackTraceContext = PlaybackTrace.newContext(
+            mediaId = song.id,
+            sourceUri = song.contentUriString,
+            origin = PlaybackTraceOrigin.DOWNLOAD
+        )
+    ): DownloadStartResult = withContext(Dispatchers.IO) {
         val target = DownloadTarget.fromSong(song) ?: throw IllegalArgumentException("Unsupported download source")
         val now = System.currentTimeMillis()
         val duplicate = downloadDao.getCompletedBySourcePlatform(target.source.lxSource, target.platformSongId)
@@ -50,7 +67,7 @@ class DownloadRepository @Inject constructor(
         downloadDao.upsert(
             DownloadEntity(
                 contentUriString = song.contentUriString,
-                songId = song.id.toLongOrNull() ?: 0L,
+                songId = libraryId,
                 title = song.title,
                 artist = song.displayArtist,
                 album = song.album,
@@ -84,7 +101,8 @@ class DownloadRepository @Inject constructor(
             )
             .setInputData(
                 workDataOf(
-                    DownloadWorker.KEY_CONTENT_URI to song.contentUriString
+                    DownloadWorker.KEY_CONTENT_URI to song.contentUriString,
+                    DownloadWorker.KEY_TRACE_ID to traceContext.requestId
                 )
             )
             .addTag(WORK_TAG)
@@ -98,6 +116,12 @@ class DownloadRepository @Inject constructor(
         DownloadStartResult.STARTED
     }
 
+    suspend fun startDownload(song: TransientOnlineSong): DownloadStartResult =
+        startDownloadSong(song.song, libraryId = null)
+
+    suspend fun startDownload(song: LibrarySong): DownloadStartResult =
+        startDownloadSong(song.song, libraryId = song.libraryId)
+
     suspend fun retry(entity: DownloadEntity) = withContext(Dispatchers.IO) {
         if (entity.status != DownloadStatus.COMPLETED) {
             publicStore.delete(entity.publicUri)
@@ -109,13 +133,23 @@ class DownloadRepository @Inject constructor(
             updatedAt = System.currentTimeMillis(),
             errorMessage = null
         )
+        val traceContext = PlaybackTrace.newContext(
+            mediaId = entity.songId?.toString() ?: "${entity.source}:${entity.platformSongId}",
+            sourceUri = entity.contentUriString,
+            origin = PlaybackTraceOrigin.DOWNLOAD
+        )
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
                     .build()
             )
-            .setInputData(workDataOf(DownloadWorker.KEY_CONTENT_URI to entity.contentUriString))
+            .setInputData(
+                workDataOf(
+                    DownloadWorker.KEY_CONTENT_URI to entity.contentUriString,
+                    DownloadWorker.KEY_TRACE_ID to traceContext.requestId
+                )
+            )
             .addTag(WORK_TAG)
             .build()
         workManager.enqueueUniqueWork(
@@ -227,8 +261,8 @@ data class DownloadTarget(
         fun fromSong(song: Song): DownloadTarget? = fromContentUri(song.contentUriString)
 
         fun fromContentUri(contentUriString: String): DownloadTarget? {
-            val source = PluginSource.fromUri(contentUriString) ?: return null
-            val id = contentUriString.removePrefix("${source.uriScheme}://").takeIf { it.isNotBlank() }
+            val source = MediaSourceClassifier.pluginSource(contentUriString) ?: return null
+            val id = MediaSourceClassifier.idPart(contentUriString, source)
                 ?: return null
             return DownloadTarget(source = source, platformSongId = id)
         }

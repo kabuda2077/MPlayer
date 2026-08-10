@@ -4,19 +4,25 @@ import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.SyncedWord
+import com.theveloper.pixelplay.data.database.QqMusicDao
 import com.theveloper.pixelplay.data.network.qqmusic.QqMusicApiService
+import com.theveloper.pixelplay.data.plugin.PluginSource
 import com.theveloper.pixelplay.data.repository.LyricsSearchRecord
 import com.theveloper.pixelplay.data.repository.LyricsSearchResult
+import com.theveloper.pixelplay.data.repository.LyricsMetadataMatcher
 import com.theveloper.pixelplay.utils.LyricsUtils
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
-import org.json.JSONObject
 import timber.log.Timber
 
 @Singleton
 class QqLyricsFetcher @Inject constructor(
-    private val qqMusicApiService: QqMusicApiService
+    private val qqMusicApiService: QqMusicApiService,
+    private val qqMusicDao: QqMusicDao
 ) {
 
     data class CandidateRejection(
@@ -49,6 +55,18 @@ class QqLyricsFetcher @Inject constructor(
     )
 
     suspend fun fetch(song: Song): FetchResult? {
+        findExactQqMusicCandidate(song)?.let { exactCandidate ->
+            fetchCandidate(exactCandidate, expectedDurationMs = song.duration)?.let { result ->
+                return result.copy(
+                    metadata = result.metadata.copy(
+                        matchType = "id",
+                        durationDiffMs = 0L,
+                        exactPlatformMatch = true
+                    )
+                )
+            }
+        }
+
         val candidate = findBestCandidate(song) ?: return null
         return fetchCandidate(candidate, expectedDurationMs = song.duration)
     }
@@ -72,7 +90,7 @@ class QqLyricsFetcher @Inject constructor(
                         query = query,
                         title = title,
                         artist = artist.orEmpty(),
-                        candidateId = candidate.id,
+                        candidateId = candidate.qqSongId,
                         candidateTitle = candidate.title,
                         candidateArtist = candidate.artist,
                         expectedDurationMs = expectedDurationMs,
@@ -92,7 +110,7 @@ class QqLyricsFetcher @Inject constructor(
                 add(
                     LyricsSearchResult(
                         record = LyricsSearchRecord(
-                            id = candidate.id,
+                            id = candidate.qqSongId,
                             name = candidate.title,
                             artistName = candidate.artist,
                             albumName = candidate.album,
@@ -125,38 +143,71 @@ class QqLyricsFetcher @Inject constructor(
 
         val rejections = mutableListOf<CandidateRejection>()
         val candidates = qqMusicApiService.searchSongs(query)
-        val accepted = candidates.firstOrNull { result ->
-            result.durationMs <= 0L || abs(result.durationMs - song.duration) <= MAX_DURATION_DIFF_MS
-        }
-        candidates.forEach { result ->
-            if (accepted != null && result.id == accepted.id) return@forEach
-            if (result.durationMs > 0L) {
-                val diff = abs(result.durationMs - song.duration)
-                if (diff > MAX_DURATION_DIFF_MS) {
-                    rejections += CandidateRejection(
-                        query = query,
-                        title = song.title,
-                        artist = song.displayArtist,
-                        candidateId = result.id,
-                        candidateTitle = result.title,
-                        candidateArtist = result.artist,
-                        expectedDurationMs = song.duration,
-                        candidateDurationMs = result.durationMs,
-                        durationDiffMs = diff,
-                        reason = "duration_mismatch"
-                    )
-                }
+        val accepted = candidates
+            .mapNotNull { result ->
+                LyricsMetadataMatcher.strictScore(
+                    originalTitle = song.title,
+                    originalArtist = song.displayArtist,
+                    originalDurationMs = song.duration,
+                    candidateTitle = result.title,
+                    candidateArtist = result.artist,
+                    candidateDurationMs = result.durationMs
+                )?.let { score -> result to score }
             }
+            .maxByOrNull { it.second }
+            ?.first
+        candidates.forEach { result ->
+            if (accepted != null && result.qqSongId == accepted.qqSongId) return@forEach
+            val diff = result.durationMs.takeIf { it > 0L }?.let { abs(it - song.duration) }
+            rejections += CandidateRejection(
+                query = query,
+                title = song.title,
+                artist = song.displayArtist,
+                candidateId = result.qqSongId,
+                candidateTitle = result.title,
+                candidateArtist = result.artist,
+                expectedDurationMs = song.duration,
+                candidateDurationMs = result.durationMs,
+                durationDiffMs = diff,
+                reason = "strict_metadata_mismatch"
+            )
         }
         rejections.forEach(::logCandidateRejection)
         return accepted
+    }
+
+    private suspend fun findExactQqMusicCandidate(song: Song): QqMusicApiService.SearchSongResult? {
+        val mid = song.qqMusicMid
+            ?: MediaSourceClassifier.idPart(song.contentUriString, PluginSource.QQ_MUSIC)
+                ?.substringBefore("/")
+                ?.substringBefore("?")
+        if (mid.isNullOrBlank()) return null
+
+        val stored = qqMusicDao.getSongWithNumericIdByMid(mid) ?: return null
+        val numericSongId = stored.songId?.takeIf { it > 0L } ?: return null
+        Timber.d(
+            "Lyrics[QQ] exact QQ song id hit: mid=%s songId=%s for %s - %s",
+            mid,
+            numericSongId,
+            song.displayArtist,
+            song.title
+        )
+        return QqMusicApiService.SearchSongResult(
+            qqSongId = numericSongId.toString(),
+            mid = stored.songMid,
+            title = stored.title.ifBlank { song.title },
+            artist = stored.artist.ifBlank { song.displayArtist },
+            album = stored.album.ifBlank { song.album },
+            albumArtUrl = stored.albumArtUrl ?: song.albumArtUriString,
+            durationMs = stored.duration.takeIf { it > 0L } ?: song.duration
+        )
     }
 
     private suspend fun fetchCandidate(
         candidate: QqMusicApiService.SearchSongResult,
         expectedDurationMs: Long? = null
     ): FetchResult? {
-        val songId = candidate.id.toLongOrNull() ?: return null
+        val songId = candidate.qqSongId.toLongOrNull() ?: return null
         val durationSeconds = (candidate.durationMs / 1000L).toInt()
         val durationDiffMs = expectedDurationMs?.takeIf { candidate.durationMs > 0L }?.let {
             abs(candidate.durationMs - it)
@@ -173,63 +224,24 @@ class QqLyricsFetcher @Inject constructor(
         val qrc = decodeLyricPayload(payload.optString("lyric"), "qrc", candidate)
         val trans = decodeLyricPayload(payload.optString("trans"), "trans", candidate)
         val roma = decodeLyricPayload(payload.optString("roma"), "roma", candidate)
+        val qrcLyrics = qrc
+            ?.let { parseQrcLyrics(it, trans, roma) }
+            ?.takeIf(::hasValidLyrics)
 
-        if (!qrc.isNullOrBlank()) {
-            val lyrics = parseQrcLyrics(qrc, trans, roma)
-            if (lyrics != null) {
-                return FetchResult(
-                    lyrics = lyrics,
-                    rawLyrics = encodeStructuredPayload(
-                        qrc = qrc,
-                        trans = trans,
-                        roma = roma,
-                        lrc = null
-                    ),
-                    metadata = FetchMetadata(
-                        sourceTag = "qq_qrc",
-                        hasWordLevel = lyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() },
-                        hasTranslation = lyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() },
-                        hasRomanization = lyrics.synced.orEmpty().any { !it.romanization.isNullOrBlank() },
-                        matchType = "fuzzy",
-                        durationDiffMs = durationDiffMs,
-                        exactPlatformMatch = false
-                    )
-                )
-            }
-        }
-
-        val lrc = when {
-            payload.optInt("qrc_t", -1) == 0 && !payload.optString("lyric").isNullOrBlank() ->
-                decodeLyricPayload(payload.optString("lyric"), "lrc_from_qrc", candidate)
-            else -> {
-                val lrcPayload = qqMusicApiService.getLyricPayload(
-                    songId = songId,
-                    songName = candidate.title,
-                    singerName = candidate.artist,
-                    albumName = candidate.album,
-                    durationSeconds = durationSeconds,
-                    includeQrc = false
-                )
-                decodeLyricPayload(lrcPayload.optString("lyric"), "lrc", candidate)
-            }
-        }
-
-        val parsed = lrc?.let { LyricsUtils.parseLyrics(it).copy(areFromRemote = true) }
-        if (parsed != null && hasValidLyrics(parsed)) {
-            val mergedLyrics = mergeLrcExtras(parsed, trans, roma)
+        if (qrcLyrics != null) {
             return FetchResult(
-                lyrics = mergedLyrics,
+                lyrics = qrcLyrics,
                 rawLyrics = encodeStructuredPayload(
-                    qrc = null,
+                    qrc = qrc,
                     trans = trans,
                     roma = roma,
-                    lrc = lrc
+                    lrc = null
                 ),
                 metadata = FetchMetadata(
-                    sourceTag = "qq_lrc",
-                    hasWordLevel = mergedLyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() },
-                    hasTranslation = mergedLyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() },
-                    hasRomanization = mergedLyrics.synced.orEmpty().any { !it.romanization.isNullOrBlank() },
+                    sourceTag = "qq_qrc",
+                    hasWordLevel = qrcLyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() },
+                    hasTranslation = qrcLyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() },
+                    hasRomanization = qrcLyrics.synced.orEmpty().any { !it.romanization.isNullOrBlank() },
                     matchType = "fuzzy",
                     durationDiffMs = durationDiffMs,
                     exactPlatformMatch = false
@@ -237,7 +249,39 @@ class QqLyricsFetcher @Inject constructor(
             )
         }
 
-        return null
+        val lrc = if (payload.optInt("qrc_t", -1) == 0 && !payload.optString("lyric").isNullOrBlank()) {
+            decodeLyricPayload(payload.optString("lyric"), "lrc_from_qrc", candidate)
+        } else {
+            val lrcPayload = qqMusicApiService.getLyricPayload(
+                songId = songId,
+                songName = candidate.title,
+                singerName = candidate.artist,
+                albumName = candidate.album,
+                durationSeconds = durationSeconds,
+                includeQrc = false
+            )
+            decodeLyricPayload(lrcPayload.optString("lyric"), "lrc", candidate)
+        }
+
+        val lrcLyrics = lrc
+            ?.let { LyricsUtils.parseLyrics(it).copy(areFromRemote = true) }
+            ?.takeIf(::hasValidLyrics)
+            ?.let { mergeLrcExtras(it, trans, roma) }
+            ?: return null
+
+        return FetchResult(
+            lyrics = lrcLyrics,
+            rawLyrics = encodeStructuredPayload(qrc = null, trans = trans, roma = roma, lrc = lrc),
+            metadata = FetchMetadata(
+                sourceTag = "qq_lrc",
+                hasWordLevel = lrcLyrics.synced.orEmpty().any { !it.words.isNullOrEmpty() },
+                hasTranslation = lrcLyrics.synced.orEmpty().any { !it.translation.isNullOrBlank() },
+                hasRomanization = lrcLyrics.synced.orEmpty().any { !it.romanization.isNullOrBlank() },
+                matchType = "fuzzy",
+                durationDiffMs = durationDiffMs,
+                exactPlatformMatch = false
+            )
+        )
     }
 
     fun parsePersistedRaw(rawLyrics: String): Lyrics? {
@@ -247,21 +291,29 @@ class QqLyricsFetcher @Inject constructor(
         }
 
         val payload = runCatching {
-            JSONObject(rawLyrics.removePrefix(STRUCTURED_PREFIX))
+            JsonParser.parseString(rawLyrics.removePrefix(STRUCTURED_PREFIX)).asJsonObject
         }.getOrNull() ?: return null
 
-        val qrc = payload.optString("qrc", "").takeIf { it.isNotBlank() }
-        val trans = payload.optString("trans", "").takeIf { it.isNotBlank() }
-        val roma = payload.optString("roma", "").takeIf { it.isNotBlank() }
-        val lrc = payload.optString("lrc", "").takeIf { it.isNotBlank() }
+        fun textField(name: String): String? = payload.get(name)
+            ?.takeUnless { it.isJsonNull }
+            ?.asString
+            ?.takeIf { it.isNotBlank() }
+        val qrc = textField("qrc")
+        val trans = textField("trans")
+        val roma = textField("roma")
+        val lrc = textField("lrc")
 
-        if (!qrc.isNullOrBlank() && isReadableLyricText(qrc)) {
-            return parseQrcLyrics(qrc, trans, roma)
-        }
+        val qrcLyrics = qrc
+            ?.takeIf(::isReadableLyricText)
+            ?.let { parseQrcLyrics(it, trans, roma) }
+            ?.takeIf(::hasValidLyrics)
 
+        if (qrcLyrics != null) return qrcLyrics
         if (!lrc.isNullOrBlank() && !isReadableLyricText(lrc)) return null
-        val parsed = lrc?.let { LyricsUtils.parseLyrics(it).copy(areFromRemote = true) } ?: return null
-        return mergeLrcExtras(parsed, trans, roma).takeIf(::hasValidLyrics)
+        return lrc
+            ?.let { LyricsUtils.parseLyrics(it).copy(areFromRemote = true) }
+            ?.takeIf(::hasValidLyrics)
+            ?.let { mergeLrcExtras(it, trans, roma) }
     }
 
     private fun decodeLyricPayload(
@@ -277,20 +329,22 @@ class QqLyricsFetcher @Inject constructor(
                     label,
                     candidate.artist,
                     candidate.title,
-                    candidate.id,
+                    candidate.qqSongId,
                     it.message
                 )
             }
             .getOrNull()
+            ?: decodePlainPayloadCandidate(encrypted)
             ?: return null
 
-        if (!isReadableLyricText(decoded)) {
+        if (!isDecodedPayloadSafe(decoded) || !looksLikeLyricPayload(decoded)) {
+            decodePlainPayloadCandidate(encrypted)?.let { return it }
             Timber.d(
                 "Lyrics[QQ][Reject] reason=garbled_payload field=%s candidate=%s/%s id=%s",
                 label,
                 candidate.artist,
                 candidate.title,
-                candidate.id
+                candidate.qqSongId
             )
             return null
         }
@@ -303,6 +357,16 @@ class QqLyricsFetcher @Inject constructor(
             .mapNotNull(::parseQrcLine)
             .sortedBy { it.time }
         if (baseLines.isEmpty()) return null
+
+        baseLines.firstOrNull { !it.words.isNullOrEmpty() }?.let { firstLine ->
+            val firstWordTime = firstLine.words.orEmpty().firstOrNull()?.time
+            Timber.d(
+                "Lyrics[QQ][QRC] firstLineMs=%s firstWordMs=%s deltaMs=%s",
+                firstLine.time,
+                firstWordTime,
+                firstWordTime?.minus(firstLine.time)
+            )
+        }
 
         val merged = LyricsUtils.mergeSupplementalLines(
             baseLines = baseLines,
@@ -367,6 +431,7 @@ class QqLyricsFetcher @Inject constructor(
 
         val match = QRC_LINE_REGEX.matchEntire(line) ?: return null
         val lineStart = match.groupValues[1].toIntOrNull() ?: return null
+        val lineDuration = match.groupValues[2].toIntOrNull() ?: 0
         val lineContent = match.groupValues[3]
         val words = mutableListOf<SyncedWord>()
         val plain = StringBuilder()
@@ -380,8 +445,13 @@ class QqLyricsFetcher @Inject constructor(
             val trimmed = wordText.trim()
             if (trimmed.isNotEmpty()) {
                 val startsNew = previousEndsWithSpace || wordText.firstOrNull()?.isWhitespace() == true || words.isEmpty()
+                val absoluteWordTime = if (isAbsoluteQrcWordTime(wordStart, lineStart, lineDuration)) {
+                    wordStart
+                } else {
+                    lineStart + wordStart
+                }
                 words += SyncedWord(
-                    time = lineStart + wordStart,
+                    time = absoluteWordTime,
                     word = trimmed,
                     startsNewWord = startsNew
                 )
@@ -396,6 +466,11 @@ class QqLyricsFetcher @Inject constructor(
             line = plainText,
             words = words.takeIf { it.isNotEmpty() }
         )
+    }
+
+    private fun isAbsoluteQrcWordTime(wordTime: Int, lineStart: Int, lineDuration: Int): Boolean {
+        if (wordTime >= lineStart - 1000) return true
+        return lineDuration > 0 && wordTime > lineDuration + 1000
     }
 
     private fun logCandidateRejection(rejection: CandidateRejection) {
@@ -439,12 +514,12 @@ class QqLyricsFetcher @Inject constructor(
         ).joinToString("-")
 
     private fun encodeStructuredPayload(qrc: String?, trans: String?, roma: String?, lrc: String?): String =
-        STRUCTURED_PREFIX + JSONObject().apply {
-            qrc?.let { put("qrc", it) }
-            trans?.let { put("trans", it) }
-            roma?.let { put("roma", it) }
-            lrc?.let { put("lrc", it) }
-        }.toString()
+        STRUCTURED_PREFIX + JsonObject().apply {
+            qrc?.let { addProperty("qrc", it) }
+            trans?.let { addProperty("trans", it) }
+            roma?.let { addProperty("roma", it) }
+            lrc?.let { addProperty("lrc", it) }
+        }
 
     private fun hasValidLyrics(lyrics: Lyrics): Boolean {
         if (!lyrics.synced.isNullOrEmpty()) {
@@ -455,7 +530,7 @@ class QqLyricsFetcher @Inject constructor(
     }
 
     companion object {
-        private const val MAX_DURATION_DIFF_MS = 5_000L
+        private const val MAX_DURATION_DIFF_MS = 15_000L
         private const val SOURCE_NAME = "QQ Music"
         private const val SOURCE_URL = "https://y.qq.com/"
         private const val STRUCTURED_PREFIX = "qqlyrics://"
@@ -482,6 +557,54 @@ class QqLyricsFetcher @Inject constructor(
                     char in setOf('[', ']', ':', '.', ',', '-', '_', '(', ')', '<', '>', '/', '"', '\'', '&', ';', '!', '?')
             }
             return readableCount.toFloat() / chars.size >= 0.85f
+        }
+
+        private fun isDecodedPayloadSafe(value: String): Boolean {
+            val text = value.trim()
+            if (text.isBlank()) return false
+            if (text.contains('\uFFFD')) return false
+
+            val invalidControls = text.count { char ->
+                Character.isISOControl(char) && char !in listOf('\n', '\r', '\t')
+            }
+            return invalidControls == 0
+        }
+
+        private fun decodePlainPayloadCandidate(payload: String?): String? {
+            val raw = payload?.trim().orEmpty()
+            if (raw.isBlank()) return null
+
+            val candidates = mutableListOf<String>()
+            fun addCandidate(value: String?) {
+                val normalized = value?.trim('\uFEFF', '\u0000', ' ', '\n', '\r', '\t')
+                if (!normalized.isNullOrBlank()) {
+                    candidates += normalized
+                }
+            }
+
+            addCandidate(raw)
+            addCandidate(runCatching { java.net.URLDecoder.decode(raw, Charsets.UTF_8.name()) }.getOrNull())
+            addCandidate(decodeBase64Text(raw, android.util.Base64.DEFAULT))
+            addCandidate(decodeBase64Text(raw, android.util.Base64.URL_SAFE))
+
+            return candidates
+                .asSequence()
+                .distinct()
+                .firstOrNull { isDecodedPayloadSafe(it) && looksLikeLyricPayload(it) }
+        }
+
+        private fun decodeBase64Text(value: String, flags: Int): String? =
+            runCatching {
+                String(android.util.Base64.decode(value, flags), Charsets.UTF_8)
+            }.getOrNull()
+
+        private fun looksLikeLyricPayload(value: String): Boolean {
+            val text = value.trim()
+            return (text.contains('[') && text.contains(']')) ||
+                text.contains("<Lyric", ignoreCase = true) ||
+                text.contains("<Qrc", ignoreCase = true) ||
+                text.contains("LyricContent", ignoreCase = true) ||
+                text.contains("[offset", ignoreCase = true)
         }
     }
 }

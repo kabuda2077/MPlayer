@@ -19,13 +19,6 @@ val keystoreProperties = Properties().apply {
     }
 }
 
-val localProperties = Properties().apply {
-    val propFile = rootProject.file("local.properties")
-    if (propFile.exists()) {
-        propFile.inputStream().use { load(it) }
-    }
-}
-
 val enableAbiSplits = providers.gradleProperty("pixelplay.enableAbiSplits")
     .getOrElse("true")
     .toBoolean()
@@ -57,7 +50,6 @@ android {
             excludes += listOf(
                 "META-INF/INDEX.LIST",
                 "META-INF/DEPENDENCIES",
-                "/META-INF/io.netty.versions.properties",
                 "META-INF/CONTRIBUTORS.md",
                 "META-INF/NOTICE.txt",
                 "META-INF/NOTICE.md"
@@ -78,12 +70,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val telegramApiId = localProperties.getProperty("TELEGRAM_API_ID")?.ifEmpty { null }
-            ?: "2040"
-        val telegramApiHash = localProperties.getProperty("TELEGRAM_API_HASH")?.ifEmpty { null }
-            ?: "b18441a1ff607e10a989891a5462e627"
-        buildConfigField("int", "TELEGRAM_API_ID", telegramApiId)
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
     }
 
     signingConfigs {
@@ -254,7 +240,6 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.ffmpeg)
     implementation(libs.androidx.media3.exoplayer.midi)
     implementation(libs.androidx.media3.transformer)
-    implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.media)
     implementation(libs.coil.compose)
     implementation(libs.taglib)
@@ -271,20 +256,11 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.cio)
     implementation(libs.quickjs.wrapper.android)
 
-    // Identity & Background
+    // Background & secure preferences
     implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.play.services.wearable)
-    implementation(libs.kotlinx.coroutines.play.services)
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
-    implementation(libs.googleid)
     implementation(libs.androidx.security.crypto)
-    implementation(libs.google.play.services.cast.framework)
-    implementation(libs.tdlib)
 
     // UI Utilities & Extra
     implementation(libs.timber)
@@ -306,9 +282,6 @@ dependencies {
         exclude(group = "androidx.compose.runtime")
         exclude(group = "androidx.compose.ui")
     }
-
-    // Projects
-    implementation(project(":shared"))
 
     // Testing (Unit)
     testImplementation(libs.junit.jupiter.api)
@@ -333,7 +306,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.truth)
-    androidTestImplementation(libs.mockk)
+    androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.worktesting)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
@@ -347,10 +320,6 @@ dependencies {
 
     constraints {
         // Fix vulnerabilities in transitive dependencies
-        implementation(libs.netty.common)
-        implementation(libs.netty.handler)
-        implementation(libs.netty.codec.http)
-        implementation(libs.netty.codec.http2)
         implementation(libs.bouncycastle.bcprov)
         implementation(libs.bouncycastle.bcpkix)
         implementation(libs.commons.lang3)

@@ -30,7 +30,7 @@ class MediaItemBuilderTest {
     @Test
     fun shouldPreferDirectLocalFileUri_keepsCloudUrisUntouched() {
         val shouldPreferFile = MediaItemBuilder.shouldPreferDirectLocalFileUri(
-            contentUriString = "telegram://123/456",
+            contentUriString = "qqmusic://MID123456",
             filePath = "/storage/emulated/0/Download/cached-track.m4a",
             mimeType = "audio/mp4"
         )

@@ -20,7 +20,6 @@ import com.theveloper.pixelplay.PixelPlayApplication
 import com.theveloper.pixelplay.data.database.AlbumArtThemeDao
 import com.theveloper.pixelplay.data.database.EngagementDao
 import com.theveloper.pixelplay.data.database.FavoritesDao
-import com.theveloper.pixelplay.data.database.GDriveDao
 import com.theveloper.pixelplay.data.database.LyricsDao
 import com.theveloper.pixelplay.data.database.AiCacheDao
 import com.theveloper.pixelplay.data.database.AiUsageDao
@@ -28,7 +27,6 @@ import com.theveloper.pixelplay.data.database.LocalPlaylistDao
 import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.PixelPlayDatabase
 import com.theveloper.pixelplay.data.database.PluginDao
-import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.database.TransitionDao
 import com.theveloper.pixelplay.data.download.DownloadDao
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -41,17 +39,23 @@ import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.qqmusic.QqLyricsFetcher
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
+import com.theveloper.pixelplay.data.repository.LyricsCoordinator
 import com.theveloper.pixelplay.data.repository.LyricsRepositoryImpl
 import com.theveloper.pixelplay.data.repository.MediaStoreSongRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.repository.MusicRepositoryImpl
+import com.theveloper.pixelplay.data.repository.OnlineLibraryRepository
+import com.theveloper.pixelplay.data.repository.OnlineLibraryRepositoryImpl
 import com.theveloper.pixelplay.data.repository.SongRepository
 import com.theveloper.pixelplay.data.repository.TransitionRepository
 import com.theveloper.pixelplay.data.repository.TransitionRepositoryImpl
 import com.theveloper.pixelplay.data.repository.FolderTreeBuilder
+import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository
+import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepositoryImpl
+import com.theveloper.pixelplay.data.service.player.PlaybackSourceGateway
+import com.theveloper.pixelplay.data.service.player.PlaybackSourceResolver
 import dagger.Module
 import dagger.Provides
-import dagger.Lazy
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -70,6 +74,24 @@ import retrofit2.converter.gson.GsonConverterFactory
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Singleton
+    @Provides
+    fun provideOnlineLibraryRepository(
+        implementation: OnlineLibraryRepositoryImpl
+    ): OnlineLibraryRepository = implementation
+
+    @Singleton
+    @Provides
+    fun provideOnlineRecommendationRepository(
+        implementation: OnlineRecommendationRepositoryImpl
+    ): OnlineRecommendationRepository = implementation
+
+    @Singleton
+    @Provides
+    fun providePlaybackSourceGateway(
+        resolver: PlaybackSourceResolver
+    ): PlaybackSourceGateway = resolver
 
     @Singleton
     @Provides
@@ -171,7 +193,12 @@ object AppModule {
             PixelPlayDatabase.MIGRATION_41_42,
             PixelPlayDatabase.MIGRATION_42_43,
             PixelPlayDatabase.MIGRATION_43_44,
-            PixelPlayDatabase.MIGRATION_44_45
+            PixelPlayDatabase.MIGRATION_44_45,
+            PixelPlayDatabase.MIGRATION_45_46,
+            PixelPlayDatabase.MIGRATION_46_47,
+            PixelPlayDatabase.MIGRATION_47_48,
+            PixelPlayDatabase.MIGRATION_48_49,
+            PixelPlayDatabase.MIGRATION_49_50
         )
             .addCallback(PixelPlayDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -190,12 +217,6 @@ object AppModule {
     @Provides
     fun provideAlbumArtThemeDao(database: PixelPlayDatabase): AlbumArtThemeDao {
         return database.albumArtThemeDao()
-    }
-
-    @Singleton
-    @Provides
-    fun provideSearchHistoryDao(database: PixelPlayDatabase): SearchHistoryDao { // NUEVO MÉTODO
-        return database.searchHistoryDao()
     }
 
     @Singleton
@@ -230,12 +251,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideGDriveDao(database: PixelPlayDatabase): GDriveDao {
-        return database.gdriveDao()
-    }
-
-    @Singleton
-    @Provides
     fun provideLocalPlaylistDao(database: PixelPlayDatabase): LocalPlaylistDao {
         return database.localPlaylistDao()
     }
@@ -246,12 +261,6 @@ object AppModule {
         return database.qqmusicDao()
     }
 
-    @Singleton
-    @Provides
-    fun provideNavidromeDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.NavidromeDao {
-        return database.navidromeDao()
-    }
-    
     @Singleton
     @Provides
     fun provideAiCacheDao(database: PixelPlayDatabase): AiCacheDao {
@@ -273,12 +282,6 @@ object AppModule {
     @Provides
     fun provideDownloadDao(database: PixelPlayDatabase): DownloadDao {
         return database.downloadDao()
-    }
-
-    @Singleton
-    @Provides
-    fun provideJellyfinDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.JellyfinDao {
-        return database.jellyfinDao()
     }
 
     @Provides
@@ -341,7 +344,9 @@ object AppModule {
         qqLyricsFetcher: QqLyricsFetcher,
         userPreferencesRepository: UserPreferencesRepository,
         lyricsDao: LyricsDao,
-        okHttpClient: OkHttpClient
+        musicDao: MusicDao,
+        okHttpClient: OkHttpClient,
+        lyricsCoordinator: LyricsCoordinator
     ): LyricsRepository {
         return LyricsRepositoryImpl(
             context = context,
@@ -349,7 +354,9 @@ object AppModule {
             qqLyricsFetcher = qqLyricsFetcher,
             userPreferencesRepository = userPreferencesRepository,
             lyricsDao = lyricsDao,
-            okHttpClient = okHttpClient
+            musicDao = musicDao,
+            okHttpClient = okHttpClient,
+            lyricsCoordinator = lyricsCoordinator
         )
     }
 
@@ -373,12 +380,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideTelegramDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.TelegramDao {
-        return database.telegramDao()
-    }
-
-    @Singleton
-    @Provides
     fun provideNeteaseDao(database: PixelPlayDatabase): com.theveloper.pixelplay.data.database.NeteaseDao {
         return database.neteaseDao()
     }
@@ -395,12 +396,8 @@ object AppModule {
         @ApplicationContext context: Context,
         userPreferencesRepository: UserPreferencesRepository,
         playlistPreferencesRepository: PlaylistPreferencesRepository,
-        searchHistoryDao: SearchHistoryDao,
         musicDao: MusicDao,
         lyricsRepository: LyricsRepository,
-        telegramDao: com.theveloper.pixelplay.data.database.TelegramDao,
-        telegramCacheManager: Lazy<com.theveloper.pixelplay.data.telegram.TelegramCacheManager>,
-        telegramRepository: Lazy<com.theveloper.pixelplay.data.telegram.TelegramRepository>,
         songRepository: SongRepository,
         favoritesDao: FavoritesDao,
         artistImageRepository: ArtistImageRepository,
@@ -410,12 +407,8 @@ object AppModule {
             context = context,
             userPreferencesRepository = userPreferencesRepository,
             playlistPreferencesRepository = playlistPreferencesRepository,
-            searchHistoryDao = searchHistoryDao,
             musicDao = musicDao,
             lyricsRepository = lyricsRepository,
-            telegramDao = telegramDao,
-            telegramCacheManagerProvider = telegramCacheManager,
-            telegramRepositoryProvider = telegramRepository,
             songRepository = songRepository,
             favoritesDao = favoritesDao,
             artistImageRepository = artistImageRepository,
@@ -437,10 +430,9 @@ object AppModule {
     fun provideSongMetadataEditor(
         @ApplicationContext context: Context,
         musicDao: MusicDao,
-        telegramDao: com.theveloper.pixelplay.data.database.TelegramDao,
         userPreferencesRepository: UserPreferencesRepository
     ): SongMetadataEditor {
-        return SongMetadataEditor(context, musicDao, telegramDao, userPreferencesRepository)
+        return SongMetadataEditor(context, musicDao, userPreferencesRepository)
     }
 
     /**
@@ -465,9 +457,6 @@ object AppModule {
             redactHeader("Cookie")
             redactHeader("Set-Cookie")
             redactHeader("x-goog-api-key")
-            redactHeader("X-Emby-Token")
-            redactHeader("X-Emby-Authorization")
-            redactHeader("X-MediaBrowser-Token")
         }
         
         // Connection pool with optimized connections for better performance
@@ -486,16 +475,14 @@ object AppModule {
             // Add User-Agent header (required by some APIs)
             .addInterceptor { chain ->
                 val originalRequest = chain.request()
-                val requestWithUserAgent = originalRequest.newBuilder()
-                    .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
-                    .build()
-                val host = originalRequest.url.host.lowercase()
-                val tunedChain = if (host == "127.0.0.1" || host == "localhost") {
-                    chain.withReadTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                val requestWithUserAgent = if (originalRequest.header("User-Agent").isNullOrBlank()) {
+                    originalRequest.newBuilder()
+                        .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
+                        .build()
                 } else {
-                    chain
+                    originalRequest
                 }
-                tunedChain.proceed(requestWithUserAgent)
+                chain.proceed(requestWithUserAgent)
             }
             .addInterceptor(loggingInterceptor)
             .build()

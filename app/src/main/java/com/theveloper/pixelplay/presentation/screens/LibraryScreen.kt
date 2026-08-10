@@ -6,7 +6,6 @@ import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
 import android.os.Trace
-import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.AnimatedVisibility
@@ -184,6 +183,7 @@ import com.theveloper.pixelplay.presentation.screens.search.components.GenreTypo
 import com.theveloper.pixelplay.presentation.components.SyncProgressBar
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryViewModel
 import com.theveloper.pixelplay.utils.formatSongCount
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
 import androidx.paging.compose.collectAsLazyPagingItems
 import android.content.Intent
 import android.net.Uri
@@ -241,7 +241,6 @@ import com.theveloper.pixelplay.presentation.components.PlaylistBottomSheet
 import com.theveloper.pixelplay.presentation.components.PlaylistContainer
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
-import java.util.Locale
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -255,8 +254,6 @@ import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.presentation.components.LibrarySortBottomSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
-import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferState
-import com.theveloper.pixelplay.shared.WearTransferProgress
 import java.io.File
 import kotlin.math.abs
 
@@ -271,129 +268,6 @@ private const val FOLDER_NAVIGATION_BACKWARD = -1
 private const val PULL_REFRESH_MIN_VISIBLE_MS = 900L
 private const val PULL_REFRESH_MAX_VISIBLE_MS = 1_500L
 private const val INLINE_SYNC_MIN_VISIBLE_MS = 600L
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun WatchTransferProgressDialog(
-    transfer: PhoneWatchTransferState,
-    onDismiss: () -> Unit,
-    onCancelTransfer: () -> Unit,
-) {
-    val context = LocalContext.current
-    val startingTransfer = stringResource(R.string.watch_transfer_status_starting)
-    val preparingTransfer = stringResource(R.string.watch_transfer_status_preparing_transfer)
-    val animatedProgress by animateFloatAsState(
-        targetValue = transfer.progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 300),
-        label = "WatchTransferProgressDialog"
-    )
-    val progressPercent = (animatedProgress * 100f).toInt().coerceIn(0, 100)
-    val bytesText = if (transfer.totalBytes > 0L) {
-        val sent = Formatter.formatFileSize(context, transfer.bytesTransferred)
-        val total = Formatter.formatFileSize(context, transfer.totalBytes)
-        stringResource(R.string.watch_transfer_bytes_progress, sent, total)
-    } else {
-        startingTransfer
-    }
-    val statusText = when (transfer.status) {
-        WearTransferProgress.STATUS_TRANSFERRING -> stringResource(R.string.watch_transfer_status_transferring)
-        WearTransferProgress.STATUS_COMPLETED -> stringResource(R.string.watch_transfer_status_completed)
-        WearTransferProgress.STATUS_FAILED -> stringResource(R.string.watch_transfer_status_failed)
-        WearTransferProgress.STATUS_CANCELLED -> stringResource(R.string.watch_transfer_status_cancelled)
-        else -> stringResource(R.string.watch_transfer_status_preparing)
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.watch_transfer_dialog_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .padding(vertical = 20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingIndicator(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(1.84f),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = stringResource(R.string.common_percentage_text, progressPercent),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontSize = MaterialTheme.typography.labelLarge.fontSize * 1.4f
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-                LinearWavyProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(50)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                )
-                Text(
-                    text = transfer.songTitle.ifBlank { preparingTransfer },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.watch_transfer_bullet_step, statusText, bytesText),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                transfer.error?.takeIf { it.isNotBlank() }?.let { errorText ->
-                    Text(
-                        text = errorText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                Button(
-                    modifier = Modifier.padding(top = 4.dp),
-                    onClick = onCancelTransfer,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    )
-                ) {
-                    Text(text = stringResource(R.string.watch_transfer_action_cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
 
 private data class LibraryScreenPlayerProjection(
     val currentFolder: MusicFolder? = null,
@@ -478,8 +352,13 @@ fun LibraryScreen(
     var playlistSheetSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
     val savedTabTitles by playerViewModel.libraryTabsFlow.collectAsStateWithLifecycle()
-    val tabTitles = remember(savedTabTitles, routeStorageFilter) {
-        visibleLibraryTabs(savedTabTitles, routeStorageFilter)
+    val selectedStorageFilter by remember(playerViewModel) {
+        playerViewModel.playerUiState
+            .map { it.currentStorageFilter }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = StorageFilter.ALL)
+    val tabTitles = remember(savedTabTitles, routeStorageFilter, selectedStorageFilter) {
+        visibleLibraryTabs(savedTabTitles, routeStorageFilter, selectedStorageFilter)
     }
     val currentTabId by playerViewModel.currentLibraryTabId.collectAsStateWithLifecycle()
     val libraryNavigationMode by playerViewModel.libraryNavigationMode.collectAsStateWithLifecycle()
@@ -514,9 +393,6 @@ fun LibraryScreen(
         }
     }
     val isSortSheetVisible by playerViewModel.isSortingSheetVisible.collectAsStateWithLifecycle()
-    val isSendingToWatch by songInfoBottomSheetViewModel.isSendingToWatch.collectAsStateWithLifecycle()
-    val activeWatchTransfer by songInfoBottomSheetViewModel.activeWatchTransfer.collectAsStateWithLifecycle()
-    var showWatchTransferDialog by remember { mutableStateOf(false) }
     val canNavigateBackInFolders by remember(playerViewModel) {
         playerViewModel.playerUiState
             .map { uiState -> uiState.currentFolder != null && uiState.folderBackGestureNavigationEnabled }
@@ -538,12 +414,6 @@ fun LibraryScreen(
     var showTabSwitcherSheet by remember { mutableStateOf(false) }
     var librarySearchActive by rememberSaveable(routeStorageFilter) { mutableStateOf(false) }
     var librarySearchQuery by rememberSaveable(routeStorageFilter) { mutableStateOf("") }
-
-    LaunchedEffect(activeWatchTransfer?.requestId) {
-        if (activeWatchTransfer == null) {
-            showWatchTransferDialog = false
-        }
-    }
 
     // Multi-selection state
     val multiSelectionState = playerViewModel.multiSelectionStateHolder
@@ -890,10 +760,9 @@ fun LibraryScreen(
                                 modifier = Modifier,
                                 title = currentTabTitle,
                                 isExpanded = showTabSwitcherSheet,
-                                showIcon = !isSendingToWatch,
+                                showIcon = true,
                                 iconRes = currentVisibleTabId.iconRes(),
                                 pageIndex = pagerState.currentPage,
-                                compressForWatchTransfer = isSendingToWatch,
                                 onClick = {
                                     showTabSwitcherSheet = true
                                 },
@@ -912,41 +781,6 @@ fun LibraryScreen(
                         }
                     },
                     actions = {
-                        if (isSendingToWatch) {
-                            val watchTransferProgress = activeWatchTransfer?.progress ?: 0f
-                            val watchTransferPercent = (watchTransferProgress * 100f).toInt().coerceIn(0, 100)
-                            Surface(
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .wrapContentWidth()
-                                    .height(40.dp)
-                                    .clip(CircleShape)
-                                    .clickable(enabled = activeWatchTransfer != null) {
-                                        showWatchTransferDialog = true
-                                    },
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.rounded_watch_arrow_down_24),
-                                        contentDescription = stringResource(R.string.library_cd_watch_transfer),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.common_percentage_text, watchTransferPercent),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
                         if (routeStorageFilter != null) {
                             FilledIconButton(
                                 modifier = Modifier.padding(end = 8.dp),
@@ -1091,53 +925,7 @@ fun LibraryScreen(
                         }
 
                         val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
-                        val visiblePlaylists = remember(
-                            playlistUiState.playlists,
-                            playlistUiState.showTelegramCloudPlaylists,
-                            playlistUiState.telegramTopicDisplayMode
-                        ) {
-                            val mode = playlistUiState.telegramTopicDisplayMode
-                            val allPlaylists = playlistUiState.playlists
-
-                            // When Telegram cloud is hidden, remove all Telegram playlists
-                            if (!playlistUiState.showTelegramCloudPlaylists) {
-                                return@remember allPlaylists.filterNot {
-                                    it.source == "TELEGRAM" || it.source == "TELEGRAM_TOPIC"
-                                }
-                            }
-
-                            allPlaylists.filter { playlist ->
-                                when (playlist.source) {
-                                    "TELEGRAM_TOPIC" -> when (mode) {
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY ->
-                                            false
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY,
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS ->
-                                            playlist.songIds.isNotEmpty()
-                                    }
-                                    "TELEGRAM" -> when (mode) {
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY ->
-                                            true
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY -> {
-                                            // Hide combined playlist only for forum channels
-                                            // (those that have at least one topic playlist)
-                                            val chatId = playlist.id
-                                                .removePrefix("telegram_channel:")
-                                                .toLongOrNull()
-                                            if (chatId != null) {
-                                                allPlaylists.none { p ->
-                                                    p.source == "TELEGRAM_TOPIC" &&
-                                                            p.id.startsWith("telegram_topic:${chatId}_")
-                                                }
-                                            } else true
-                                        }
-                                        com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS ->
-                                            true
-                                    }
-                                    else -> true
-                                }
-                            }
-                        }
+                        val visiblePlaylists = playlistUiState.playlists
                         val isLibraryLoading by libraryViewModel.isLoadingLibrary.collectAsStateWithLifecycle()
                         val hasCurrentSong by remember(playerViewModel) {
                             playerViewModel.stablePlayerState
@@ -1150,19 +938,6 @@ fun LibraryScreen(
                                 .map { it.isShuffleEnabled }
                                 .distinctUntilChanged()
                         }.collectAsStateWithLifecycle(initialValue = false)
-
-                        LaunchedEffect(
-                            playlistUiState.showTelegramCloudPlaylists,
-                            selectedPlaylists
-                        ) {
-                            if (playlistUiState.showTelegramCloudPlaylists) return@LaunchedEffect
-
-                            selectedPlaylists
-                                .filter { it.source == "TELEGRAM" || it.source == "TELEGRAM_TOPIC" }
-                                .forEach { playlist ->
-                                    playlistMultiSelectionState.removeFromSelection(playlist.id)
-                                }
-                        }
 
                         val currentSelectedSortOption: SortOption? = when (currentVisibleTabId) {
                             LibraryTabId.SONGS -> playerUiState.currentSongSortOption
@@ -1379,29 +1154,11 @@ fun LibraryScreen(
                                 onDirectionToggle = { option ->
                                     onSortOptionChanged(option)
                                 },
-                                showViewToggle = isFoldersTab || isPlaylistsTab,
-                                viewSectionTitle = if (isPlaylistsTab) {
-                                    stringResource(R.string.library_sort_section_cloud)
-                                } else {
-                                    stringResource(R.string.library_sort_section_view)
-                                },
-                                viewToggleLabel = if (isPlaylistsTab) {
-                                    stringResource(R.string.library_sort_toggle_telegram_channels)
-                                } else {
-                                    stringResource(R.string.library_sort_toggle_playlist_view)
-                                },
-                                viewToggleChecked = if (isPlaylistsTab) {
-                                    playlistUiState.showTelegramCloudPlaylists
-                                } else {
-                                    playerUiState.isFoldersPlaylistView
-                                },
-                                onViewToggleChange = { isChecked ->
-                                    if (isPlaylistsTab) {
-                                        playlistViewModel.setShowTelegramCloudPlaylists(isChecked)
-                                    } else {
-                                        playerViewModel.setFoldersPlaylistView(isChecked)
-                                    }
-                                },
+                                showViewToggle = isFoldersTab,
+                                viewSectionTitle = stringResource(R.string.library_sort_section_view),
+                                viewToggleLabel = stringResource(R.string.library_sort_toggle_playlist_view),
+                                viewToggleChecked = playerUiState.isFoldersPlaylistView,
+                                onViewToggleChange = playerViewModel::setFoldersPlaylistView,
                                 viewToggleContent = when {
                                     isSongsTab || isLikedTab -> {
                                         {
@@ -1565,39 +1322,6 @@ fun LibraryScreen(
                                     }
                                 } else null,
                                 extraContent = {
-                                    if (isPlaylistsTab && playlistUiState.showTelegramCloudPlaylists) {
-                                        Text(
-                                            text = stringResource(R.string.library_telegram_topics_display_title),
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontFamily = com.theveloper.pixelplay.ui.theme.GoogleSansRounded,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
-                                        )
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(48.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            listOf(
-                                                com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY to stringResource(R.string.library_telegram_topic_mode_channels),
-                                                com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY to stringResource(R.string.library_telegram_topic_mode_topics),
-                                                com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS to stringResource(R.string.library_telegram_topic_mode_both)
-                                            ).forEach { (mode, label) ->
-                                                ToggleSegmentButton(
-                                                    modifier = Modifier.weight(1f),
-                                                    active = playlistUiState.telegramTopicDisplayMode == mode,
-                                                    activeColor = MaterialTheme.colorScheme.primary,
-                                                    inactiveColor = MaterialTheme.colorScheme.surfaceVariant,
-                                                    activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    activeCornerRadius = 32.dp,
-                                                    onClick = { playlistViewModel.setTelegramTopicDisplayMode(mode) },
-                                                    text = label
-                                                )
-                                            }
-                                        }
-                                    }
                                     if (routeStorageFilter == null && !isFoldersTab) {
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Text(
@@ -2030,18 +1754,6 @@ fun LibraryScreen(
         }
     )
 
-    if (showWatchTransferDialog && activeWatchTransfer != null) {
-        val currentWatchTransfer = activeWatchTransfer!!
-        WatchTransferProgressDialog(
-            transfer = currentWatchTransfer,
-            onDismiss = { showWatchTransferDialog = false },
-            onCancelTransfer = {
-                songInfoBottomSheetViewModel.cancelWatchTransfer(currentWatchTransfer.requestId)
-                showWatchTransferDialog = false
-            }
-        )
-    }
-
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
         val isFavorite = remember(currentSong?.id, favoriteIds) { derivedStateOf { currentSong?.let {
@@ -2272,7 +1984,8 @@ fun LibraryScreen(
                     mergeRouteTabOrder(
                         savedTabs = savedTabTitles,
                         visibleOrder = newOrder,
-                        routeStorageFilter = routeStorageFilter
+                        routeStorageFilter = routeStorageFilter,
+                        selectedStorageFilter = selectedStorageFilter
                     )
                 )
             },
@@ -2560,7 +2273,6 @@ fun LibraryNavigationPill(
     iconRes: Int,
     showIcon: Boolean = true,
     pageIndex: Int,
-    compressForWatchTransfer: Boolean,
     onClick: () -> Unit,
     onArrowClick: () -> Unit
 ) {
@@ -2583,19 +2295,11 @@ fun LibraryNavigationPill(
         targetValue = if (isExpanded) pillRadius else innerRadius,
         label = "ArrowCornerAnimation"
     )
-    val compressionProgress by animateFloatAsState(
-        targetValue = if (compressForWatchTransfer) 1f else 0f,
-        label = "LibraryPillCompression"
-    )
-
     val arrowRotation by animateFloatAsState(
         targetValue = if (isExpanded) 180f else 0f,
         label = "ArrowRotation"
     )
-    val targetArrowHorizontalPadding =
-        LibraryNavigationPillArrowPaddingExpanded -
-                (LibraryNavigationPillArrowPaddingExpanded - LibraryNavigationPillArrowPaddingCompressed) *
-                compressionProgress
+    val targetArrowHorizontalPadding = LibraryNavigationPillArrowPaddingExpanded
     val animatedArrowHorizontalPadding by animateDpAsState(
         targetValue = targetArrowHorizontalPadding,
         label = "LibraryPillArrowPadding"
@@ -2638,13 +2342,7 @@ fun LibraryNavigationPill(
                         titleIconSpacing +
                         LibraryNavigationPillMinimumTextWidth
                 ).coerceAtMost(maxTitleWidth)
-        val forcedCompressionWidth = minOf(
-            LibraryNavigationPillForcedCompressionWidth,
-            (naturalTitleWidth - minCompressedTitleWidth).coerceAtLeast(0.dp),
-        )
-        val targetTitleWidth = (
-                naturalTitleWidth - (forcedCompressionWidth * compressionProgress)
-                ).coerceAtLeast(minCompressedTitleWidth)
+        val targetTitleWidth = naturalTitleWidth.coerceAtLeast(minCompressedTitleWidth)
         val widthCompressionRatio = if (idealTitleWidth.value > 0f) {
             (targetTitleWidth.value / idealTitleWidth.value).coerceIn(0f, 1f)
         } else {
@@ -2653,10 +2351,7 @@ fun LibraryNavigationPill(
         val widthAxisBySpace = LibraryNavigationPillTitleWidthMin +
                 (LibraryNavigationPillTitleWidthMax - LibraryNavigationPillTitleWidthMin) *
                 widthCompressionRatio.coerceIn(0f, 1f)
-        val forcedWidthAxis = LibraryNavigationPillTitleWidthMax -
-                (LibraryNavigationPillTitleWidthMax - LibraryNavigationPillCompressedWidthAxis) *
-                compressionProgress
-        val targetWidthAxis = minOf(widthAxisBySpace, forcedWidthAxis)
+        val targetWidthAxis = widthAxisBySpace
         val animatedTitleWidth by animateDpAsState(
             targetValue = targetTitleWidth,
             label = "LibraryPillTitleWidth"
@@ -2814,11 +2509,8 @@ fun LibraryNavigationPill(
 
 private const val LibraryNavigationPillTitleWidthMin = 18f
 private const val LibraryNavigationPillTitleWidthMax = 100f
-private const val LibraryNavigationPillCompressedWidthAxis = 74f
-private val LibraryNavigationPillForcedCompressionWidth = 12.dp
 private val LibraryNavigationPillMinimumTextWidth = 56.dp
 private val LibraryNavigationPillArrowPaddingExpanded = 10.dp
-private val LibraryNavigationPillArrowPaddingCompressed = 4.dp
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
@@ -2993,18 +2685,15 @@ private fun positiveMod(value: Int, mod: Int): Int {
 
 private fun visibleLibraryTabs(
     savedTabs: List<String>,
-    routeStorageFilter: StorageFilter?
+    routeStorageFilter: StorageFilter?,
+    selectedStorageFilter: StorageFilter
 ): List<String> {
     val savedOrder = sanitizeLibraryTabOrder(savedTabs)
     val routeDefault = defaultLibraryTabsForRoute(routeStorageFilter)
     val ordered = LinkedHashSet<LibraryTabId>()
 
-    if (routeStorageFilter == StorageFilter.ONLINE) {
-        ordered.add(LibraryTabId.PLAYLISTS)
-    }
-
     savedOrder
-        .filter { it.isVisibleForRoute(routeStorageFilter) }
+        .filter { it.isVisibleForLibrary(routeStorageFilter, selectedStorageFilter) }
         .forEach(ordered::add)
     routeDefault.forEach(ordered::add)
 
@@ -3014,11 +2703,12 @@ private fun visibleLibraryTabs(
 private fun mergeRouteTabOrder(
     savedTabs: List<String>,
     visibleOrder: List<String>,
-    routeStorageFilter: StorageFilter?
+    routeStorageFilter: StorageFilter?,
+    selectedStorageFilter: StorageFilter
 ): List<String> {
     val visibleTabs = visibleOrder
         .mapNotNull { it.toLibraryTabIdOrNull() }
-        .filter { it.isVisibleForRoute(routeStorageFilter) }
+        .filter { it.isVisibleForLibrary(routeStorageFilter, selectedStorageFilter) }
         .distinct()
 
     if (routeStorageFilter == null) {
@@ -3166,17 +2856,26 @@ private fun defaultLibraryTabsForRoute(routeStorageFilter: StorageFilter?): List
             LibraryTabId.SONGS,
             LibraryTabId.ALBUMS,
             LibraryTabId.ARTISTS,
+            LibraryTabId.PLAYLISTS,
             LibraryTabId.FOLDERS,
             LibraryTabId.LIKED
         )
-        else -> LibraryTabId.entries.toList()
+        else -> listOf(
+            LibraryTabId.SONGS,
+            LibraryTabId.ALBUMS,
+            LibraryTabId.ARTISTS,
+            LibraryTabId.PLAYLISTS,
+            LibraryTabId.LIKED
+        )
     }
 }
 
-private fun LibraryTabId.isVisibleForRoute(routeStorageFilter: StorageFilter?): Boolean {
+private fun LibraryTabId.isVisibleForLibrary(
+    routeStorageFilter: StorageFilter?,
+    selectedStorageFilter: StorageFilter
+): Boolean {
     return when (this) {
-        LibraryTabId.FOLDERS -> routeStorageFilter != StorageFilter.ONLINE
-        LibraryTabId.PLAYLISTS -> routeStorageFilter != StorageFilter.OFFLINE
+        LibraryTabId.FOLDERS -> (routeStorageFilter ?: selectedStorageFilter) == StorageFilter.OFFLINE
         else -> true
     }
 }
@@ -3236,10 +2935,10 @@ internal fun resolveFolderNavigationDirection(initialPath: String?, targetPath: 
     }
 
 private fun isDescendantFolderPath(ancestorPath: String, candidatePath: String): Boolean {
-    val normalizedAncestor = ancestorPath.trimEnd(File.separatorChar)
-    val normalizedCandidate = candidatePath.trimEnd(File.separatorChar)
+    val normalizedAncestor = ancestorPath.replace('\\', '/').trimEnd('/')
+    val normalizedCandidate = candidatePath.replace('\\', '/').trimEnd('/')
     if (normalizedAncestor == normalizedCandidate) return false
-    return normalizedCandidate.startsWith("$normalizedAncestor${File.separatorChar}")
+    return normalizedCandidate.startsWith("$normalizedAncestor/")
 }
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -3676,21 +3375,7 @@ private fun sortSongsForFolderView(songs: List<Song>, sortOption: SortOption): L
 }
 
 private fun Song.matchesLibraryStorageFilter(filter: StorageFilter): Boolean {
-    val uri = contentUriString.trim().lowercase(Locale.ROOT)
-    val isOnline = uri.startsWith("telegram://") ||
-        uri.startsWith("netease://") ||
-        uri.startsWith("gdrive://") ||
-        uri.startsWith("qqmusic://") ||
-        uri.startsWith("kugou://") ||
-        uri.startsWith("kuwo://") ||
-        uri.startsWith("navidrome://") ||
-        uri.startsWith("jellyfin://")
-
-    return when (filter) {
-        StorageFilter.ALL -> true
-        StorageFilter.ONLINE -> isOnline
-        StorageFilter.OFFLINE -> !isOnline
-    }
+    return MediaSourceClassifier.matchesStorageFilter(contentUriString, filter)
 }
 
 private fun MusicFolder.collectAllSongs(): List<Song> {

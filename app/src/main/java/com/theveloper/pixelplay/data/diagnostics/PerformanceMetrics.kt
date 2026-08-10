@@ -111,7 +111,6 @@ object PerformanceMetrics {
     data class ControllerInfo(
         val packageName: String,
         val isAndroidAuto: Boolean,
-        val isWear: Boolean,
         val firstSeenElapsedMs: Long
     )
 
@@ -231,12 +230,11 @@ object PerformanceMetrics {
     fun recordControllerConnected(
         packageName: String,
         isAndroidAuto: Boolean,
-        isWear: Boolean,
         elapsedRealtimeMs: Long
     ) {
         controllers.putIfAbsent(
             packageName,
-            ControllerInfo(packageName, isAndroidAuto, isWear, elapsedRealtimeMs)
+            ControllerInfo(packageName, isAndroidAuto, elapsedRealtimeMs)
         )
     }
 

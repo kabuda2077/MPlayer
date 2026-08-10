@@ -22,7 +22,6 @@
     <string name="library_toast_playing_next">Spilles neste</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Se overføring</string>
     <string name="library_cd_open_settings">Innstillinger</string>
     <string name="library_tab_edit">Rediger</string>
     <string name="library_cd_reorder_tabs">Endre fanerekkefølge</string>
@@ -43,11 +42,6 @@
     <string name="library_storage_sd_card">SD-kort</string>
     <string name="library_storage_sd_card_unavailable">SD-kortet er ikke tilgjengelig akkurat nå.</string>
     <string name="library_sort_section_cloud">Sky</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram-skykanaler</string>
-    <string name="library_telegram_topics_display_title">Emnevisning</string>
-    <string name="library_telegram_topic_mode_channels">Kanaler</string>
-    <string name="library_telegram_topic_mode_topics">Emner</string>
-    <string name="library_telegram_topic_mode_both">Begge</string>
     <string name="library_cloud_sources_heading">Sky</string>
     <string name="library_cloud_only_label">Kun sky</string>
 
@@ -97,7 +91,6 @@
     <string name="library_empty_songs_offline_title">Ingen lokale sanger funnet</string>
     <string name="library_empty_songs_offline_subtitle">Prøv et annet kildefilter eller skann enhetsbiblioteket på nytt.</string>
     <string name="library_empty_songs_online_title">Ingen skysanger funnet</string>
-    <string name="library_empty_songs_online_subtitle">Synkroniser Telegram- eller NetEase-sanger, eller bytt til lokal kilde.</string>
     <string name="library_empty_albums_all_title">Ingen album tilgjengelig</string>
     <string name="library_empty_albums_all_subtitle">Album vises her så snart biblioteket ditt har gruppert spor.</string>
     <string name="library_empty_albums_offline_title">Ingen lokale album funnet</string>
@@ -115,7 +108,6 @@
     <string name="library_empty_liked_offline_title">Ingen likede lokale sanger</string>
     <string name="library_empty_liked_offline_subtitle">Bytt kildefilter eller like sanger fra enheten din.</string>
     <string name="library_empty_liked_online_title">Ingen likede skysanger</string>
-    <string name="library_empty_liked_online_subtitle">Like Telegram- eller NetEase-spor for å se dem i denne visningen.</string>
     <string name="library_empty_folders_title">Ingen mapper funnet</string>
     <string name="library_empty_folders_subtitle">Mapper på intern lagring med musikk vises her.</string>
     <string name="library_empty_playlists_title">Ingen spillelister ennå</string>
@@ -142,14 +134,8 @@
     <string name="song_info_cd_add_to_playlist">Legg til i spilleliste</string>
     <string name="song_info_action_delete">Slett</string>
     <string name="song_info_action_delete_all">Slett alle</string>
-    <string name="song_info_checking_watch">Sjekker klokke</string>
     <string name="song_info_transferring_percent">Overfører %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Overfører til klokke</string>
     <string name="song_info_transfer_in_progress">Overføring pågår</string>
-    <string name="song_info_send_to_watch">Send til klokke</string>
-    <string name="song_info_watch_unavailable">Klokke utilgjengelig</string>
-    <string name="song_info_cd_send_to_watch">Send sang til klokke</string>
-    <string name="song_info_cd_watch_unavailable">Klokke utilgjengelig</string>
     <string name="song_info_set_sound_as_short">Angi som</string>
     <string name="song_info_set_sound_as_long">Angi som lyd</string>
     <string name="song_info_cd_set_sound_as">Velg hvordan denne sangen skal brukes som systemlyd</string>
@@ -262,29 +248,6 @@
     <string name="artist_picker_primary_label">Hovedartist</string>
     <string name="artist_picker_shortcut_label">Artistside</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Avbryt overføring</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Viser fremdrift for musikkoverfølringer fra telefon til klokke</string>
-    <string name="watch_transfer_channel_name">Klokkeoverføringer</string>
-    <string name="watch_transfer_dialog_title">Sender til klokke</string>
-    <string name="watch_transfer_status_cancelled">Avbrutt</string>
-    <string name="watch_transfer_status_cancelled_service">Overføring avbrutt</string>
-    <string name="watch_transfer_status_complete_service">Overføring fullført</string>
-    <string name="watch_transfer_status_completed">Fullført</string>
-    <string name="watch_transfer_status_failed">Mislyktes</string>
-    <string name="watch_transfer_status_failed_service">Overføring mislyktes</string>
-    <string name="watch_transfer_status_multiple_active">Flere aktive overføringer</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Forbereder</string>
-    <string name="watch_transfer_status_preparing_service">Forbereder klokkeoverføring</string>
-    <string name="watch_transfer_status_preparing_transfer">Forbereder overføring…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Sender %1$d sanger til klokke</string>
-    <string name="watch_transfer_status_sending_to_watch">Sender til klokke</string>
-    <string name="watch_transfer_status_starting">Starter overføring…</string>
-    <string name="watch_transfer_status_starting_short">Starter</string>
-    <string name="watch_transfer_status_transferring">Overfører</string>
-    <string name="watch_transfer_summary_n">%1$d overføringer</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">Rediger sang</string>
@@ -492,18 +455,11 @@
     <string name="playlist_view_model_none_to_share">Ingen spillelister å dele</string>
     <string name="playlist_view_model_share_chooser_title">Del spillelister</string>
     <string name="playlist_view_model_share_failed">Deling mislyktes: %1$s</string>
-    <string name="playlist_view_model_none_to_export">Ingen spillelister å eksportere</string>
-    <string name="playlist_view_model_export_failed">Eksport mislyktes: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Musikk/PixelPlayer Eksporter</string>
     <string name="playlist_view_model_ai_gemini_key_required">Konfigurer Gemini API-nøkkelen din i innstillingene.</string>
     <string name="playlist_view_model_restored_toast">Spilleliste gjenopprettet</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">Deler %d spilleliste</item>
         <item quantity="other">Deler %d spillelister</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Eksporterte %1$d spilleliste til %2$s</item>
-        <item quantity="other">Eksporterte %1$d spillelister til %2$s</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

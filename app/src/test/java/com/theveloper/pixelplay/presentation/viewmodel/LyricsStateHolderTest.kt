@@ -46,7 +46,7 @@ class LyricsStateHolderTest {
     }
 
     @Test
-    fun fetchLyricsForSong_usesStoredLyricsWithoutRemoteFetch() {
+    fun fetchLyricsForSong_fetchesRemoteLyrics() {
         val musicRepository = mockk<MusicRepository>(relaxed = true)
         val userPreferencesRepository = mockk<UserPreferencesRepository>(relaxed = true)
         val songMetadataEditor = mockk<SongMetadataEditor>(relaxed = true)
@@ -61,21 +61,20 @@ class LyricsStateHolderTest {
         val song = testSong(albumArtUriString = "content://art/song_art_1.jpg").copy(
             lyrics = "Stored lyrics"
         )
-        val storedLyrics = Lyrics(plain = listOf("Stored lyrics"), areFromRemote = false)
+        val remoteLyrics = Lyrics(plain = listOf("Remote lyrics"), areFromRemote = true)
 
         holder.initialize(scope, callback, state)
-        coEvery { musicRepository.getStoredLyrics(song) } returns (storedLyrics to "Stored lyrics")
+        coEvery { musicRepository.getLyricsFromRemote(song) } returns
+            Result.success(remoteLyrics to "Remote lyrics")
 
         holder.fetchLyricsForSong(
             song = song,
-            forcePickResults = false,
-            sourcePreference = com.theveloper.pixelplay.data.model.LyricsSourcePreference.API_FIRST
+            forcePickResults = false
         ) { "Lyrics already available" }
         scope.advanceUntilIdle()
 
-        assertThat(holder.searchUiState.value).isEqualTo(LyricsSearchUiState.Success(storedLyrics))
-        coVerify(exactly = 1) { musicRepository.getStoredLyrics(song) }
-        coVerify(exactly = 0) { musicRepository.getLyricsFromRemote(any()) }
+        assertThat(holder.searchUiState.value).isEqualTo(LyricsSearchUiState.Success(remoteLyrics))
+        coVerify(exactly = 1) { musicRepository.getLyricsFromRemote(song) }
         coVerify(exactly = 0) { musicRepository.searchRemoteLyrics(any()) }
     }
 
@@ -98,8 +97,8 @@ class LyricsStateHolderTest {
     }
 
     private class RecordingLyricsLoadCallback : LyricsLoadCallback {
-        override fun onLoadingStarted(songId: String) = Unit
+        override fun onLoadingStarted(mediaKey: String) = Unit
 
-        override fun onLyricsLoaded(songId: String, lyrics: Lyrics?) = Unit
+        override fun onLyricsLoaded(mediaKey: String, lyrics: Lyrics?) = Unit
     }
 }

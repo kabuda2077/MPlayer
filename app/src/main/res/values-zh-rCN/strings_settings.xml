@@ -20,7 +20,7 @@
     <string name="settings_category_device_capabilities_title">设备性能</string>
     <string name="settings_category_device_capabilities_subtitle">音频规格、编解码器和解码器信息</string>
     <string name="settings_category_accounts_title">账户</string>
-    <string name="settings_category_accounts_subtitle">管理 Telegram、Google Drive、网易云音乐等服务</string>
+    <string name="settings_category_accounts_subtitle">管理网易云音乐和 QQ 音乐账号</string>
     <string name="settings_category_about_title">关于</string>
     <string name="settings_category_about_subtitle">应用信息、版本和鸣谢</string>
 
@@ -69,17 +69,11 @@
     <string name="settings_auto_scan_lrc_title">自动扫描 .lrc 文件</string>
     <string name="settings_auto_scan_lrc_subtitle">在同步媒体库时，自动扫描并分配同一文件夹中的 .lrc 文件。</string>
     <string name="settings_lyrics_management_section">歌词管理</string>
-    <string name="settings_lyrics_source_priority_title">歌词来源优先级</string>
-    <string name="settings_lyrics_source_priority_subtitle">选择获取歌词时优先尝试的来源。</string>
-    <string name="settings_lyrics_embedded_first">内嵌优先</string>
     <string name="settings_lyrics_remote_first">远程优先</string>
-    <string name="settings_lyrics_local_first">本地 (.lrc) 优先</string>
     <string name="settings_lyrics_enable_ttml_title">启用 TTML 歌词</string>
     <string name="settings_lyrics_enable_ttml_subtitle">网易云歌曲优先尝试 AMLL TTML，再回退到官方歌词接口。</string>
-    <string name="settings_lyrics_enable_qq_title">在线歌词</string>
-    <string name="settings_lyrics_enable_qq_subtitle">在线歌曲自动获取歌词，并允许手动在线搜索歌词。</string>
-    <string name="settings_lyrics_local_allow_qq_title">本地歌曲允许使用 QQ 歌词</string>
-    <string name="settings_lyrics_local_allow_qq_subtitle">本地文件没有内嵌或同目录歌词时，尝试使用 QQ 音乐补全歌词。</string>
+    <string name="settings_lyrics_enable_online_title">在线歌词</string>
+    <string name="settings_lyrics_enable_online_subtitle">在线歌曲自动获取歌词，并允许手动在线搜索歌词。</string>
     <string name="settings_lyrics_show_romanization_title">显示罗马音</string>
     <string name="settings_lyrics_show_romanization_subtitle">歌词包含拼音、罗马字等发音辅助时，在歌词界面中显示。</string>
     <string name="settings_reset_imported_lyrics_title">重置已导入的歌词</string>
@@ -198,8 +192,8 @@
     <string name="settings_theme_follow_system">跟随系统</string>
     <string name="settings_smooth_corners_title">使用平滑圆角</string>
     <string name="settings_smooth_corners_subtitle">使用复杂的圆角形状以有效提升美观度，但可能会影响低端设备的性能</string>
-    <string name="settings_disable_blur_all_over_title">关闭模糊效果</string>
-    <string name="settings_disable_blur_all_over_subtitle">在应用中关闭模糊效果以节省电量和资源。</string>
+    <string name="settings_disable_blur_all_over_title">模糊效果</string>
+    <string name="settings_disable_blur_all_over_subtitle">在应用中启用模糊效果。</string>
     <string name="settings_show_scrollbar_title">显示滚动条</string>
     <string name="settings_show_scrollbar_subtitle">在音乐列表中显示侧边滚动条，便于快速滚动。</string>
     <string name="settings_now_playing_section">正在播放</string>
@@ -283,9 +277,6 @@
     <string name="settings_gain_mode_subtitle">曲目：对每首歌曲进行标准化。专辑：按专辑进行标准化。</string>
     <string name="settings_gain_mode_track">曲目</string>
     <string name="settings_gain_mode_album">专辑</string>
-    <string name="settings_cast_section">投屏</string>
-    <string name="settings_cast_autoplay_title">连接/断开投屏时自动播放</string>
-    <string name="settings_cast_autoplay_subtitle">切换投屏连接后立即开始播放。</string>
     <string name="settings_headphones_section">耳机</string>
     <string name="settings_headphones_resume_title">耳机重新连接时恢复播放</string>
     <string name="settings_headphones_resume_subtitle">如果播放因拔出耳机而暂停，则在重新连接时自动恢复。</string>
@@ -623,7 +614,6 @@
     <string name="accounts_no_linked_subtitle">连接一个提供商即可在此界面对其进行管理。</string>
     <string name="accounts_connect_service">连接 %1$s</string>
     <string name="accounts_service_coming_soon">%1$s（敬请期待）</string>
-    <string name="accounts_google_drive_soon">Google Drive 功能即将推出。</string>
     <string name="accounts_unable_open_screen">目前无法打开此屏幕。</string>
 
     <!-- About category -->
@@ -643,7 +633,6 @@
     <string name="about_contributors_section_subtitle">来自 GitHub 的实时贡献者名单。</string>
     <string name="about_contributions_format">%1$d 次贡献</string>
     <string name="about_cd_open_github_profile">打开 GitHub 个人资料</string>
-    <string name="about_cd_open_telegram">打开 Telegram</string>
     <string name="about_cd_contributor_avatar">%1$s 的头像</string>
     <string name="about_cd_contributor_icon">%1$s 的图标</string>
 </resources>

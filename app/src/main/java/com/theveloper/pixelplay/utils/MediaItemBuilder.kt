@@ -13,6 +13,7 @@ import androidx.media3.common.MediaMetadata.PICTURE_TYPE_FRONT_COVER
 import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.data.provider.SharedArtworkContentProvider
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.PlaybackItem
 import java.io.File
 
 object MediaItemBuilder {
@@ -92,18 +93,42 @@ object MediaItemBuilder {
     const val EXTERNAL_EXTRA_BITRATE = EXTERNAL_EXTRA_PREFIX + "BITRATE"
     const val EXTERNAL_EXTRA_SAMPLE_RATE = EXTERNAL_EXTRA_PREFIX + "SAMPLE_RATE"
     const val EXTERNAL_EXTRA_FILE_PATH = EXTERNAL_EXTRA_PREFIX + "FILE_PATH"
-    const val EXTERNAL_EXTRA_NAVIDROME_ID = EXTERNAL_EXTRA_PREFIX + "NAVIDROME_ID"
+    const val EXTERNAL_EXTRA_LIBRARY_ID = EXTERNAL_EXTRA_PREFIX + "LIBRARY_ID"
 
-    fun build(song: Song): MediaItem {
+    fun build(item: PlaybackItem, playbackRequestId: String = PlaybackTrace.newRequestId()): MediaItem {
         return MediaItem.Builder()
-            .setMediaId(song.id)
-            .setUri(playbackUri(song))
-            .setMimeType(playbackMimeType(song))
-            .setMediaMetadata(buildMediaMetadataForSong(song))
+            .setMediaId(item.mediaId)
+            .setUri(playbackUri(item.sourceUri, item.path, item.mimeType))
+            .setMimeType(playbackMimeType(item.sourceUri, item.path, item.mimeType))
+            .setMediaMetadata(
+                    buildMediaMetadata(
+                        mediaId = item.mediaId,
+                        libraryId = item.libraryId,
+                    title = item.title,
+                    artist = item.artist,
+                    album = item.album,
+                    duration = item.durationMs,
+                    contentUri = item.sourceUri,
+                    albumArtUri = item.artworkUri,
+                    genre = item.genre,
+                    trackNumber = item.trackNumber,
+                    year = item.year,
+                    dateAdded = item.dateAdded,
+                    mimeType = item.mimeType,
+                    bitrate = item.bitrate,
+                    sampleRate = item.sampleRate,
+                    path = item.path,
+                    playbackRequestId = playbackRequestId
+                )
+            )
             .build()
     }
 
-    fun buildForExternalController(context: Context, song: Song): MediaItem {
+    fun buildForExternalController(
+        context: Context,
+        song: Song,
+        playbackRequestId: String = PlaybackTrace.newRequestId()
+    ): MediaItem {
         // This is the MediaSession item path for Android Auto / other external controllers;
         // time it so the performance report can attribute browse/queue lag here.
         return com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics.time(
@@ -116,7 +141,8 @@ object MediaItemBuilder {
                 .setMediaMetadata(
                     buildMediaMetadataForSong(
                         song = song,
-                        exposedArtworkUri = externalControllerArtworkUri(context, song.albumArtUriString)
+                        exposedArtworkUri = externalControllerArtworkUri(context, song.albumArtUriString),
+                        playbackRequestId = playbackRequestId
                     )
                 )
                 .build()
@@ -143,8 +169,7 @@ object MediaItemBuilder {
         directLocalFileUri(contentUriString, filePath, mimeType)?.let { return it }
         val uri = runCatching { Uri.parse(contentUriString) }.getOrNull()
             ?: return Uri.fromFile(File(contentUriString))
-        // Telegram downloaded files can be stored as absolute paths (without file://).
-        // Normalize them so ExoPlayer always gets a canonical local-file URI.
+        // Normalize absolute paths so ExoPlayer always gets a canonical local-file URI.
         return if (uri.scheme.isNullOrBlank() && contentUriString.startsWith("/")) {
             Uri.fromFile(File(contentUriString))
         } else {
@@ -268,34 +293,77 @@ object MediaItemBuilder {
     @OptIn(UnstableApi::class)
     private fun buildMediaMetadataForSong(
         song: Song,
-        exposedArtworkUri: Uri? = artworkUri(song.albumArtUriString)
+        exposedArtworkUri: Uri? = artworkUri(song.albumArtUriString),
+        playbackRequestId: String
+    ): MediaMetadata = buildMediaMetadata(
+        mediaId = song.id,
+        libraryId = song.libraryId,
+        title = song.title,
+        artist = song.displayArtist,
+        album = song.album,
+        duration = song.duration,
+        contentUri = song.contentUriString,
+        albumArtUri = song.albumArtUriString,
+        exposedArtworkUri = exposedArtworkUri,
+        genre = song.genre,
+        trackNumber = song.trackNumber,
+        year = song.year,
+        dateAdded = song.dateAdded,
+        mimeType = song.mimeType,
+        bitrate = song.bitrate,
+        sampleRate = song.sampleRate,
+        path = song.path,
+        playbackRequestId = playbackRequestId
+    )
+
+    @OptIn(UnstableApi::class)
+    private fun buildMediaMetadata(
+        mediaId: String,
+        libraryId: Long?,
+        title: String,
+        artist: String,
+        album: String,
+        duration: Long,
+        contentUri: String,
+        albumArtUri: String?,
+        exposedArtworkUri: Uri? = artworkUri(albumArtUri),
+        genre: String?,
+        trackNumber: Int,
+        year: Int,
+        dateAdded: Long,
+        mimeType: String?,
+        bitrate: Int?,
+        sampleRate: Int?,
+        path: String,
+        playbackRequestId: String
     ): MediaMetadata {
         val metadataBuilder = MediaMetadata.Builder()
-            .setTitle(song.title)
-            .setArtist(song.displayArtist)
-            .setAlbumTitle(song.album)
+            .setTitle(title)
+            .setArtist(artist)
+            .setAlbumTitle(album)
 
         exposedArtworkUri?.let { artworkUri ->
             metadataBuilder.setArtworkUri(artworkUri)
         }
 
         val extras = Bundle().apply {
-            putBoolean(EXTERNAL_EXTRA_FLAG, song.id.startsWith(EXTERNAL_MEDIA_ID_PREFIX))
-            putString(EXTERNAL_EXTRA_ALBUM, song.album)
-            putLong(EXTERNAL_EXTRA_DURATION, song.duration)
-            putString(EXTERNAL_EXTRA_CONTENT_URI, song.contentUriString)
-            (exposedArtworkUri?.toString() ?: song.albumArtUriString)?.let {
+            putBoolean(EXTERNAL_EXTRA_FLAG, mediaId.startsWith(EXTERNAL_MEDIA_ID_PREFIX))
+            libraryId?.let { putLong(EXTERNAL_EXTRA_LIBRARY_ID, it) }
+            putString(EXTERNAL_EXTRA_ALBUM, album)
+            putLong(EXTERNAL_EXTRA_DURATION, duration)
+            putString(EXTERNAL_EXTRA_CONTENT_URI, contentUri)
+            (exposedArtworkUri?.toString() ?: albumArtUri)?.let {
                 putString(EXTERNAL_EXTRA_ALBUM_ART, it)
             }
-            song.genre?.let { putString(EXTERNAL_EXTRA_GENRE, it) }
-            putInt(EXTERNAL_EXTRA_TRACK, song.trackNumber)
-            putInt(EXTERNAL_EXTRA_YEAR, song.year)
-            putLong(EXTERNAL_EXTRA_DATE_ADDED, song.dateAdded)
-            putString(EXTERNAL_EXTRA_MIME_TYPE, song.mimeType)
-            putInt(EXTERNAL_EXTRA_BITRATE, song.bitrate ?: 0)
-            putInt(EXTERNAL_EXTRA_SAMPLE_RATE, song.sampleRate ?: 0)
-            putString(EXTERNAL_EXTRA_FILE_PATH, song.path)
-            song.navidromeId?.let { putString(EXTERNAL_EXTRA_NAVIDROME_ID, it) }
+            genre?.let { putString(EXTERNAL_EXTRA_GENRE, it) }
+            putInt(EXTERNAL_EXTRA_TRACK, trackNumber)
+            putInt(EXTERNAL_EXTRA_YEAR, year)
+            putLong(EXTERNAL_EXTRA_DATE_ADDED, dateAdded)
+            putString(EXTERNAL_EXTRA_MIME_TYPE, mimeType)
+            putInt(EXTERNAL_EXTRA_BITRATE, bitrate ?: 0)
+            putInt(EXTERNAL_EXTRA_SAMPLE_RATE, sampleRate ?: 0)
+            putString(EXTERNAL_EXTRA_FILE_PATH, path)
+            putString(PlaybackTrace.EXTRA_REQUEST_ID, playbackRequestId)
         }
 
         metadataBuilder.setExtras(extras)

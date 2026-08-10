@@ -21,6 +21,7 @@ class ModuleSchemaValidator @Inject constructor(
         const val MAX_STRING_LENGTH = 50_000
         const val MAX_ENTRIES_PER_MODULE = 100_000
         private val VALID_PREF_TYPES = setOf("string", "int", "long", "boolean", "float", "double", "string_set")
+        private val OBJECT_MODULES = setOf(BackupSection.SENSITIVE_DATA)
     }
 
     fun validate(section: BackupSection, payload: String): BackupValidationResult {
@@ -46,7 +47,7 @@ class ModuleSchemaValidator @Inject constructor(
         }
 
         // Most modules are JSON arrays
-        if (section != BackupSection.QUICK_FILL && section != BackupSection.EQUALIZER) {
+        if (section !in OBJECT_MODULES && section != BackupSection.EQUALIZER) {
             if (!jsonElement.isJsonArray) {
                 errors.add(ValidationError("NOT_ARRAY", "Module '${section.key}' should be a JSON array.", module = section.key))
                 return BackupValidationResult.Invalid(errors)
@@ -65,13 +66,12 @@ class ModuleSchemaValidator @Inject constructor(
             }
             BackupSection.FAVORITES -> validateFavorites(jsonElement.asJsonArray, errors)
             BackupSection.LYRICS -> validateLyrics(jsonElement.asJsonArray, errors)
-            BackupSection.SEARCH_HISTORY -> validateSearchHistory(jsonElement.asJsonArray, errors)
             BackupSection.ENGAGEMENT_STATS -> validateEngagementStats(jsonElement.asJsonArray, errors)
             BackupSection.PLAYBACK_HISTORY -> validatePlaybackHistory(jsonElement.asJsonArray, errors)
             BackupSection.ARTIST_IMAGES -> validateArtistImages(jsonElement.asJsonArray, errors)
             BackupSection.TRANSITIONS -> validateTransitions(jsonElement.asJsonArray, errors)
+            BackupSection.AUDIO_SOURCE_PLUGINS -> validateAudioSourcePlugins(jsonElement.asJsonArray, errors)
             BackupSection.GLOBAL_SETTINGS,
-            BackupSection.QUICK_FILL,
             BackupSection.EQUALIZER -> {
                 // These are PreferenceBackupEntry arrays; validate basic structure
                 validatePreferenceEntries(jsonElement, section.key, errors)
@@ -80,6 +80,7 @@ class ModuleSchemaValidator @Inject constructor(
                 // Basic array validation is already done at line 50. 
                 // Any extra specific field validation for AI logs can be added here.
             }
+            BackupSection.SENSITIVE_DATA -> validateSensitiveData(jsonElement, errors)
         }
 
         return if (errors.any { it.severity == Severity.ERROR }) {
@@ -194,23 +195,30 @@ class ModuleSchemaValidator @Inject constructor(
     }
 
     private fun validateLyrics(array: com.google.gson.JsonArray, errors: MutableList<ValidationError>) {
+        val seenMediaKeys = mutableSetOf<String>()
         array.forEachIndexed { i, element ->
-            if (!element.isJsonObject) return@forEachIndexed
+            if (!element.isJsonObject) {
+                errors.add(ValidationError("INVALID_LYRICS_ENTRY", "Lyrics[$i]: entry is not an object", module = "lyrics"))
+                return@forEachIndexed
+            }
             val obj = element.asJsonObject
+            val mediaKey = obj.get("mediaKey")?.takeUnless { it.isJsonNull }?.asString?.trim()
+                ?: obj.get("media_key")?.takeUnless { it.isJsonNull }?.asString?.trim()
+            val songId = obj.get("songId")?.takeUnless { it.isJsonNull }
+                ?: obj.get("song_id")?.takeUnless { it.isJsonNull }
+            if (mediaKey.isNullOrBlank() && songId == null) {
+                errors.add(ValidationError("MISSING_LYRICS_IDENTITY", "Lyrics[$i]: missing mediaKey and legacy songId", module = "lyrics"))
+            }
+            if (!mediaKey.isNullOrBlank()) {
+                if (mediaKey.length > MAX_STRING_LENGTH) {
+                    errors.add(ValidationError("LYRICS_KEY_TOO_LONG", "Lyrics[$i]: mediaKey exceeds max length", module = "lyrics"))
+                } else if (!seenMediaKeys.add(mediaKey)) {
+                    errors.add(ValidationError("DUPLICATE_LYRICS_KEY", "Lyrics[$i]: duplicate mediaKey", module = "lyrics", severity = Severity.WARNING))
+                }
+            }
             val content = obj.get("content")?.asString ?: ""
             if (content.length > MAX_STRING_LENGTH) {
                 errors.add(ValidationError("LYRICS_TOO_LONG", "Lyrics[$i]: content exceeds max length", module = "lyrics", severity = Severity.WARNING))
-            }
-        }
-    }
-
-    private fun validateSearchHistory(array: com.google.gson.JsonArray, errors: MutableList<ValidationError>) {
-        array.forEachIndexed { i, element ->
-            if (!element.isJsonObject) return@forEachIndexed
-            val obj = element.asJsonObject
-            val query = obj.get("query")?.asString ?: ""
-            if (query.length > 500) {
-                errors.add(ValidationError("QUERY_TOO_LONG", "SearchHistory[$i]: query exceeds 500 chars", module = "search_history", severity = Severity.WARNING))
             }
         }
     }
@@ -370,6 +378,46 @@ class ModuleSchemaValidator @Inject constructor(
         }
     }
 
+    private fun validateAudioSourcePlugins(array: com.google.gson.JsonArray, errors: MutableList<ValidationError>) {
+        array.forEachIndexed { i, element ->
+            if (!element.isJsonObject) {
+                errors.add(ValidationError("INVALID_PLUGIN_ENTRY", "AudioSourcePlugins[$i]: entry is not a JSON object", module = "audio_source_plugins", severity = Severity.WARNING))
+                return@forEachIndexed
+            }
+            val obj = element.asJsonObject
+            val id = obj.get("id")?.asString
+            val script = obj.get("script")?.asString
+            if (id.isNullOrBlank()) {
+                errors.add(ValidationError("MISSING_PLUGIN_ID", "AudioSourcePlugins[$i]: missing id", module = "audio_source_plugins", severity = Severity.WARNING))
+            }
+            if (script != null && script.length > MAX_STRING_LENGTH * 4) {
+                errors.add(ValidationError("PLUGIN_SCRIPT_TOO_LONG", "AudioSourcePlugins[$i]: script is unusually large", module = "audio_source_plugins", severity = Severity.WARNING))
+            }
+        }
+    }
+
+    private fun validateSensitiveData(jsonElement: com.google.gson.JsonElement, errors: MutableList<ValidationError>) {
+        if (!jsonElement.isJsonObject) {
+            errors.add(ValidationError("NOT_OBJECT", "Module '${BackupSection.SENSITIVE_DATA.key}' should be a JSON object.", module = BackupSection.SENSITIVE_DATA.key))
+            return
+        }
+        val aiPreferences = jsonElement.asJsonObject.get("aiPreferences")
+        if (aiPreferences != null) {
+            if (aiPreferences.isJsonArray) {
+                validatePreferenceEntries(aiPreferences, BackupSection.SENSITIVE_DATA.key, errors)
+            } else {
+                errors.add(
+                    ValidationError(
+                        "INVALID_AI_PREFERENCES",
+                        "SensitiveData.aiPreferences should be an array.",
+                        module = BackupSection.SENSITIVE_DATA.key,
+                        severity = Severity.WARNING
+                    )
+                )
+            }
+        }
+    }
+
     private fun validatePreferenceEntries(jsonElement: com.google.gson.JsonElement, moduleKey: String, errors: MutableList<ValidationError>) {
         if (!jsonElement.isJsonArray) return
         jsonElement.asJsonArray.forEachIndexed { i, element ->
@@ -410,4 +458,5 @@ class ModuleSchemaValidator @Inject constructor(
         }
         return NumericFieldResult(present = false, value = null)
     }
+
 }

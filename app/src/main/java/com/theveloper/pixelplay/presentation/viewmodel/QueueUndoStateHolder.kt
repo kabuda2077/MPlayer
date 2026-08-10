@@ -2,6 +2,8 @@ package com.theveloper.pixelplay.presentation.viewmodel
 
 import androidx.media3.session.MediaController
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.PlaybackItem
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import dagger.hilt.android.scopes.ViewModelScoped
 import javax.inject.Inject
@@ -11,7 +13,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @ViewModelScoped
-class QueueUndoStateHolder @Inject constructor() {
+class QueueUndoStateHolder @Inject constructor(
+    private val playbackRequestCoordinator: PlaybackRequestCoordinator
+) {
     private var queueItemUndoTimerJob: Job? = null
 
     fun removeSongFromQueue(
@@ -38,7 +42,7 @@ class QueueUndoStateHolder @Inject constructor() {
         val currentQueue = getUiState().currentPlaybackQueue
         val removedSong = currentQueue.find { it.id == songId } ?: return
 
-        controller.removeMediaItem(indexToRemove)
+        if (!playbackRequestCoordinator.removeMediaItem(controller, indexToRemove)) return
 
         updateUiState {
             it.copy(
@@ -74,9 +78,9 @@ class QueueUndoStateHolder @Inject constructor() {
         if (index < 0) return
 
         mediaController?.let { controller ->
-            val mediaItem = MediaItemBuilder.build(song)
+            val mediaItem = MediaItemBuilder.build(PlaybackItem.fromCompatibleSong(song))
             val insertAt = index.coerceAtMost(controller.mediaItemCount)
-            controller.addMediaItem(insertAt, mediaItem)
+            playbackRequestCoordinator.insertMediaItem(controller, insertAt, mediaItem)
         }
 
         hideQueueItemUndoBar(updateUiState)

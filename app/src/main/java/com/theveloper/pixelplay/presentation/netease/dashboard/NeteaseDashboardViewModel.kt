@@ -36,11 +36,6 @@ class NeteaseDashboardViewModel @Inject constructor(
     
     val isLoggedIn: StateFlow<Boolean> = repository.isLoggedInFlow
 
-    init {
-        // Auto-sync playlists when the dashboard opens
-        syncPlaylists()
-    }
-
     fun syncAllPlaylistsAndSongs() {
         viewModelScope.launch {
             _isSyncing.value = true

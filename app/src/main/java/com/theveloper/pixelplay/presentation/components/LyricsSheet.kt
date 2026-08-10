@@ -1,6 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
 import android.widget.Toast
+import android.os.SystemClock
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.R
@@ -84,6 +85,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.consumePositionChange
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.scaleIn
@@ -297,6 +299,15 @@ fun LyricsSheet(
     val lyrics by remember(stablePlayerState) { derivedStateOf { stablePlayerState.lyrics } }
     val isPlaying by remember(stablePlayerState) { derivedStateOf { stablePlayerState.isPlaying } }
     val currentSong by remember(stablePlayerState) { derivedStateOf { stablePlayerState.currentSong } }
+    val rawPlaybackPosition by playbackPositionFlow.collectAsStateWithLifecycle()
+    val lyricsPlaybackPosition by rememberLyricsPlaybackPosition(
+        rawPositionMs = rawPlaybackPosition,
+        mediaId = currentSong?.id,
+        isPlaying = isPlaying,
+        isBuffering = stablePlayerState.isBuffering,
+        playbackSpeed = stablePlayerState.playbackSpeed,
+        totalDurationMs = stablePlayerState.totalDuration
+    )
 
     val hasTranslatedLyrics = remember(lyrics) {
         // Translated lyrics read same timestamp on the lrc, not possible in plain type lyrics
@@ -333,9 +344,9 @@ fun LyricsSheet(
 
     // Read animated lyrics preference internally from DataStore
     val useAnimatedLyricsFlow = remember(context) {
-        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: false }
+        context.dataStore.data.map { it[booleanPreferencesKey("use_animated_lyrics")] ?: true }
     }
-    val useAnimatedLyrics by useAnimatedLyricsFlow.collectAsStateWithLifecycle(initialValue = false)
+    val useAnimatedLyrics by useAnimatedLyricsFlow.collectAsStateWithLifecycle(initialValue = true)
 
     val animatedLyricsBlurEnabledFlow = remember(context) {
         context.dataStore.data.map { it[booleanPreferencesKey("animated_lyrics_blur_enabled")] ?: true }
@@ -624,10 +635,10 @@ fun LyricsSheet(
                     .fillMaxSize()
                     .padding(top = paddingValues.calculateTopPadding())
         ) {
-            val initialSyncedLineIndex = remember(lyrics, playbackPositionFlow, lyricsSyncOffset) {
+            val initialSyncedLineIndex = remember(lyrics, lyricsPlaybackPosition, lyricsSyncOffset) {
                 resolveCurrentLineIndex(
                     lines = lyrics?.synced.orEmpty(),
-                    position = (playbackPositionFlow.value + lyricsSyncOffset).coerceAtLeast(0L)
+                    position = (lyricsPlaybackPosition + lyricsSyncOffset).coerceAtLeast(0L)
                 ).coerceAtLeast(0)
             }
             val syncedListState = rememberLazyListState(
@@ -716,6 +727,7 @@ fun LyricsSheet(
                                 lines = synced,
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
+                                playbackPositionMs = lyricsPlaybackPosition,
                                 lyricsSyncOffset = lyricsSyncOffset,
                                 positionOverrideMs = previewSeekPositionMs,
                                 accentColor = lyricHighlightColor,
@@ -1120,12 +1132,51 @@ private fun LyricsPlaybackSeekBar(
     )
 }
 
+@Composable
+private fun rememberLyricsPlaybackPosition(
+    rawPositionMs: Long,
+    mediaId: String?,
+    isPlaying: Boolean,
+    isBuffering: Boolean,
+    playbackSpeed: Float,
+    totalDurationMs: Long
+): State<Long> {
+    val clock = remember { PlaybackPositionClock() }
+    val position = remember { mutableLongStateOf(rawPositionMs.coerceAtLeast(0L)) }
+
+    LaunchedEffect(
+        mediaId,
+        rawPositionMs,
+        isPlaying,
+        isBuffering,
+        playbackSpeed,
+        totalDurationMs
+    ) {
+        clock.synchronize(
+            positionMs = rawPositionMs,
+            realtimeMs = SystemClock.elapsedRealtime(),
+            isPlaying = isPlaying,
+            isBuffering = isBuffering,
+            playbackSpeed = playbackSpeed,
+            totalDurationMs = totalDurationMs
+        )
+        position.longValue = clock.positionAt(SystemClock.elapsedRealtime())
+        while (isActive && isPlaying && !isBuffering) {
+            withFrameNanos {
+                position.longValue = clock.positionAt(SystemClock.elapsedRealtime())
+            }
+        }
+    }
+    return position
+}
+
 @OptIn(ExperimentalSnapperApi::class)
 @Composable
 fun SyncedLyricsList(
     lines: List<SyncedLine>,
     listState: LazyListState,
     playbackPositionFlow: StateFlow<Long>,
+    playbackPositionMs: Long,
     lyricsSyncOffset: Int,
     positionOverrideMs: Long? = null,
     accentColor: Color,
@@ -1146,9 +1197,8 @@ fun SyncedLyricsList(
     footer: LazyListScope.() -> Unit = {}
 ) {
     val density = LocalDensity.current
-    val playbackPosition by playbackPositionFlow.collectAsStateWithLifecycle()
-    val position = remember(playbackPosition, lyricsSyncOffset, positionOverrideMs) {
-        positionOverrideMs ?: (playbackPosition + lyricsSyncOffset).coerceAtLeast(0L)
+    val position = remember(playbackPositionMs, lyricsSyncOffset, positionOverrideMs) {
+        positionOverrideMs ?: (playbackPositionMs + lyricsSyncOffset).coerceAtLeast(0L)
     }
     val isPreviewSeeking = positionOverrideMs != null
     val currentLineIndex by remember(position, lines) {

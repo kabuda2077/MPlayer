@@ -55,6 +55,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import com.theveloper.pixelplay.data.model.StorageFilter
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -307,13 +308,11 @@ fun SongPickerSelectionPane(
             .map { songs ->
                 when (storageFilter) {
                     StorageFilter.OFFLINE -> songs.filter { s ->
-                        s.telegramFileId == null && s.neteaseId == null && s.gdriveFileId == null &&
-                                s.qqMusicMid == null && s.navidromeId == null && s.jellyfinId == null
+                        MediaSourceClassifier.isLocal(s.contentUriString)
                     }
 
                     StorageFilter.ONLINE -> songs.filter { s ->
-                        s.telegramFileId != null || s.neteaseId != null || s.gdriveFileId != null ||
-                                s.qqMusicMid != null || s.navidromeId != null || s.jellyfinId != null
+                        MediaSourceClassifier.isOnline(s.contentUriString)
                     }
 
                     else -> songs

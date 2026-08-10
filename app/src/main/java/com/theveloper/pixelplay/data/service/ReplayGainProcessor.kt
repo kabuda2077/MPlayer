@@ -4,6 +4,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.theveloper.pixelplay.data.media.ReplayGainManager
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
+import com.theveloper.pixelplay.data.service.player.PlaybackTransportCommand
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,7 @@ import kotlin.math.abs
  */
 class ReplayGainProcessor(
     private val engine: DualPlayerEngine,
+    private val playbackRequestCoordinator: PlaybackRequestCoordinator,
     private val replayGainManager: ReplayGainManager,
     private val scope: CoroutineScope,
     private val currentSessionMediaItem: () -> MediaItem?,
@@ -91,7 +94,10 @@ class ReplayGainProcessor(
     private fun setPlayerVolume(player: Player, volume: Float) {
         val clampedVolume = volume.coerceIn(0f, 1f)
         expectedVolume = clampedVolume
-        player.volume = clampedVolume
+        playbackRequestCoordinator.dispatchTransport(
+            player,
+            PlaybackTransportCommand.SetVolume(clampedVolume)
+        )
     }
 
     /**
@@ -224,6 +230,16 @@ class ReplayGainProcessor(
             ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_FILE_PATH) ?: return
         if (filePath.isBlank()) return
         scope.launch(Dispatchers.IO) {
+            prefetchNow(mediaItem)
+        }
+    }
+
+    suspend fun prefetchNow(mediaItem: MediaItem?) {
+        if (!enabled || mediaItem == null) return
+        val filePath = mediaItem.mediaMetadata.extras
+            ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_FILE_PATH) ?: return
+        if (filePath.isBlank()) return
+        withContext(Dispatchers.IO) {
             replayGainManager.readReplayGain(filePath)
         }
     }

@@ -113,7 +113,7 @@ fun AudioSourcePluginScreen(
                     ) {
                         Icon(Icons.Rounded.UploadFile, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("导入 .js 插件")
+                        Text("添加音源")
                     }
                 }
                 if (uiState.plugins.isEmpty()) {
@@ -324,9 +324,9 @@ private fun EmptyPluginCard() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("还没有插件", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("还没有音源", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "导入 LX 风格 JS 插件后，网易云和 QQ 音乐的播放 URL 会完全交给插件解析。",
+                "添加音源后，即可播放在线歌曲。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -337,13 +337,12 @@ private fun EmptyPluginCard() {
 private fun formatTime(timestamp: Long): String =
     SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 
-private val MUSIC_SOURCE_ORDER = listOf("wy", "kg", "kw", "tx", "mg")
+private val MUSIC_SOURCE_ORDER = listOf("wy", "kg", "kw", "tx")
 
 private fun sourceDisplayName(source: String): String? = when (source) {
     "wy" -> "网易云"
     "tx" -> "QQ音乐"
     "kw" -> "酷我"
     "kg" -> "酷狗"
-    "mg" -> "咪咕"
     else -> null
 }

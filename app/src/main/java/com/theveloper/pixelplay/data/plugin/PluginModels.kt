@@ -11,20 +11,10 @@ enum class PluginSource(
     NETEASE("wy", "netease", "网易云", setOf("wy", "netease", "163", "163music", "neteasecloud")),
     KUGOU("kg", "kugou", "酷狗", setOf("kg", "kugou")),
     KUWO("kw", "kuwo", "酷我", setOf("kw", "kuwo")),
-    QQ_MUSIC("tx", "qqmusic", "QQ音乐", setOf("tx", "qq", "qqmusic")),
-    MIGU("mg", "migu", "咪咕", setOf("mg", "migu"));
+    QQ_MUSIC("tx", "qqmusic", "QQ音乐", setOf("tx", "qq", "qqmusic"));
 
     companion object {
         val fallbackPriority = listOf(NETEASE, KUGOU, KUWO, QQ_MUSIC)
-
-        fun fromUri(uriString: String): PluginSource? = when {
-            uriString.startsWith("netease://") -> NETEASE
-            uriString.startsWith("kugou://") -> KUGOU
-            uriString.startsWith("kuwo://") -> KUWO
-            uriString.startsWith("qqmusic://") -> QQ_MUSIC
-            uriString.startsWith("migu://") -> MIGU
-            else -> null
-        }
 
         fun fromAlias(value: String?): PluginSource? {
             val normalized = value?.trim()?.lowercase() ?: return null

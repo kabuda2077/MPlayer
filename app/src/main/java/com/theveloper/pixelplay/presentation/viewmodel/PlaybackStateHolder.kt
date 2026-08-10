@@ -8,6 +8,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestLane
+import com.theveloper.pixelplay.data.service.player.PlaybackTransportCommand
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -27,19 +30,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import com.theveloper.pixelplay.data.model.Song
-import com.theveloper.pixelplay.data.service.cast.CastRemotePlaybackState
-import com.google.android.gms.cast.MediaStatus
+import com.theveloper.pixelplay.data.model.PlaybackItem
+import com.theveloper.pixelplay.data.model.Lyrics
+import com.theveloper.pixelplay.data.model.LyricsMediaKey
 import timber.log.Timber
 import com.theveloper.pixelplay.utils.QueueUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
+import com.theveloper.pixelplay.utils.PlaybackTrace
 import kotlin.math.abs
 
 @Singleton
 class PlaybackStateHolder @Inject constructor(
     private val dualPlayerEngine: DualPlayerEngine,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val castStateHolder: CastStateHolder,
     private val queueStateHolder: QueueStateHolder,
+    private val playbackRequestCoordinator: PlaybackRequestCoordinator,
     @param:ApplicationContext private val appContext: Context
 ) {
     companion object {
@@ -68,12 +73,9 @@ class PlaybackStateHolder @Inject constructor(
          * round-trip for each call, which freezes the UI on large queues.
          */
         private const val BULK_REPLACE_THRESHOLD = 80
-        private const val SHUFFLE_TOGGLE_COOLDOWN_MS = 400L
-        private const val CAST_SEEK_BLOCKED_TOAST_COOLDOWN_MS = 2500L
     }
 
     private var scope: CoroutineScope? = null
-    private var onCastSeekBlocked: (() -> Unit)? = null
     
     // MediaController
     var mediaController: MediaController? = null
@@ -96,7 +98,6 @@ class PlaybackStateHolder @Inject constructor(
 
     // Internal State
     private var isSeeking = false
-    private var remoteSeekUnlockJob: Job? = null
     private var activePositionOccurrenceMediaId: String? = null
     private var activePositionOccurrenceToken: Long = 0L
     private var nextPositionOccurrenceToken: Long = 1L
@@ -107,9 +108,6 @@ class PlaybackStateHolder @Inject constructor(
     private var coldStartSnapshotMediaId: String? = null
     private var coldStartSnapshotToken: Long? = null
     private var coldStartSnapshotPositionMs: Long? = null
-    private var shuffleToggleJob: Job? = null
-    private var lastShuffleToggleFinishedAtMs: Long = 0L
-    private var lastCastSeekBlockedToastAtMs: Long = 0L
     private val powerManager: PowerManager by lazy(LazyThreadSafetyMode.NONE) {
         appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     }
@@ -149,12 +147,8 @@ class PlaybackStateHolder @Inject constructor(
         return false
     }
 
-    fun initialize(
-        coroutineScope: CoroutineScope,
-        onCastSeekBlocked: (() -> Unit)? = null
-    ) {
+    fun initialize(coroutineScope: CoroutineScope) {
         this.scope = coroutineScope
-        this.onCastSeekBlocked = onCastSeekBlocked
         scope?.launch {
             val snapshot = runCatching {
                 userPreferencesRepository.getPlaybackQueueSnapshotOnce()
@@ -202,19 +196,6 @@ class PlaybackStateHolder @Inject constructor(
         }
     }
 
-    private fun notifyCastSeekBlocked() {
-        val nowMs = SystemClock.elapsedRealtime()
-        if (
-            lastCastSeekBlockedToastAtMs > 0L &&
-            nowMs - lastCastSeekBlockedToastAtMs < CAST_SEEK_BLOCKED_TOAST_COOLDOWN_MS
-        ) {
-            return
-        }
-
-        lastCastSeekBlockedToastAtMs = nowMs
-        onCastSeekBlocked?.invoke()
-    }
-
     private fun activeLocalPlayer(): Player {
         val controller = mediaController
         return if (controller?.isConnected == true) {
@@ -224,21 +205,65 @@ class PlaybackStateHolder @Inject constructor(
         }
     }
     
-    fun updateStablePlayerState(update: (StablePlayerState) -> StablePlayerState) {
+    /**
+     * Applies facts reported by the active MediaController.
+     *
+     * Playback commands and queue builders must never call this method. Keeping the
+     * projection entry point separate prevents optimistic UI intent from becoming a
+     * second, conflicting playback state source.
+     */
+    internal fun projectControllerState(update: (StablePlayerState) -> StablePlayerState) {
+        _stablePlayerState.update(update)
+    }
+
+    fun setManualShuffleEnabled(enabled: Boolean) {
         _stablePlayerState.update { current ->
-            val updated = update(current)
-            // Auto-populate index from MediaController if not explicitly set by the update
-            if (updated.currentMediaItemIndex == -1) {
-                if (dualPlayerEngine.isUsingWindowedQueue()) {
-                    updated.copy(currentMediaItemIndex = dualPlayerEngine.getCurrentAbsoluteIndex())
-                } else {
-                    mediaController?.let { controller ->
-                        updated.copy(currentMediaItemIndex = controller.currentMediaItemIndex)
-                    } ?: updated
-                }
-            } else {
-                updated
-            }
+            if (current.isShuffleEnabled == enabled) current
+            else current.copy(isShuffleEnabled = enabled)
+        }
+    }
+
+    private fun setShuffleTransitionInProgress(inProgress: Boolean) {
+        _stablePlayerState.update { current ->
+            if (current.isShuffleTransitionInProgress == inProgress) current
+            else current.copy(isShuffleTransitionInProgress = inProgress)
+        }
+    }
+
+    fun onLyricsLoadingStarted(mediaKey: String) {
+        _stablePlayerState.update { current ->
+            if (current.currentSong?.let(LyricsMediaKey::fromSong)?.value != mediaKey) current
+            else current.copy(isLoadingLyrics = true, lyrics = null)
+        }
+    }
+
+    fun onLyricsLoaded(mediaKey: String, lyrics: Lyrics?) {
+        _stablePlayerState.update { current ->
+            if (current.currentSong?.let(LyricsMediaKey::fromSong)?.value != mediaKey) current
+            else current.copy(isLoadingLyrics = false, lyrics = lyrics)
+        }
+    }
+
+    fun clearLyrics() {
+        _stablePlayerState.update { current ->
+            if (current.lyrics == null && !current.isLoadingLyrics) current
+            else current.copy(lyrics = null, isLoadingLyrics = false)
+        }
+    }
+
+    fun updateCurrentSongMetadata(
+        updatedSong: Song,
+        lyrics: Lyrics? = null,
+        replaceLyrics: Boolean = false,
+        isLoadingLyrics: Boolean? = null
+    ) {
+        _stablePlayerState.update { current ->
+            if (current.currentSong?.id != updatedSong.id) return@update current
+            current.copy(
+                currentSong = updatedSong,
+                lyrics = if (replaceLyrics) lyrics else current.lyrics,
+                isLoadingLyrics = isLoadingLyrics ?: current.isLoadingLyrics
+            )
         }
     }
 
@@ -394,181 +419,57 @@ class PlaybackStateHolder @Inject constructor(
     /* -------------------------------------------------------------------------- */
 
     fun playPause() {
-        val castSession = castStateHolder.castSession.value
-        val remoteMediaClient = castSession?.remoteMediaClient
-
-        if (castSession != null && remoteMediaClient != null) {
-            val remotePlayback = remoteMediaClient.mediaStatus?.let { mediaStatus ->
-                CastRemotePlaybackState.project(
-                    mediaStatus = mediaStatus,
-                    previousPlayIntent = _stablePlayerState.value.playWhenReady
-                )
-            }
-            if (remoteMediaClient.isPlaying || remotePlayback?.playWhenReady == true) {
-                castStateHolder.castPlayer?.pause()
-                _stablePlayerState.update {
-                    it.copy(
-                        isPlaying = false,
-                        playWhenReady = false,
-                        isBuffering = false
-                    )
-                }
-            } else {
-                if (remoteMediaClient.mediaQueue.itemCount > 0) {
-                    castStateHolder.castPlayer?.play()
-                    _stablePlayerState.update {
-                        it.copy(
-                            isPlaying = true,
-                            playWhenReady = true
-                        )
-                    }
-                } else {
-                    Timber.w("Remote queue empty, cannot resume.")
-                }
-            }
-        } else {
-            val controller = activeLocalPlayer()
-            if (controller.isPlaying) {
-                controller.pause()
-            } else {
-                if (controller.playbackState == Player.STATE_IDLE && controller.mediaItemCount > 0) {
-                    controller.prepare()
-                }
-                controller.play()
-            }
-        }
+        playbackRequestCoordinator.dispatchTransport(
+            activeLocalPlayer(),
+            PlaybackTransportCommand.TogglePlayPause
+        )
     }
 
     fun seekTo(position: Long) {
-        val castSession = castStateHolder.castSession.value
-        if (castSession != null && castSession.remoteMediaClient != null) {
-            val targetPosition = position.coerceAtLeast(0L)
-            val castPlayer = castStateHolder.castPlayer
-            if (castPlayer?.canSeekCurrentItem() == false) {
-                remoteSeekUnlockJob?.cancel()
-                castStateHolder.setRemotelySeeking(false)
-                castSession.remoteMediaClient?.requestStatus()
-                notifyCastSeekBlocked()
-                Timber.tag(TAG).w("Ignoring Cast seek for current item because receiver-side Ogg seeking is unstable.")
-                return
-            }
-            castStateHolder.setRemotelySeeking(true)
-            castStateHolder.setRemotePosition(targetPosition)
-            setCurrentPosition(targetPosition)
-            if (castPlayer?.seek(targetPosition) != true) {
-                castStateHolder.setRemotelySeeking(false)
-                castSession.remoteMediaClient?.requestStatus()
-                if (castPlayer != null) {
-                    notifyCastSeekBlocked()
-                }
-                return
-            }
-
-            remoteSeekUnlockJob?.cancel()
-            remoteSeekUnlockJob = scope?.launch {
-                // Fail-safe: never keep remote seeking lock indefinitely.
-                delay(1800)
-                castStateHolder.setRemotelySeeking(false)
-                castSession.remoteMediaClient?.requestStatus()
-            }
-        } else {
-            remoteSeekUnlockJob?.cancel()
-            castStateHolder.setRemotelySeeking(false)
-            val targetPosition = position.coerceAtLeast(0L)
-            val player = activeLocalPlayer()
-            val currentMediaId = player.currentMediaItem?.mediaId
-            rememberPausedPositionOverride(currentMediaId, targetPosition)
-            // Mark the seek before dispatching so the engine's HAL-reset heuristic does
-            // not misinterpret the resulting STATE_BUFFERING as an audio HAL underflow and
-            // rebuild the players (which would race with the in-flight seek command).
-            dualPlayerEngine.notifyExternalSeekInitiated()
-            player.seekTo(targetPosition)
-        }
+        val targetPosition = position.coerceAtLeast(0L)
+        val player = activeLocalPlayer()
+        val currentMediaId = player.currentMediaItem?.mediaId
+        rememberPausedPositionOverride(currentMediaId, targetPosition)
+        dualPlayerEngine.notifyExternalSeekInitiated()
+        playbackRequestCoordinator.dispatchTransport(
+            player,
+            PlaybackTransportCommand.Seek(targetPosition)
+        )
     }
 
     fun previousSong() {
-        val castSession = castStateHolder.castSession.value
-        if (castSession != null && castSession.remoteMediaClient != null) {
-            castStateHolder.castPlayer?.previous()
-        } else {
-            val controller = activeLocalPlayer()
-             if (controller.currentPosition > 10000) { // 10 seconds
-                 controller.seekTo(0)
-            } else {
-                 controller.seekToPrevious()
-            }
-        }
+        playbackRequestCoordinator.dispatchTransport(
+            activeLocalPlayer(),
+            PlaybackTransportCommand.Previous
+        )
     }
 
     fun nextSong() {
-        val castSession = castStateHolder.castSession.value
-        if (castSession != null && castSession.remoteMediaClient != null) {
-            castStateHolder.castPlayer?.next()
-            castStateHolder.castPlayer?.play()
-        } else {
-            val player = activeLocalPlayer()
-            player.seekToNext()
-            if (player.playbackState == Player.STATE_IDLE) {
-                player.prepare()
-            }
-            player.play()
-        }
+        playbackRequestCoordinator.dispatchTransport(
+            activeLocalPlayer(),
+            PlaybackTransportCommand.Next
+        )
     }
 
     fun cycleRepeatMode() {
-        val castSession = castStateHolder.castSession.value
-        val remoteMediaClient = castSession?.remoteMediaClient
-
-        if (castSession != null && remoteMediaClient != null) {
-            val currentRepeatMode = remoteMediaClient.mediaStatus?.getQueueRepeatMode() ?: MediaStatus.REPEAT_MODE_REPEAT_OFF
-            val newMode = when (currentRepeatMode) {
-                MediaStatus.REPEAT_MODE_REPEAT_OFF -> MediaStatus.REPEAT_MODE_REPEAT_ALL
-                MediaStatus.REPEAT_MODE_REPEAT_ALL -> MediaStatus.REPEAT_MODE_REPEAT_SINGLE
-                MediaStatus.REPEAT_MODE_REPEAT_SINGLE -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-                MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-                else -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-            }
-            castStateHolder.castPlayer?.setRepeatMode(newMode)
-            
-            // Map remote mode back to local constant for persistence/UI
-            val mappedLocalMode = when (newMode) {
-                MediaStatus.REPEAT_MODE_REPEAT_SINGLE -> Player.REPEAT_MODE_ONE
-                MediaStatus.REPEAT_MODE_REPEAT_ALL, MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE -> Player.REPEAT_MODE_ALL
-                else -> Player.REPEAT_MODE_OFF
-            }
-            scope?.launch { userPreferencesRepository.setRepeatMode(mappedLocalMode) }
-            _stablePlayerState.update { it.copy(repeatMode = mappedLocalMode) }
-        } else {
-            val currentMode = _stablePlayerState.value.repeatMode
-            val newMode = when (currentMode) {
-                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-                Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
-                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_OFF
-                else -> Player.REPEAT_MODE_OFF
-            }
-            mediaController?.repeatMode = newMode
-            scope?.launch { userPreferencesRepository.setRepeatMode(newMode) }
-            _stablePlayerState.update { it.copy(repeatMode = newMode) }
+        val currentMode = _stablePlayerState.value.repeatMode
+        val newMode = when (currentMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_OFF
+            else -> Player.REPEAT_MODE_OFF
         }
+        mediaController?.let {
+            playbackRequestCoordinator.dispatchTransport(it, PlaybackTransportCommand.SetRepeatMode(newMode))
+        }
+        scope?.launch { userPreferencesRepository.setRepeatMode(newMode) }
     }
 
     fun setRepeatMode(mode: Int) {
-        val castSession = castStateHolder.castSession.value
-        val remoteMediaClient = castSession?.remoteMediaClient
-
-        if (castSession != null && remoteMediaClient != null) {
-            val remoteMode = when (mode) {
-                Player.REPEAT_MODE_ONE -> MediaStatus.REPEAT_MODE_REPEAT_SINGLE
-                Player.REPEAT_MODE_ALL -> MediaStatus.REPEAT_MODE_REPEAT_ALL
-                else -> MediaStatus.REPEAT_MODE_REPEAT_OFF
-            }
-            castStateHolder.castPlayer?.setRepeatMode(remoteMode)
-        } else {
-             mediaController?.repeatMode = mode
+        mediaController?.let {
+            playbackRequestCoordinator.dispatchTransport(it, PlaybackTransportCommand.SetRepeatMode(mode))
         }
-        
         scope?.launch { userPreferencesRepository.setRepeatMode(mode) }
-        _stablePlayerState.update { it.copy(repeatMode = mode) }
     }
 
     /* -------------------------------------------------------------------------- */
@@ -643,96 +544,15 @@ class PlaybackStateHolder @Inject constructor(
                 coroutineScope {
                     while (isActive) {
                         val tickMs = currentProgressTickMs()
-                        val castSession = castStateHolder.castSession.value
-                        val remoteClient = castSession?.remoteMediaClient
-                        val isRemote = remoteClient != null
-
-                        if (isRemote) {
-                    val activeRemoteClient = checkNotNull(remoteClient)
-                    val previousPlayIntent = _stablePlayerState.value.playWhenReady
-                    val remotePlayback = activeRemoteClient.mediaStatus?.let { mediaStatus ->
-                        CastRemotePlaybackState.project(
-                            mediaStatus = mediaStatus,
-                            previousPlayIntent = previousPlayIntent
-                        )
-                    }
-                    val isRemotePlaying = remotePlayback?.isPlaying ?: activeRemoteClient.isPlaying
-                    val remotePlayWhenReady = remotePlayback?.playWhenReady ?: activeRemoteClient.isPlaying
-                    val currentPosition = activeRemoteClient.approximateStreamPosition.coerceAtLeast(0L)
-                    val songDurationHint = _stablePlayerState.value.currentSong?.duration ?: 0L
-                    val duration = resolveEffectiveDuration(
-                        reportedDurationMs = activeRemoteClient.streamDuration,
-                        songDurationHintMs = songDurationHint,
-                        currentPositionMs = currentPosition
-                    )
-                    val isRemotelySeeking = castStateHolder.isRemotelySeeking.value
-                    if (!isRemotelySeeking) {
-                        castStateHolder.setRemotePosition(currentPosition)
-                    }
-
-                    val nextPosition = if (isRemotelySeeking) _currentPosition.value else currentPosition
-                    if (_currentPosition.value != nextPosition) {
-                        _currentPosition.value = nextPosition
-                    }
-
-                    _stablePlayerState.update { state ->
-                        if (
-                            state.totalDuration == duration &&
-                            state.isPlaying == isRemotePlaying &&
-                            state.playWhenReady == remotePlayWhenReady &&
-                            state.isBuffering == (remotePlayback?.isBuffering ?: false)
-                        ) {
-                            state
-                        } else {
-                            state.copy(
-                                totalDuration = duration,
-                                isPlaying = isRemotePlaying,
-                                playWhenReady = remotePlayWhenReady,
-                                isBuffering = remotePlayback?.isBuffering ?: false
-                            )
-                        }
-                    }
-                } else {
-                     val controller = activeLocalPlayer()
+                        val controller = activeLocalPlayer()
                      if (shouldSampleLocalProgress(controller)) {
-                         val visibleSong = _stablePlayerState.value.currentSong
-                         val currentMediaId = controller.currentMediaItem?.mediaId
-                         val hasMediaMismatch = visibleSong?.id != null &&
-                             currentMediaId != null &&
-                             visibleSong.id != currentMediaId
-
-                         if (hasMediaMismatch) {
-                            Timber.tag(TAG).v(
-                                 "Skipping local progress tick due media mismatch (visible=%s, player=%s)",
-                                 visibleSong.id,
-                                 currentMediaId
-                             )
-                            delay(tickMs)
-                            continue
-                        }
-
+                          val currentMediaId = controller.currentMediaItem?.mediaId
                           val currentPosition = controller.currentPosition.coerceAtLeast(0L)
-                          val songDurationHint = visibleSong?.duration ?: 0L
-                          val duration = resolveEffectiveDuration(
-                              reportedDurationMs = controller.duration,
-                              songDurationHintMs = songDurationHint,
-                              currentPositionMs = currentPosition
-                          )
-
                           val resolvedPosition = resolveUiPosition(currentMediaId, currentPosition)
                           if (_currentPosition.value != resolvedPosition) {
                               _currentPosition.value = resolvedPosition
                           }
-
-                          _stablePlayerState.update { state ->
-                              if (state.totalDuration == duration) {
-                                  state
-                              } else {
-                                  state.copy(totalDuration = duration)
-                              }
-                         }
                       }
-                }
                         delay(tickMs)
                     }
                 }
@@ -821,7 +641,9 @@ class PlaybackStateHolder @Inject constructor(
                 return false
             }
 
-            player.moveMediaItem(fromIndex, targetIndex)
+            if (!playbackRequestCoordinator.moveMediaItem(player, fromIndex, targetIndex)) {
+                return false
+            }
             val movedId = currentIds.removeAt(fromIndex)
             currentIds.add(targetIndex, movedId)
         }
@@ -839,11 +661,15 @@ class PlaybackStateHolder @Inject constructor(
         targetIndex: Int,
         currentMediaItem: MediaItem?
     ): PreparedQueueReplacement = withContext(Dispatchers.Default) {
+        val playbackRequestId = PlaybackTrace.newRequestId()
         val safeTargetIndex = targetIndex.coerceIn(0, (newQueue.size - 1).coerceAtLeast(0))
         val mediaItems = List(newQueue.size) { index ->
             currentMediaItem
                 ?.takeIf { index == safeTargetIndex && it.mediaId == newQueue[safeTargetIndex].id }
-                ?: MediaItemBuilder.build(newQueue[index])
+                ?: MediaItemBuilder.build(
+                    PlaybackItem.fromCompatibleSong(newQueue[index]),
+                    playbackRequestId
+                )
         }
 
         PreparedQueueReplacement(
@@ -857,6 +683,7 @@ class PlaybackStateHolder @Inject constructor(
         currentIndex: Int,
         currentMediaItem: MediaItem?
     ): PreparedQueueSegments? = withContext(Dispatchers.Default) {
+        val playbackRequestId = PlaybackTrace.newRequestId()
         val safeCurrentIndex = currentIndex.coerceIn(0, (newQueue.size - 1).coerceAtLeast(0))
         val currentQueueSong = newQueue.getOrNull(safeCurrentIndex) ?: return@withContext null
         if (currentMediaItem?.mediaId != currentQueueSong.id) {
@@ -864,11 +691,17 @@ class PlaybackStateHolder @Inject constructor(
         }
 
         val beforeCurrent = List(safeCurrentIndex) { index ->
-            MediaItemBuilder.build(newQueue[index])
+            MediaItemBuilder.build(
+                PlaybackItem.fromCompatibleSong(newQueue[index]),
+                playbackRequestId
+            )
         }
         val afterStartIndex = safeCurrentIndex + 1
         val afterCurrent = List((newQueue.size - afterStartIndex).coerceAtLeast(0)) { offset ->
-            MediaItemBuilder.build(newQueue[afterStartIndex + offset])
+            MediaItemBuilder.build(
+                PlaybackItem.fromCompatibleSong(newQueue[afterStartIndex + offset]),
+                playbackRequestId
+            )
         }
 
         PreparedQueueSegments(
@@ -896,9 +729,19 @@ class PlaybackStateHolder @Inject constructor(
         }
 
         if (currentIndex > 0) {
-            masterPlayer.replaceMediaItems(0, currentIndex, preparedSegments.beforeCurrent)
+            playbackRequestCoordinator.replaceMediaItems(
+                masterPlayer,
+                0,
+                currentIndex,
+                preparedSegments.beforeCurrent
+            )
         }
-        masterPlayer.replaceMediaItems(afterStartIndex, mediaItemCount, preparedSegments.afterCurrent)
+        playbackRequestCoordinator.replaceMediaItems(
+            masterPlayer,
+            afterStartIndex,
+            mediaItemCount,
+            preparedSegments.afterCurrent
+        )
         return masterPlayer.currentMediaItemIndex == currentIndex
     }
 
@@ -910,18 +753,13 @@ class PlaybackStateHolder @Inject constructor(
         val shouldResumePlayback = player.playWhenReady || player.isPlaying
         val masterPlayer = dualPlayerEngine.masterPlayer
 
-        masterPlayer.setMediaItems(
-            preparedQueue.mediaItems,
-            preparedQueue.targetIndex,
-            currentPosition
+        playbackRequestCoordinator.replaceQueue(
+            player = masterPlayer,
+            mediaItems = preparedQueue.mediaItems,
+            startIndex = preparedQueue.targetIndex,
+            startPositionMs = currentPosition,
+            playWhenReady = shouldResumePlayback
         )
-
-        if (shouldResumePlayback) {
-            masterPlayer.playWhenReady = true
-            if (!masterPlayer.isPlaying) {
-                masterPlayer.play()
-            }
-        }
     }
 
     fun toggleShuffle(
@@ -930,35 +768,16 @@ class PlaybackStateHolder @Inject constructor(
         currentQueueSourceName: String,
         updateQueueCallback: (List<Song>) -> Unit
     ) {
-        val nowMs = SystemClock.elapsedRealtime()
-        if (shuffleToggleJob?.isActive == true) return
-        if ((nowMs - lastShuffleToggleFinishedAtMs) < SHUFFLE_TOGGLE_COOLDOWN_MS) return
-
         val coroutineScope = scope ?: return
-        val castSession = castStateHolder.castSession.value
-        if (castSession != null && castSession.remoteMediaClient != null) {
-            shuffleToggleJob = coroutineScope.launch {
-                _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = true) }
+        playbackRequestCoordinator.launchLatest(
+            coroutineScope,
+            PlaybackRequestLane.QUEUE_MUTATION
+        ) {
+                setShuffleTransitionInProgress(true)
                 try {
-                    val remoteMediaClient = castSession.remoteMediaClient
-                    val newRepeatMode = if (remoteMediaClient?.mediaStatus?.getQueueRepeatMode() == MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE) {
-                        MediaStatus.REPEAT_MODE_REPEAT_ALL
-                    } else {
-                        MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE
-                    }
-                    castStateHolder.castPlayer?.setRepeatMode(newRepeatMode)
-                } finally {
-                    lastShuffleToggleFinishedAtMs = SystemClock.elapsedRealtime()
-                    _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = false) }
-                    shuffleToggleJob = null
-                }
-            }
-         } else {
-            shuffleToggleJob = coroutineScope.launch {
-                _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = true) }
-                try {
-                    val player = mediaController ?: return@launch
-                    if (currentSongs.isEmpty()) return@launch
+                    val player = mediaController ?: return@launchLatest
+                    if (currentSongs.isEmpty()) return@launchLatest
+                    ensureCurrent()
 
                     val isCurrentlyShuffled = _stablePlayerState.value.isShuffleEnabled
 
@@ -988,6 +807,7 @@ class PlaybackStateHolder @Inject constructor(
                         val shuffledQueue = withContext(Dispatchers.Default) {
                             QueueUtils.buildAnchoredShuffleQueueSuspending(currentSongs, currentIndex)
                         }
+                        ensureCurrent()
 
                         // For large queues, use bulk replace (1 IPC call) instead of
                         // per-item moveMediaItem (n IPC calls) which freezes the UI.
@@ -1032,28 +852,27 @@ class PlaybackStateHolder @Inject constructor(
                             }
                         }
 
+                        ensureCurrent()
                         updateQueueCallback(shuffledQueue)
-                        _stablePlayerState.update { it.copy(isShuffleEnabled = true) }
+                        setManualShuffleEnabled(true)
                         if (wasPlaying && !player.isPlaying) {
-                            player.play()
+                            playbackRequestCoordinator.dispatchTransport(player, PlaybackTransportCommand.Play)
                         }
 
-                        scope?.launch {
-                            if (userPreferencesRepository.persistentShuffleEnabledFlow.first()) {
-                                userPreferencesRepository.setShuffleOn(true)
-                            }
+                        if (userPreferencesRepository.persistentShuffleEnabledFlow.first()) {
+                            ensureCurrent()
+                            userPreferencesRepository.setShuffleOn(true)
                         }
                     } else {
                         // Disable Shuffle
-                        scope?.launch {
-                            if (userPreferencesRepository.persistentShuffleEnabledFlow.first()) {
-                                userPreferencesRepository.setShuffleOn(false)
-                            }
+                        if (userPreferencesRepository.persistentShuffleEnabledFlow.first()) {
+                            ensureCurrent()
+                            userPreferencesRepository.setShuffleOn(false)
                         }
 
                         if (!queueStateHolder.hasOriginalQueue()) {
-                            _stablePlayerState.update { it.copy(isShuffleEnabled = false) }
-                            return@launch
+                            setManualShuffleEnabled(false)
+                            return@launchLatest
                         }
 
                         val originalQueue = queueStateHolder.originalQueueOrder
@@ -1064,8 +883,8 @@ class PlaybackStateHolder @Inject constructor(
                         val originalIndex = originalQueue.indexOfFirst { it.id == currentSongId }.takeIf { it >= 0 }
 
                         if (originalIndex == null) {
-                            _stablePlayerState.update { it.copy(isShuffleEnabled = false) }
-                            return@launch
+                            setManualShuffleEnabled(false)
+                            return@launchLatest
                         }
 
                         // Use bulk replace for large queues to avoid UI freeze
@@ -1110,29 +929,23 @@ class PlaybackStateHolder @Inject constructor(
                             }
                         }
 
+                        ensureCurrent()
                         updateQueueCallback(originalQueue)
-                        _stablePlayerState.update { it.copy(isShuffleEnabled = false) }
+                        setManualShuffleEnabled(false)
                         if (wasPlaying && !player.isPlaying) {
-                            player.play()
+                            playbackRequestCoordinator.dispatchTransport(player, PlaybackTransportCommand.Play)
                         }
                     }
                 } finally {
-                    lastShuffleToggleFinishedAtMs = SystemClock.elapsedRealtime()
-                    _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = false) }
-                    shuffleToggleJob = null
+                    if (isCurrent) setShuffleTransitionInProgress(false)
                 }
-            }
         }
     }
 
     fun onCleared() {
         stopProgressUpdates()
-        remoteSeekUnlockJob?.cancel()
-        remoteSeekUnlockJob = null
-        shuffleToggleJob?.cancel()
-        shuffleToggleJob = null
+        playbackRequestCoordinator.cancel(PlaybackRequestLane.QUEUE_MUTATION)
         scope = null
-        onCastSeekBlocked = null
     }
 
 }

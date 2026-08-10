@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">Mevcutsa deponun GitHub Actions iş akışı artifacts bölümünden erişin.</string>
     <string name="beta_sheet_nightly_report_title">Gecelik sorunları bildirme</string>
     <string name="beta_sheet_nightly_report_body">Gecelik bir yapıdan sorun bildirirken, bunun resmi sürümde değil gecelik bir yapıda gerçekleştiğini her zaman belirtin. Mümkünse yapı tarihi, iş akışı çalıştırma adı veya numarası ya da commit SHA ekleyin. Aynı sorunun en son resmi sürümde de oluşup oluşmadığını da kontrol edin.</string>
-    <string name="beta05_title">Beta 0.5.0 yükseltmesi</string>
-    <string name="beta05_clean_install_title">Temiz kurulum önerilir</string>
-    <string name="beta05_clean_install_body">Beta 0.5.0\'dan geliyorsanız bu güncelleme, eski önbelleğe alınmış durum yerine yeni kütüphane verisi gerektirebilir.</string>
-    <string name="beta05_if_wrong_meta_title">Meta veri veya kütüphane girişleri yanlış görünüyorsa</string>
-    <string name="beta05_if_wrong_meta_body">Yanlış şarkı meta verisi, eşleşmeyen sanatçılar veya albümler ya da yinelenen görünen girişler genellikle temiz kurulumun çözüm olduğu anlamına gelir.</string>
-    <string name="beta05_dont_show">Tekrar gösterme</string>
-    <string name="beta05_got_it">Anladım</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">Oops! Bir şeyler yanlış gitti</string>

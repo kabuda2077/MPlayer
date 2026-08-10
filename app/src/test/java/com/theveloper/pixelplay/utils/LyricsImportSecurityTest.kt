@@ -181,9 +181,10 @@ class LyricsImportSecurityTest {
 
         assertThat(result).isInstanceOf(LyricsImportValidationResult.Valid::class.java)
         val valid = result as LyricsImportValidationResult.Valid
-        assertThat(valid.value.parsedLyrics.synced).hasSize(1)
-        assertThat(valid.value.parsedLyrics.synced!!.first().line).isEqualTo("When I talk")
-        assertThat(valid.value.parsedLyrics.synced!!.first().words).hasSize(3)
+        val synced = requireNotNull(valid.value.parsedLyrics.synced)
+        assertThat(synced).hasSize(1)
+        assertThat(synced.first().line).isEqualTo("When I talk")
+        assertThat(synced.first().words).hasSize(3)
     }
 
     @Test

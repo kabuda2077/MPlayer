@@ -3,11 +3,6 @@ package com.theveloper.pixelplay.data.model
 import androidx.compose.runtime.Immutable
 import com.theveloper.pixelplay.data.plugin.PluginSource
 
-enum class SearchMode {
-    LIBRARY,
-    ONLINE
-}
-
 enum class OnlineSearchPlatform(
     val source: PluginSource,
     val label: String
@@ -20,6 +15,14 @@ enum class OnlineSearchPlatform(
 
 @Immutable
 data class OnlineSearchResultItem(
-    val song: Song,
+    val transientSong: TransientOnlineSong,
     val platform: OnlineSearchPlatform
-)
+) {
+    val song: Song
+        get() = transientSong.song
+
+    constructor(song: Song, platform: OnlineSearchPlatform) : this(
+        transientSong = TransientOnlineSong.from(song, platform),
+        platform = platform
+    )
+}

@@ -28,7 +28,6 @@ import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.os.Build
 import android.provider.MediaStore
-import com.theveloper.pixelplay.data.preferences.TelegramTopicDisplayMode
 import com.theveloper.pixelplay.data.ai.AiPlaylistGenerator
 import com.theveloper.pixelplay.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -40,8 +39,6 @@ import javax.inject.Inject
 
 data class PlaylistUiState(
     val playlists: List<Playlist> = emptyList(),
-    val showTelegramCloudPlaylists: Boolean = true,
-    val telegramTopicDisplayMode: TelegramTopicDisplayMode = TelegramTopicDisplayMode.CHANNELS_AND_TOPICS,
     val currentPlaylistSongs: List<Song> = emptyList(),
     val currentPlaylistDetails: Playlist? = null,
     val isLoading: Boolean = false,
@@ -103,8 +100,6 @@ class PlaylistViewModel @Inject constructor(
 
     init {
         loadPlaylistsAndInitialSortOption()
-        observeTelegramCloudPlaylistVisibility()
-        observeTelegramTopicDisplayMode()
         observePlaylistOrderModes()
     }
 
@@ -143,29 +138,6 @@ class PlaylistViewModel @Inject constructor(
                     sortPlaylists(newSortOption)
                 }
             }
-        }
-    }
-
-    private fun observeTelegramCloudPlaylistVisibility() {
-        viewModelScope.launch {
-            playlistPreferencesRepository.showTelegramCloudPlaylistsFlow.collect { show ->
-                _uiState.update { it.copy(showTelegramCloudPlaylists = show) }
-            }
-        }
-    }
-
-    private fun observeTelegramTopicDisplayMode() {
-        viewModelScope.launch {
-            playlistPreferencesRepository.telegramTopicDisplayModeFlow.collect { mode ->
-                _uiState.update { it.copy(telegramTopicDisplayMode = mode) }
-            }
-        }
-    }
-
-    fun setTelegramTopicDisplayMode(mode: TelegramTopicDisplayMode) { // Simplified
-        _uiState.update { it.copy(telegramTopicDisplayMode = mode) }
-        viewModelScope.launch {
-            playlistPreferencesRepository.setTelegramTopicDisplayMode(mode)
         }
     }
 
@@ -704,15 +676,6 @@ class PlaylistViewModel @Inject constructor(
 
         viewModelScope.launch {
             playlistPreferencesRepository.setPlaylistsSortOption(sortOption.storageKey)
-        }
-    }
-
-    fun setShowTelegramCloudPlaylists(show: Boolean) {
-        if (_uiState.value.showTelegramCloudPlaylists == show) return
-
-        _uiState.update { it.copy(showTelegramCloudPlaylists = show) }
-        viewModelScope.launch {
-            playlistPreferencesRepository.setShowTelegramCloudPlaylists(show)
         }
     }
 

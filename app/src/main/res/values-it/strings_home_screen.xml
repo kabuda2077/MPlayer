@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">Accedi ad esse dagli artefatti del workflow di GitHub Actions del repository, se disponibili.</string>
     <string name="beta_sheet_nightly_report_title">Segnalazione problemi delle nightly</string>
     <string name="beta_sheet_nightly_report_body">Quando segnali un problema da una build nightly, menziona sempre che si è verificato su una nightly, non sulla release ufficiale. Includi la data della build, il nome o numero di esecuzione del workflow, o il commit SHA se possibile. Controlla anche se lo stesso problema si verifica sull\'ultima release ufficiale.</string>
-    <string name="beta05_title">Aggiornamento beta 0.5.0</string>
-    <string name="beta05_clean_install_title">Installazione pulita consigliata</string>
-    <string name="beta05_clean_install_body">Se provieni dalla beta 0.5.0, questo aggiornamento potrebbe richiedere dati libreria freschi invece dello stato cache precedente.</string>
-    <string name="beta05_if_wrong_meta_title">Se i metadati o le voci libreria sembrano errati</string>
-    <string name="beta05_if_wrong_meta_body">Metadati brano errati, artisti o album non corrispondenti, o voci che sembrano duplicate di solito significano che un\'installazione pulita è la soluzione.</string>
-    <string name="beta05_dont_show">Non mostrare più</string>
-    <string name="beta05_got_it">Ho capito</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">Ops! Qualcosa è andato storto</string>

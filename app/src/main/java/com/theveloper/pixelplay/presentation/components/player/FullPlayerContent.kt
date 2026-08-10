@@ -221,7 +221,6 @@ fun FullPlayerContent(
     lyricsProvider: () -> Lyrics? = { null },
     isLoadingLyricsProvider: () -> Boolean = { false },
     // State
-    isCastConnecting: Boolean = false,
     // Event Handlers
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
@@ -232,7 +231,7 @@ fun FullPlayerContent(
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit,
-    onShowCastClicked: () -> Unit,
+    onShowAudioOutputClicked: () -> Unit,
     onDownloadClick: () -> Unit = {},
     onShuffleToggle: () -> Unit,
     onRepeatToggle: () -> Unit,
@@ -261,8 +260,6 @@ fun FullPlayerContent(
     val albumArtQuality = fullPlayerSlice.albumArtQuality
     val playbackAudioMetadata = fullPlayerSlice.audioMetadata
     val showPlayerFileInfo = fullPlayerSlice.showPlayerFileInfo
-    val isRemotePlaybackActive = fullPlayerSlice.isRemotePlaybackActive
-    val selectedRouteName = fullPlayerSlice.selectedRouteName
     val isBluetoothEnabled = fullPlayerSlice.isBluetoothEnabled
     val bluetoothName = fullPlayerSlice.bluetoothName
     val navigationBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -293,13 +290,12 @@ fun FullPlayerContent(
                             }
                         }
 
-                        val currentSongId = currentSong?.id?.toLongOrNull()
-                        if (currentSongId == null) {
+                        if (currentSong == null) {
                             playerViewModel.sendToast("No song selected for lyrics import.")
                             return@launch
                         }
 
-                        playerViewModel.importLyricsFromFile(currentSongId, validatedImport)
+                        playerViewModel.importLyricsFromFile(validatedImport)
                         showFetchLyricsDialog = false
                         showLyricsSheet = true
                     } catch (e: Exception) {
@@ -431,7 +427,6 @@ fun FullPlayerContent(
     val latestSongId by rememberUpdatedState(song.id)
     val latestCurrentQueueIndex by rememberUpdatedState(currentQueueIndex)
     val latestRepeatMode by rememberUpdatedState(repeatMode)
-    val latestIsRemotePlaybackActive by rememberUpdatedState(isRemotePlaybackActive)
     val latestCurrentPositionProvider by rememberUpdatedState(currentPositionProvider)
     val latestOnNext by rememberUpdatedState(onNext)
     val latestOnPrevious by rememberUpdatedState(onPrevious)
@@ -471,15 +466,13 @@ fun FullPlayerContent(
             SkipDirection.NEXT -> predictSkipNextCarouselIndex(
                 currentIndex = baseIndex,
                 queue = queueSnapshot,
-                repeatMode = latestRepeatMode,
-                isRemotePlaybackActive = latestIsRemotePlaybackActive
+                repeatMode = latestRepeatMode
             )
             SkipDirection.PREVIOUS -> predictSkipPreviousCarouselIndex(
                 currentIndex = baseIndex,
                 queue = queueSnapshot,
                 currentPositionMs = latestCurrentPositionProvider(),
-                repeatMode = latestRepeatMode,
-                isRemotePlaybackActive = latestIsRemotePlaybackActive
+                repeatMode = latestRepeatMode
             )
         }
     }
@@ -706,28 +699,16 @@ fun FullPlayerContent(
                         titleContentColor = LocalMaterialTheme.current.onPrimaryContainer,
                     ),
                     title = {
-                        if (!isCastConnecting) {
-                            AnimatedVisibility(visible = (!isRemotePlaybackActive)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        modifier = Modifier.padding(start = 18.dp),
-                                        text = stringResource(R.string.player_now_playing),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelLargeEmphasized,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                modifier = Modifier.padding(start = 18.dp),
+                                text = stringResource(R.string.player_now_playing),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelLargeEmphasized,
+                                fontWeight = FontWeight.SemiBold
+                            )
 
-                                    if (currentSong != null && (currentSong.telegramChatId != null || currentSong.contentUriString.startsWith("telegram:"))) {
-                                        Icon(
-                                            imageVector = androidx.compose.material.icons.Icons.Rounded.Cloud,
-                                            contentDescription = stringResource(R.string.player_cd_cloud_stream),
-                                            tint = LocalMaterialTheme.current.onPrimaryContainer.copy(alpha = 0.6f),
-                                            modifier = Modifier.padding(start = 8.dp).size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
                         }
                     },
                     navigationIcon = {
@@ -763,116 +744,27 @@ fun FullPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val showCastLabel = isCastConnecting || (isRemotePlaybackActive && selectedRouteName != null)
-                            val isBluetoothActive =
-                                isBluetoothEnabled && !bluetoothName.isNullOrEmpty() && !isRemotePlaybackActive && !isCastConnecting
-                            val castIconPainter = when {
-                                isCastConnecting || isRemotePlaybackActive -> painterResource(R.drawable.rounded_cast_24)
-                                isBluetoothActive -> painterResource(R.drawable.rounded_bluetooth_24)
-                                else -> painterResource(R.drawable.rounded_mobile_speaker_24)
-                            }
-                            val castCornersExpanded = 50.dp
-                            val castCornersCompact = 6.dp
-                            val castTopStart = castCornersExpanded
-                            val castTopEnd by animateDpAsState(
-                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-                            )
-                            val castBottomStart = castCornersExpanded
-                            val castBottomEnd by animateDpAsState(
-                                targetValue = if (showCastLabel) castCornersExpanded else castCornersCompact,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-                            )
-                            val castContainerColor = playerOnAccentColor.copy(alpha = 0.7f)
+                            val isBluetoothActive = isBluetoothEnabled && !bluetoothName.isNullOrEmpty()
                             Box(
                                 modifier = Modifier
-                                    .height(42.dp)
+                                    .size(width = 50.dp, height = 42.dp)
                                     .align(Alignment.CenterVertically)
-                                    .animateContentSize(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
-                                    )
-                                    .widthIn(
-                                        min = 50.dp,
-                                        max = if (showCastLabel) 190.dp else 58.dp
-                                    )
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = castTopStart.coerceAtLeast(0.dp),
-                                            topEnd = castTopEnd.coerceAtLeast(0.dp),
-                                            bottomStart = castBottomStart.coerceAtLeast(0.dp),
-                                            bottomEnd = castBottomEnd.coerceAtLeast(0.dp)
-                                        )
-                                    )
-                                    .background(castContainerColor)
-                                    .clickable { onShowCastClicked() },
-                                contentAlignment = Alignment.CenterStart
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .background(playerOnAccentColor.copy(alpha = 0.7f))
+                                    .clickable { onShowAudioOutputClicked() },
+                                contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(start = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Start
-                                ) {
-                                    Icon(
-                                        painter = castIconPainter,
-                                        contentDescription = when {
-                                            isCastConnecting || isRemotePlaybackActive -> stringResource(R.string.player_cd_cast)
-                                            isBluetoothActive -> stringResource(R.string.player_cd_bluetooth)
-                                            else -> stringResource(R.string.player_cd_local_playback)
-                                        },
-                                        tint = playerAccentColor
-                                    )
-                                    AnimatedVisibility(visible = showCastLabel) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Spacer(Modifier.width(8.dp))
-                                            AnimatedContent(
-                                                targetState = when {
-                                                    isCastConnecting -> stringResource(R.string.player_connecting)
-                                                    isRemotePlaybackActive && selectedRouteName != null -> selectedRouteName
-                                                    else -> ""
-                                                },
-                                                transitionSpec = {
-                                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(120))
-                                                },
-                                                label = "castButtonLabel"
-                                            ) { label ->
-                                                Row(
-                                                    modifier = Modifier.padding(end = 16.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                                ) {
-                                                    Text(
-                                                        text = label,
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        color = playerAccentColor,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f, fill = false)
-                                                    )
-                                                    AnimatedVisibility(visible = isCastConnecting) {
-                                                        CircularProgressIndicator(
-                                                            modifier = Modifier
-                                                                .size(14.dp),
-                                                            strokeWidth = 2.dp,
-                                                            color = playerAccentColor
-                                                        )
-                                                    }
-                                                    if (isRemotePlaybackActive && !isCastConnecting) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(8.dp)
-                                                                .clip(CircleShape)
-                                                                .background(LocalMaterialTheme.current.onTertiaryContainer)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                Icon(
+                                    painter = painterResource(
+                                        if (isBluetoothActive) R.drawable.rounded_bluetooth_24
+                                        else R.drawable.rounded_mobile_speaker_24
+                                    ),
+                                    contentDescription = stringResource(
+                                        if (isBluetoothActive) R.string.player_cd_bluetooth
+                                        else R.string.player_cd_local_playback
+                                    ),
+                                    tint = playerAccentColor
+                                )
                             }
 
                             // Queue Button
@@ -963,7 +855,9 @@ fun FullPlayerContent(
             onImportLyrics = { filePickerLauncher.launch(com.theveloper.pixelplay.utils.LyricsImportSecurity.pickerMimeTypes()) },
             onDismissLyricsSearch = { playerViewModel.resetLyricsSearchState() },
             lyricsSyncOffset = lyricsSyncOffset,
-            onLyricsSyncOffsetChange = { currentSong?.id?.let { songId -> playerViewModel.setLyricsSyncOffset(songId, it) } },
+            onLyricsSyncOffsetChange = { offset ->
+                currentSong?.let { playerViewModel.setLyricsSyncOffset(it, offset) }
+            },
             lyricsTextStyle = MaterialTheme.typography.titleLarge,
             colorScheme = LocalMaterialTheme.current,
             onBackClick = { showLyricsSheet = false },
@@ -1284,10 +1178,9 @@ private fun resolveQueueIndex(
 private fun predictSkipNextCarouselIndex(
     currentIndex: Int?,
     queue: ImmutableList<Song>,
-    repeatMode: Int,
-    isRemotePlaybackActive: Boolean
+    repeatMode: Int
 ): Int? {
-    if (isRemotePlaybackActive || queue.size <= 1) return null
+    if (queue.size <= 1) return null
     val safeCurrentIndex = currentIndex?.takeIf { it in queue.indices } ?: return null
 
     return when {
@@ -1301,10 +1194,9 @@ private fun predictSkipPreviousCarouselIndex(
     currentIndex: Int?,
     queue: ImmutableList<Song>,
     currentPositionMs: Long,
-    repeatMode: Int,
-    isRemotePlaybackActive: Boolean
+    repeatMode: Int
 ): Int? {
-    if (isRemotePlaybackActive || queue.size <= 1) return null
+    if (queue.size <= 1) return null
     if (currentPositionMs > PREVIOUS_TRACK_RESTART_THRESHOLD_MS) return null
     val safeCurrentIndex = currentIndex?.takeIf { it in queue.indices } ?: return null
 

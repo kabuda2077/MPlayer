@@ -251,10 +251,10 @@ class NeteaseApiService @Inject constructor() {
         return request("https://music.163.com/weapi/user/playlist", params, CryptoMode.WEAPI, "POST", usePersistedCookies = true)
     }
 
-    fun getPlaylistDetail(playlistId: Long): String {
+    fun getPlaylistDetail(playlistId: Long, songLimit: Int = 100000): String {
         val params = mutableMapOf<String, Any>(
             "id" to playlistId.toString(),
-            "n" to "100000",
+            "n" to songLimit.coerceAtLeast(1).toString(),
             "s" to "8"
         )
         return request("https://music.163.com/api/v6/playlist/detail", params, CryptoMode.API, "POST", usePersistedCookies = true)
@@ -328,8 +328,63 @@ class NeteaseApiService @Inject constructor() {
             "offset" to offset.toString(),
             "total" to "true"
         )
-        return request("https://music.163.com/weapi/cloudsearch/get/web", params, CryptoMode.WEAPI, "POST", usePersistedCookies = true)
+        return request(
+            url = "https://music.163.com/api/cloudsearch/pc",
+            params = params,
+            mode = CryptoMode.API,
+            method = "GET",
+            usePersistedCookies = false,
+        )
     }
+
+    // ─── Recommendations ─────────────────────────────────────────────
+
+    fun getDailyRecommendSongs(afresh: Boolean = false): String =
+        callWeApi(
+            "/v3/discovery/recommend/songs",
+            mapOf("offset" to 0, "total" to "true", "limit" to 30, "csrf_token" to "", "afresh" to afresh)
+        )
+
+    fun getPersonalizedPlaylists(limit: Int = 20): String =
+        request(
+            url = "https://music.163.com/api/personalized",
+            params = mapOf("limit" to limit, "total" to "true", "offset" to 0),
+            mode = CryptoMode.API,
+            method = "GET",
+            usePersistedCookies = true
+        )
+
+    fun getPersonalizedNewSongs(limit: Int = 20): String =
+        request(
+            url = "https://music.163.com/api/personalized/newsong",
+            params = mapOf("limit" to limit, "total" to "true", "offset" to 0),
+            mode = CryptoMode.API,
+            method = "GET",
+            usePersistedCookies = true
+        )
+
+    /**
+     * Load public playlists. This endpoint is public and returns playlist cards
+     * directly; using the API form also avoids treating an unauthenticated
+     * request as a WEAPI login request.
+     */
+    fun getTopPlaylists(
+        category: String = "全部",
+        limit: Int = 20,
+        offset: Int = 0
+    ): String = request(
+        url = "https://music.163.com/api/playlist/list",
+        params = mapOf(
+            "cat" to category,
+            "order" to "hot",
+            "limit" to limit.coerceIn(1, 100),
+            "offset" to offset.coerceAtLeast(0),
+            "total" to "true"
+        ),
+        mode = CryptoMode.API,
+        method = "GET",
+        usePersistedCookies = false
+    )
 
     // ─── Lyrics ────────────────────────────────────────────────────────
 

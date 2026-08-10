@@ -9,6 +9,7 @@ import com.theveloper.pixelplay.data.model.Song
 data class QqMusicSongEntity(
     @PrimaryKey val id: String,                          // QQ song composite ID
     @ColumnInfo(name = "song_mid") val songMid: String,  // QQ song MID (unique identifier)
+    @ColumnInfo(name = "song_id") val songId: Long? = null, // QQ numeric song ID, needed by lyric API
     @ColumnInfo(name = "playlist_id") val playlistId: Long,
     val title: String,
     val artist: String,
@@ -55,6 +56,7 @@ fun Song.toQqMusicEntity(playlistId: Long): QqMusicSongEntity {
     return QqMusicSongEntity(
         id = "${playlistId}_${resolvedMid}",
         songMid = resolvedMid,
+        songId = null,
         playlistId = playlistId,
         title = title,
         artist = artist,

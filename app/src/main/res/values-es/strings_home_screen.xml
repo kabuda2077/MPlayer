@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">Accede a ellas desde los artefactos del flujo de trabajo de GitHub Actions del repositorio si están disponibles.</string>
     <string name="beta_sheet_nightly_report_title">Informar de problemas de compilaciones nocturnas</string>
     <string name="beta_sheet_nightly_report_body">Al informar de un problema desde una compilación nocturna, menciona siempre que ocurrió en una compilación nocturna, no en el lanzamiento oficial. Incluye la fecha de la compilación, el nombre o número de ejecución del flujo de trabajo o el SHA del commit si es posible. También comprueba si el mismo problema ocurre en el último lanzamiento oficial.</string>
-    <string name="beta05_title">Actualización de Beta 0.5.0</string>
-    <string name="beta05_clean_install_title">Se recomienda una instalación limpia</string>
-    <string name="beta05_clean_install_body">Si vienes de la beta 0.5.0, esta actualización puede necesitar datos nuevos de la biblioteca en lugar del estado anterior en caché.</string>
-    <string name="beta05_if_wrong_meta_title">Si los metadatos o las entradas de la biblioteca parecen incorrectos</string>
-    <string name="beta05_if_wrong_meta_body">Metadatos de canciones incorrectos, artistas o álbumes desparejados o entradas que parecen duplicadas suelen significar que la solución es una instalación limpia.</string>
-    <string name="beta05_dont_show">No volver a mostrar</string>
-    <string name="beta05_got_it">Entendido</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">¡Vaya! Algo salió mal</string>

@@ -134,6 +134,7 @@ import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistSongsOrderMode
 import com.theveloper.pixelplay.utils.formatSongCount
 import com.theveloper.pixelplay.utils.formatTotalDuration
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -187,10 +188,10 @@ fun PlaylistDetailScreen(
     val isFolderPlaylist = currentPlaylist?.id?.startsWith(FOLDER_PLAYLIST_PREFIX) == true
     val songsInPlaylist = uiState.currentPlaylistSongs
     val hasDownloadableSongs = songsInPlaylist.any { song ->
-        song.contentUriString.startsWith("netease://") || song.contentUriString.startsWith("qqmusic://")
+        MediaSourceClassifier.isDownloadable(song.contentUriString)
     }
     val downloadableSongCount = songsInPlaylist.count { song ->
-        song.contentUriString.startsWith("netease://") || song.contentUriString.startsWith("qqmusic://")
+        MediaSourceClassifier.isDownloadable(song.contentUriString)
     }
 
     var showAddSongsSheet by remember { mutableStateOf(false) }
@@ -485,7 +486,7 @@ fun PlaylistDetailScreen(
                                 selectedPlaylistSongs.clear()
                             },
                             enabled = selectedSongs.any {
-                                it.contentUriString.startsWith("netease://") || it.contentUriString.startsWith("qqmusic://")
+                                MediaSourceClassifier.isDownloadable(it.contentUriString)
                             },
                             shape = CircleShape,
                             contentPadding = PaddingValues(horizontal = 12.dp),

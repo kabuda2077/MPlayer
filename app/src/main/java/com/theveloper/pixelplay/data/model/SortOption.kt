@@ -597,7 +597,10 @@ sealed class SortOption(
         }
 
         private val ALL: List<SortOption> by lazy {
-            SONGS + ALBUMS + ARTISTS + PLAYLISTS + FOLDERS + LIKED
+            SONGS + ALBUMS + ARTISTS + PLAYLISTS + FOLDERS + LIKED + listOf(
+                LikedSongDateLiked,
+                LikedSongDateLikedAsc
+            )
         }
 
         private val defaultOptionByMethodKey: Map<String, SortOption> by lazy {

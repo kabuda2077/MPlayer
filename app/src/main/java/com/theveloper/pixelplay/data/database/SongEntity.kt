@@ -7,7 +7,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.LibrarySong
 import com.theveloper.pixelplay.utils.LocalArtworkUri
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.theveloper.pixelplay.utils.MediaSourceKind
 import com.theveloper.pixelplay.utils.normalizeMetadataText
 import com.theveloper.pixelplay.utils.normalizeMetadataTextOrEmpty
 import org.json.JSONArray
@@ -16,21 +19,13 @@ import org.json.JSONObject
 /** Integer constants for the `source_type` column — faster than LIKE checks on URI scheme. */
 object SourceType {
     const val LOCAL = 0
-    const val TELEGRAM = 1
     const val NETEASE = 2
-    const val GDRIVE = 3
     const val QQMUSIC = 4
-    const val NAVIDROME = 5
-    const val JELLYFIN = 6
 
     /** Derive source type from a content URI string (fallback for migration / conversion). */
-    fun fromContentUri(uri: String): Int = when {
-        uri.startsWith("telegram://") -> TELEGRAM
-        uri.startsWith("netease://") -> NETEASE
-        uri.startsWith("gdrive://") -> GDRIVE
-        uri.startsWith("qqmusic://") -> QQMUSIC
-        uri.startsWith("navidrome://") -> NAVIDROME
-        uri.startsWith("jellyfin://") -> JELLYFIN
+    fun fromContentUri(uri: String): Int = when (MediaSourceClassifier.classify(uri)) {
+        MediaSourceKind.NETEASE -> NETEASE
+        MediaSourceKind.QQ_MUSIC -> QQMUSIC
         else -> LOCAL
     }
 }
@@ -92,15 +87,16 @@ data class SongEntity(
     @ColumnInfo(name = "mime_type") val mimeType: String? = null,
     @ColumnInfo(name = "bitrate") val bitrate: Int? = null, // bits per second
     @ColumnInfo(name = "sample_rate") val sampleRate: Int? = null, // Hz
-    @ColumnInfo(name = "telegram_chat_id") val telegramChatId: Long? = null,
-    @ColumnInfo(name = "telegram_file_id") val telegramFileId: Int? = null,
     @ColumnInfo(name = "artists_json") val artistsJson: String? = null,
     @ColumnInfo(name = "source_type", defaultValue = "0") val sourceType: Int = SourceType.LOCAL
 )
 
 private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
+    val sourceKind = MediaSourceClassifier.classify(this.contentUriString)
+    val sourceIdentifier = MediaSourceClassifier.idPart(this.contentUriString)
     return Song(
         id = this.id.toString(),
+        libraryId = this.id,
         title = this.title.normalizeMetadataTextOrEmpty(),
         artist = this.artistName.normalizeMetadataTextOrEmpty(),
         artistId = this.artistId,
@@ -123,27 +119,11 @@ private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
         discNumber = this.discNumber,
         dateAdded = this.dateAdded,
         year = this.year,
-        // Parse Telegram metadata from contentUriString
-        telegramChatId = if (this.contentUriString.startsWith("telegram://")) {
-            this.contentUriString.removePrefix("telegram://").split("/").getOrNull(0)?.toLongOrNull()
+        neteaseId = if (sourceKind == MediaSourceKind.NETEASE) {
+            sourceIdentifier?.toLongOrNull()
         } else null,
-        telegramFileId = if (this.contentUriString.startsWith("telegram://")) {
-            this.contentUriString.removePrefix("telegram://").split("/").getOrNull(1)?.toIntOrNull()
-        } else null,
-        neteaseId = if (this.contentUriString.startsWith("netease://")) {
-            this.contentUriString.removePrefix("netease://").toLongOrNull()
-        } else null,
-        gdriveFileId = if (this.contentUriString.startsWith("gdrive://")) {
-            this.contentUriString.removePrefix("gdrive://")
-        } else null,
-        qqMusicMid = if (this.contentUriString.startsWith("qqmusic://")) {
-            this.contentUriString.removePrefix("qqmusic://")
-        } else null,
-        navidromeId = if (this.contentUriString.startsWith("navidrome://")) {
-            this.contentUriString.removePrefix("navidrome://")
-        } else null,
-        jellyfinId = if (this.contentUriString.startsWith("jellyfin://")) {
-            this.contentUriString.removePrefix("jellyfin://")
+        qqMusicMid = if (sourceKind == MediaSourceKind.QQ_MUSIC) {
+            sourceIdentifier
         } else null,
         mimeType = this.mimeType,
         bitrate = this.bitrate,
@@ -215,31 +195,32 @@ fun List<SongEntity>.toSongs(): List<Song> {
 // El modelo Song usa id como String, pero la entidad lo necesita como Long (de MediaStore)
 // El modelo Song no tiene filePath, así que no se puede mapear desde ahí directamente.
 // filePath y parentDirectoryPath se poblarán desde MediaStore en el SyncWorker.
-fun Song.toEntity(filePathFromMediaStore: String, parentDirFromMediaStore: String): SongEntity {
+fun LibrarySong.toEntity(filePathFromMediaStore: String, parentDirFromMediaStore: String): SongEntity {
+    val value = song
     return SongEntity(
-        id = this.id.toLong(),
-        title = this.title,
-        artistName = this.artist,
-        artistId = this.artistId,
-        albumArtist = this.albumArtist,
-        albumName = this.album,
-        albumId = this.albumId,
-        contentUriString = this.contentUriString,
-        albumArtUriString = this.albumArtUriString,
-        duration = this.duration,
-        genre = this.genre,
-        isFavorite = this.isFavorite,
-        lyrics = this.lyrics,
-        trackNumber = this.trackNumber,
-        discNumber = this.discNumber,
+        id = libraryId,
+        title = value.title,
+        artistName = value.artist,
+        artistId = value.artistId,
+        albumArtist = value.albumArtist,
+        albumName = value.album,
+        albumId = value.albumId,
+        contentUriString = value.contentUriString,
+        albumArtUriString = value.albumArtUriString,
+        duration = value.duration,
+        genre = value.genre,
+        isFavorite = value.isFavorite,
+        lyrics = value.lyrics,
+        trackNumber = value.trackNumber,
+        discNumber = value.discNumber,
         filePath = filePathFromMediaStore,
         parentDirectoryPath = parentDirFromMediaStore,
-        dateAdded = this.dateAdded,
-        year = this.year,
-        mimeType = this.mimeType,
-        bitrate = this.bitrate,
-        sampleRate = this.sampleRate,
-        sourceType = SourceType.fromContentUri(this.contentUriString)
+        dateAdded = value.dateAdded,
+        year = value.year,
+        mimeType = value.mimeType,
+        bitrate = value.bitrate,
+        sampleRate = value.sampleRate,
+        sourceType = SourceType.fromContentUri(value.contentUriString)
     )
 }
 
@@ -254,30 +235,31 @@ data class SongSummary(
 
 // Sobrecarga o alternativa si los paths no están disponibles o no son necesarios al convertir de Modelo a Entidad
 // (menos probable que se use si la entidad siempre requiere los paths)
-fun Song.toEntityWithoutPaths(): SongEntity {
+fun LibrarySong.toEntityWithoutPaths(): SongEntity {
+    val value = song
     return SongEntity(
-        id = this.id.toLong(),
-        title = this.title,
-        artistName = this.artist,
-        artistId = this.artistId,
-        albumArtist = this.albumArtist,
-        albumName = this.album,
-        albumId = this.albumId,
-        contentUriString = this.contentUriString,
-        albumArtUriString = this.albumArtUriString,
-        duration = this.duration,
-        genre = this.genre,
-        isFavorite = this.isFavorite,
-        lyrics = this.lyrics,
-        trackNumber = this.trackNumber,
-        discNumber = this.discNumber,
+        id = libraryId,
+        title = value.title,
+        artistName = value.artist,
+        artistId = value.artistId,
+        albumArtist = value.albumArtist,
+        albumName = value.album,
+        albumId = value.albumId,
+        contentUriString = value.contentUriString,
+        albumArtUriString = value.albumArtUriString,
+        duration = value.duration,
+        genre = value.genre,
+        isFavorite = value.isFavorite,
+        lyrics = value.lyrics,
+        trackNumber = value.trackNumber,
+        discNumber = value.discNumber,
         filePath = "",
         parentDirectoryPath = "",
-        dateAdded = this.dateAdded,
-        year = this.year,
-        mimeType = this.mimeType,
-        bitrate = this.bitrate,
-        sampleRate = this.sampleRate,
-        sourceType = SourceType.fromContentUri(this.contentUriString)
+        dateAdded = value.dateAdded,
+        year = value.year,
+        mimeType = value.mimeType,
+        bitrate = value.bitrate,
+        sampleRate = value.sampleRate,
+        sourceType = SourceType.fromContentUri(value.contentUriString)
     )
 }

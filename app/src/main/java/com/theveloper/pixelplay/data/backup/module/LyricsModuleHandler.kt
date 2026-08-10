@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken
 import com.theveloper.pixelplay.data.backup.model.BackupSection
 import com.theveloper.pixelplay.data.database.LyricsDao
 import com.theveloper.pixelplay.data.database.LyricsEntity
+import com.theveloper.pixelplay.data.model.LyricsMediaKey
 import com.theveloper.pixelplay.di.BackupGson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,7 +33,20 @@ class LyricsModuleHandler @Inject constructor(
     override suspend fun restore(payload: String) = withContext(Dispatchers.IO) {
         val type = TypeToken.getParameterized(List::class.java, LyricsEntity::class.java).type
         val lyrics: List<LyricsEntity> = gson.fromJson(payload, type)
-        lyricsDao.replaceAll(lyrics)
+        val normalized = lyrics
+            .map { entity ->
+                val serializedMediaKey: String? = entity.mediaKey
+                val mediaKey = serializedMediaKey?.trim().orEmpty().ifBlank {
+                    val legacySongId = requireNotNull(entity.songId) {
+                        "Lyrics backup entry has neither mediaKey nor songId"
+                    }
+                    LyricsMediaKey.fromLibraryId(legacySongId).value
+                }
+                entity.copy(mediaKey = mediaKey)
+            }
+            .groupBy(LyricsEntity::mediaKey)
+            .map { (_, entries) -> entries.maxBy { it.updatedAt } }
+        lyricsDao.replaceAll(normalized)
     }
 
     override suspend fun rollback(snapshot: String) = restore(snapshot)

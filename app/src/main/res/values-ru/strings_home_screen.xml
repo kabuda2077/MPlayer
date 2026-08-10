@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">Получить их можно через артефакты GitHub Actions репозитория, если они доступны.</string>
     <string name="beta_sheet_nightly_report_title">Сообщение о проблемах в nightly</string>
     <string name="beta_sheet_nightly_report_body">При сообщении о проблеме в nightly-сборке обязательно укажите, что она возникла именно в nightly, а не в официальном релизе. По возможности приложите дату сборки, название или номер workflow, либо SHA коммита. Также проверьте, возникает ли проблема в последнем официальном релизе.</string>
-    <string name="beta05_title">Обновление до Beta 0.5.0</string>
-    <string name="beta05_clean_install_title">Рекомендуется чистая установка</string>
-    <string name="beta05_clean_install_body">Если вы обновляетесь с бета-версии 0.5.0, может потребоваться пересоздание данных медиатеки вместо использования старого кэша.</string>
-    <string name="beta05_if_wrong_meta_title">Если метаданные или библиотека отображаются неправильно</string>
-    <string name="beta05_if_wrong_meta_body">Неверные метаданные песен, несоответствующие исполнители или альбомы, а также дублирующиеся записи обычно исправляются чистой установкой.</string>
-    <string name="beta05_dont_show">Больше не показывать</string>
-    <string name="beta05_got_it">Понятно</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">Упс! Что-то пошло не так</string>

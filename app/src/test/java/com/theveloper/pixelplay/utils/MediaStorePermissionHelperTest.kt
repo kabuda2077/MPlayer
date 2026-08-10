@@ -39,7 +39,7 @@ class MediaStorePermissionHelperTest {
             MediaStorePermissionHelper.canUseSongIdForMediaStoreRequest("netease://9317")
         ).isFalse()
         assertThat(
-            MediaStorePermissionHelper.canUseSongIdForMediaStoreRequest("telegram://123/456")
+            MediaStorePermissionHelper.canUseSongIdForMediaStoreRequest("kugou://0123456789ABCDEF")
         ).isFalse()
     }
 

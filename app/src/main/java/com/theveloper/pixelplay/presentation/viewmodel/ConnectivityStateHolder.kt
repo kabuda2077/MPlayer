@@ -258,7 +258,7 @@ class ConnectivityStateHolder @Inject constructor(
         _wifiName.value = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && hasFineLocationPermission()) {
             readConnectedWifiSsid()
         } else {
-            // On Android 12+ we intentionally avoid SSID reads so the cast flow does not look like location usage.
+            // On Android 12+ avoid SSID reads because connectivity status does not require location data.
             "WiFi Connected"
         }
     }

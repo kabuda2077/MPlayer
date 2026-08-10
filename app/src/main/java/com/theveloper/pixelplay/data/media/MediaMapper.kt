@@ -44,11 +44,15 @@ class MediaMapper @Inject constructor(
                 ?.path
                 .orEmpty()
         val id = mediaItem.mediaId
+        val libraryId = extras
+            ?.takeIf { it.containsKey(MediaItemBuilder.EXTERNAL_EXTRA_LIBRARY_ID) }
+            ?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_LIBRARY_ID)
 
         // Note: This creates a partial Song object. 
         // Some fields like path, genre, year might be missing if not in extras.
         return Song(
             id = id,
+            libraryId = libraryId,
             title = title,
             artist = artist,
             artistId = -1L, // unknown from just MediaItem typically

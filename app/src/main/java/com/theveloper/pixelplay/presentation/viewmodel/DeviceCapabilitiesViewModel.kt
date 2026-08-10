@@ -52,7 +52,7 @@ enum class AudioOutputCategory {
     Bluetooth,
     Usb,
     Wired,
-    Cast,
+    Digital,
     Other
 }
 
@@ -561,7 +561,7 @@ private fun Int.toAudioOutputCategory(): AudioOutputCategory {
         AudioDeviceInfo.TYPE_LINE_DIGITAL -> AudioOutputCategory.Wired
         AudioDeviceInfo.TYPE_HDMI,
         AudioDeviceInfo.TYPE_HDMI_ARC,
-        AudioDeviceInfo.TYPE_HDMI_EARC -> AudioOutputCategory.Cast
+        AudioDeviceInfo.TYPE_HDMI_EARC -> AudioOutputCategory.Digital
         else -> AudioOutputCategory.Other
     }
 }

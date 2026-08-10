@@ -24,7 +24,6 @@ dependencyResolutionManagement {
                 includeGroup("com.github.FaceOnLive")
                 includeGroup("com.github.philburk")
                 includeGroup("com.github.racra")
-                includeGroup("com.github.tdlibx")
             }
         }
     }
@@ -32,6 +31,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "PixelPlay"
 include(":app")
-include(":shared")
-include(":wear")
 include(":baselineprofile")

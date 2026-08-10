@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">플레이어 접기</string>
     <string name="player_now_playing">현재 재생 중</string>
     <string name="player_cd_cloud_stream">클라우드 스트림</string>
-    <string name="player_cd_cast">전송</string>
     <string name="player_cd_bluetooth">블루투스</string>
     <string name="player_cd_local_playback">로컬 재생</string>
     <string name="player_connecting">연결 중…</string>
     <string name="player_cd_open_queue">대기열 열기</string>    
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">연결 준비</string>
-    <string name="cast_perm_body">PixelPlayer가 주변 기기와 현재 Wi‑Fi를 감지할 수 있도록 허용해 주세요. 그래야 전송, 블루투스 오디오 및 스피커를 동기화할 수 있습니다.</string>
-    <string name="cast_perm_nearby_title">주변 기기</string>
-    <string name="cast_perm_nearby_desc">연결된 블루투스 오디오 기기를 감지하고 제어하는 데 필요합니다.</string>
-    <string name="cast_perm_location_title">Wi‑Fi 확인을 위한 위치 정보</string>
-    <string name="cast_perm_location_desc">호환되는 전송 기기를 찾기 위해 현재 연결된 Wi‑Fi 네트워크(SSID) 정보를 확인하는 데 위치 권한이 필요합니다.</string>
-    <string name="cast_allow_access">액세스 허용</string>
-    <string name="cast_perm_footer">이러한 권한은 기기 간 상호 연결(전송, 주변 스피커 제어, 오디오 동기화) 목적으로만 사용됩니다.</string>
-    <string name="cast_title_connect">기기 연결</string>
-    <string name="cast_scanning_nearby">주변 스캔 중</string>
-    <string name="cast_subtitle_session">전송 세션</string>
-    <string name="cast_connecting">연결 중</string>
-    <string name="cast_connected">연결됨</string>
-    <string name="cast_this_phone">이 휴대전화</string>
-    <string name="cast_bluetooth_audio">블루투스 오디오</string>
-    <string name="cast_local_playback">로컬 재생</string>
-    <string name="cast_playing">재생 중</string>
-    <string name="cast_paused">일시정지됨</string>
-    <string name="cast_volume_device">기기 볼륨</string>
-    <string name="cast_volume_phone">휴대전화 볼륨</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">배터리 수준</string>
-    <string name="cast_cd_volume_level">볼륨 수준</string>
-    <string name="cast_disconnect">연결 해제</string>
-    <string name="cast_connectivity">연결성</string>
-    <string name="cast_turn_on_wifi_bt">Wi-Fi 또는 블루투스 켜기</string>
-    <string name="cast_cd_refresh_connections">연결 새로고침</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">꺼짐</string>
-    <string name="cast_wifi_on">켜짐</string>
-    <string name="cast_wifi_connected">연결됨</string>
-    <string name="cast_bluetooth">블루투스</string>
-    <string name="cast_bt_off">꺼짐</string>
-    <string name="cast_bt_on">켜짐</string>
-    <string name="cast_bt_connected">연결됨</string>
-    <string name="cast_nearby_devices">주변 기기</string>
-    <string name="cast_cd_refresh_devices">기기 새로고침</string>
-    <string name="cast_status_connected">연결됨</string>
-    <string name="cast_status_connecting">연결 중</string>
-    <string name="cast_status_available_connect">연결 가능</string>
-    <string name="cast_status_available">사용 가능</string>
-    <string name="cast_connecting_ellipsis">연결 중...</string>
-    <string name="cast_searching">기기 검색 중…</string>
-    <string name="cast_searching_hint">TV나 스피커가 켜져 있고 동일한 Wi‑Fi 네트워크에 연결되어 있는지 확인하세요.</string>
-    <string name="cast_tab_controls">컨트롤</string>
-    <string name="cast_tab_devices">기기</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Cast 미디어 서버</string>
-    <string name="cast_server_notification_title">기기로 전송 중</string>
-    <string name="cast_server_notification_text">Cast 기기에 미디어를 제공 중입니다</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Cast에서는 캐스트 세션이 중단될 수 있으므로 이 오디오 형식에 대한 탐색(Seek)을 일시적으로 사용할 수 없습니다.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">취침 타이머</string>

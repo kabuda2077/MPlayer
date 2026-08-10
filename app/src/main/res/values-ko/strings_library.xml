@@ -22,7 +22,6 @@
     <string name="library_toast_playing_next">다음에 재생됨</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">워치 전송</string>
     <string name="library_cd_open_settings">설정</string>
     <string name="library_tab_edit">편집</string>
     <string name="library_cd_reorder_tabs">탭 순서 변경</string>
@@ -43,11 +42,6 @@
     <string name="library_storage_sd_card">SD 카드</string>
     <string name="library_storage_sd_card_unavailable">현재 SD 카드를 사용할 수 없습니다.</string>
     <string name="library_sort_section_cloud">클라우드</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram 클라우드 채널</string>
-    <string name="library_telegram_topics_display_title">토픽 표시</string>
-    <string name="library_telegram_topic_mode_channels">채널</string>
-    <string name="library_telegram_topic_mode_topics">토픽</string>
-    <string name="library_telegram_topic_mode_both">둘 다</string>
     <string name="library_cloud_sources_heading">클라우드</string>
     <string name="library_cloud_only_label">클라우드 전용</string>
 
@@ -97,7 +91,6 @@
     <string name="library_empty_songs_offline_title">로컬 곡을 찾을 수 없음</string>
     <string name="library_empty_songs_offline_subtitle">다른 소스 필터를 시도하거나 기기 라이브러리를 다시 스캔하세요.</string>
     <string name="library_empty_songs_online_title">클라우드 곡을 찾을 수 없음</string>
-    <string name="library_empty_songs_online_subtitle">Telegram 또는 NetEase Music 곡을 동기화하거나 로컬 소스로 전환하세요.</string>
     <string name="library_empty_albums_all_title">사용 가능한 앨범 없음</string>
     <string name="library_empty_albums_all_subtitle">라이브러리의 트랙이 그룹화되는 대로 앨범이 여기에 표시됩니다.</string>
     <string name="library_empty_albums_offline_title">로컬 앨범을 찾을 수 없음</string>
@@ -115,7 +108,6 @@
     <string name="library_empty_liked_offline_title">좋아요 표시한 로컬 곡 없음</string>
     <string name="library_empty_liked_offline_subtitle">소스 필터를 전환하거나 기기의 곡에 좋아요를 표시하세요.</string>
     <string name="library_empty_liked_online_title">좋아요 표시한 클라우드 곡 없음</string>
-    <string name="library_empty_liked_online_subtitle">Telegram 또는 NetEase 트랙에 좋아요를 표시하여 이 보기에 나타나게 하세요.</string>
     <string name="library_empty_folders_title">폴더를 찾을 수 없음</string>
     <string name="library_empty_folders_subtitle">음악이 포함된 내부 저장소 폴더가 여기에 표시됩니다.</string>
     <string name="library_empty_playlists_title">플레이리스트가 아직 없습니다</string>
@@ -142,14 +134,8 @@
     <string name="song_info_cd_add_to_playlist">플레이리스트에 추가</string>
     <string name="song_info_action_delete">삭제</string>
     <string name="song_info_action_delete_all">모두 삭제</string>
-    <string name="song_info_checking_watch">워치 확인 중</string>
     <string name="song_info_transferring_percent">전송 중 %1$d%%</string>
-    <string name="song_info_transferring_to_watch">워치로 전송 중</string>
     <string name="song_info_transfer_in_progress">전송 진행 중</string>
-    <string name="song_info_send_to_watch">워치로 보내기</string>
-    <string name="song_info_watch_unavailable">워치 사용 불가</string>
-    <string name="song_info_cd_send_to_watch">곡을 워치로 보내기</string>
-    <string name="song_info_cd_watch_unavailable">워치 사용 불가</string>
     <string name="song_info_set_sound_as_short">설정</string>
     <string name="song_info_set_sound_as_long">소리로 설정</string>
     <string name="song_info_cd_set_sound_as">이 곡을 시스템 소리로 사용하는 방법 선택</string>
@@ -262,29 +248,6 @@
     <string name="artist_picker_primary_label">주요 아티스트</string>
     <string name="artist_picker_shortcut_label">아티스트 페이지</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">전송 취소</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">폰에서 워치로의 음악 전송 진행 상황을 실시간으로 표시합니다</string>
-    <string name="watch_transfer_channel_name">워치 전송</string>
-    <string name="watch_transfer_dialog_title">워치로 전송 중</string>
-    <string name="watch_transfer_status_cancelled">취소됨</string>
-    <string name="watch_transfer_status_cancelled_service">전송 취소됨</string>
-    <string name="watch_transfer_status_complete_service">전송 완료</string>
-    <string name="watch_transfer_status_completed">완료됨</string>
-    <string name="watch_transfer_status_failed">실패함</string>
-    <string name="watch_transfer_status_failed_service">전송 실패</string>
-    <string name="watch_transfer_status_multiple_active">여러 전송 활성 중</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">준비 중</string>
-    <string name="watch_transfer_status_preparing_service">워치 전송 준비 중</string>
-    <string name="watch_transfer_status_preparing_transfer">전송 준비 중…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">워치로 %1$d곡 전송 중</string>
-    <string name="watch_transfer_status_sending_to_watch">워치로 전송 중</string>
-    <string name="watch_transfer_status_starting">전송 시작 중…</string>
-    <string name="watch_transfer_status_starting_short">시작 중</string>
-    <string name="watch_transfer_status_transferring">전송 중</string>
-    <string name="watch_transfer_summary_n">%1$d건 전송</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">곡 편집</string>
@@ -488,16 +451,10 @@
     <string name="playlist_view_model_none_to_share">공유할 플레이리스트가 없습니다</string>
     <string name="playlist_view_model_share_chooser_title">플레이리스트 공유</string>
     <string name="playlist_view_model_share_failed">공유 실패: %1$s</string>
-    <string name="playlist_view_model_none_to_export">내보낼 플레이리스트가 없습니다</string>
-    <string name="playlist_view_model_export_failed">내보내기 실패: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">설정에서 Gemini API 키를 구성해 주세요.</string>
     <string name="playlist_view_model_restored_toast">플레이리스트 복원됨</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="other">플레이리스트 %d개 공유 중</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="other">플레이리스트 %1$d개를 %2$s(으)로 내보냈습니다</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

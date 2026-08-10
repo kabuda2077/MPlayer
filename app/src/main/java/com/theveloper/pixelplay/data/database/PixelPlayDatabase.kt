@@ -17,30 +17,21 @@ import com.theveloper.pixelplay.data.download.DownloadEntity
         ArtistEntity::class,
         TransitionRuleEntity::class,
         SongArtistCrossRef::class,
-        TelegramSongEntity::class,
-        TelegramChannelEntity::class,
         SongEngagementEntity::class,
         FavoritesEntity::class,
         LyricsEntity::class,
         NeteaseSongEntity::class,
         NeteasePlaylistEntity::class,
-        GDriveSongEntity::class,
-        GDriveFolderEntity::class,
         PlaylistEntity::class,
         PlaylistSongEntity::class,
         QqMusicSongEntity::class,
         QqMusicPlaylistEntity::class,
-        NavidromeSongEntity::class,
-        NavidromePlaylistEntity::class,
-        TelegramTopicEntity::class,
-        JellyfinSongEntity::class,
-        JellyfinPlaylistEntity::class,
         AiCacheEntity::class,
         AiUsageEntity::class,
         PluginEntity::class,
         DownloadEntity::class
     ],
-    version = 45,
+    version = 50,
     exportSchema = true
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
@@ -48,16 +39,12 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun musicDao(): MusicDao
     abstract fun transitionDao(): TransitionDao
-    abstract fun telegramDao(): TelegramDao
     abstract fun engagementDao(): EngagementDao
     abstract fun favoritesDao(): FavoritesDao
     abstract fun lyricsDao(): LyricsDao
     abstract fun neteaseDao(): NeteaseDao
-    abstract fun gdriveDao(): GDriveDao
     abstract fun localPlaylistDao(): LocalPlaylistDao
     abstract fun qqmusicDao(): QqMusicDao
-    abstract fun navidromeDao(): NavidromeDao
-    abstract fun jellyfinDao(): JellyfinDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
     abstract fun pluginDao(): PluginDao
@@ -828,6 +815,263 @@ abstract class PixelPlayDatabase : RoomDatabase() {
                 if ("local_song_id" !in columns) {
                     db.execSQL("ALTER TABLE downloads ADD COLUMN local_song_id INTEGER")
                 }
+            }
+        }
+
+        val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                if ("song_id" !in getTableColumns(db, "qqmusic_songs")) {
+                    db.execSQL("ALTER TABLE qqmusic_songs ADD COLUMN song_id INTEGER")
+                }
+            }
+        }
+
+        val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val columns = getTableColumns(db, "lyrics")
+                if ("schemaVersion" !in columns) {
+                    db.execSQL("ALTER TABLE lyrics ADD COLUMN schemaVersion INTEGER NOT NULL DEFAULT 0")
+                }
+                if ("payloadJson" !in columns) {
+                    db.execSQL("ALTER TABLE lyrics ADD COLUMN payloadJson TEXT")
+                }
+                if ("updatedAt" !in columns) {
+                    db.execSQL("ALTER TABLE lyrics ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        }
+
+        val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS lyrics_new (
+                        mediaKey TEXT NOT NULL,
+                        songId INTEGER,
+                        content TEXT NOT NULL,
+                        isSynced INTEGER NOT NULL,
+                        source TEXT,
+                        schemaVersion INTEGER NOT NULL,
+                        payloadJson TEXT,
+                        updatedAt INTEGER NOT NULL,
+                        PRIMARY KEY(mediaKey)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT OR REPLACE INTO lyrics_new (
+                        mediaKey, songId, content, isSynced, source,
+                        schemaVersion, payloadJson, updatedAt
+                    )
+                    SELECT
+                        CASE
+                            WHEN songs.content_uri_string IS NOT NULL
+                                AND songs.content_uri_string NOT LIKE 'content:%'
+                                AND songs.content_uri_string NOT LIKE 'file:%'
+                            THEN 'uri:' || songs.content_uri_string
+                            ELSE 'library:' || lyrics.songId
+                        END,
+                        lyrics.songId,
+                        lyrics.content,
+                        lyrics.isSynced,
+                        lyrics.source,
+                        lyrics.schemaVersion,
+                        lyrics.payloadJson,
+                        lyrics.updatedAt
+                    FROM lyrics
+                    LEFT JOIN songs ON songs.id = lyrics.songId
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE lyrics")
+                db.execSQL("ALTER TABLE lyrics_new RENAME TO lyrics")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_lyrics_songId ON lyrics(songId)")
+            }
+        }
+
+        val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE downloads_new (
+                        content_uri_string TEXT NOT NULL,
+                        song_id INTEGER,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        album_art_uri_string TEXT,
+                        duration INTEGER NOT NULL,
+                        source TEXT NOT NULL,
+                        platform_song_id TEXT NOT NULL,
+                        requested_quality TEXT NOT NULL,
+                        actual_quality TEXT,
+                        status INTEGER NOT NULL,
+                        progress REAL NOT NULL,
+                        size_bytes INTEGER NOT NULL,
+                        mime_type TEXT,
+                        file_path TEXT,
+                        public_uri TEXT,
+                        relative_path TEXT,
+                        display_name TEXT,
+                        storage_mode TEXT NOT NULL,
+                        local_song_id INTEGER,
+                        error_message TEXT,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        PRIMARY KEY(content_uri_string)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO downloads_new (
+                        content_uri_string, song_id, title, artist, album,
+                        album_art_uri_string, duration, source, platform_song_id,
+                        requested_quality, actual_quality, status, progress, size_bytes,
+                        mime_type, file_path, public_uri, relative_path, display_name,
+                        storage_mode, local_song_id, error_message, created_at, updated_at
+                    )
+                    SELECT
+                        content_uri_string, NULLIF(song_id, 0), title, artist, album,
+                        album_art_uri_string, duration, source, platform_song_id,
+                        requested_quality, actual_quality, status, progress, size_bytes,
+                        mime_type, file_path, public_uri, relative_path, display_name,
+                        storage_mode, local_song_id, error_message, created_at, updated_at
+                    FROM downloads
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE downloads")
+                db.execSQL("ALTER TABLE downloads_new RENAME TO downloads")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_song_id ON downloads(song_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_status ON downloads(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_downloads_updated_at ON downloads(updated_at)")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_downloads_source_platform_song_id " +
+                        "ON downloads(source, platform_song_id)"
+                )
+            }
+        }
+
+        /**
+         * Removes providers that are no longer part of the product and drops their
+         * legacy identity columns from the active songs schema. Historical migrations
+         * remain above so installations from older versions can still reach this step.
+         */
+        val MIGRATION_49_50 = object : Migration(49, 50) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "DELETE FROM playlist_songs WHERE playlist_id IN " +
+                        "(SELECT id FROM playlists WHERE source IN " +
+                        "('TELEGRAM', 'TELEGRAM_TOPIC', 'GDRIVE', 'NAVIDROME', 'JELLYFIN'))"
+                )
+                db.execSQL(
+                    "DELETE FROM playlists WHERE source IN " +
+                        "('TELEGRAM', 'TELEGRAM_TOPIC', 'GDRIVE', 'NAVIDROME', 'JELLYFIN')"
+                )
+
+                db.execSQL("DROP TABLE IF EXISTS song_artist_cross_ref_backup_50")
+                db.execSQL(
+                    """
+                    CREATE TABLE song_artist_cross_ref_backup_50 AS
+                    SELECT refs.song_id, refs.artist_id, refs.is_primary
+                    FROM song_artist_cross_ref refs
+                    INNER JOIN songs ON songs.id = refs.song_id
+                    WHERE songs.source_type IN (0, 2, 4)
+                      AND lower(songs.content_uri_string) NOT LIKE 'telegram:%'
+                      AND lower(songs.content_uri_string) NOT LIKE 'gdrive:%'
+                      AND lower(songs.content_uri_string) NOT LIKE 'navidrome:%'
+                      AND lower(songs.content_uri_string) NOT LIKE 'jellyfin:%'
+                    """.trimIndent()
+                )
+                // Room disables foreign-key enforcement while running migrations, so
+                // dropping songs would otherwise leave references to removed providers.
+                db.execSQL("DELETE FROM song_artist_cross_ref")
+
+                db.execSQL("DROP TABLE IF EXISTS songs_new")
+                db.execSQL(
+                    """
+                    CREATE TABLE songs_new (
+                        id INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artist_name TEXT NOT NULL,
+                        artist_id INTEGER NOT NULL,
+                        album_artist TEXT,
+                        album_name TEXT NOT NULL,
+                        album_id INTEGER NOT NULL,
+                        content_uri_string TEXT NOT NULL,
+                        album_art_uri_string TEXT,
+                        duration INTEGER NOT NULL,
+                        genre TEXT,
+                        file_path TEXT NOT NULL,
+                        parent_directory_path TEXT NOT NULL,
+                        is_favorite INTEGER NOT NULL DEFAULT 0,
+                        lyrics TEXT DEFAULT null,
+                        track_number INTEGER NOT NULL DEFAULT 0,
+                        disc_number INTEGER DEFAULT null,
+                        year INTEGER NOT NULL DEFAULT 0,
+                        date_added INTEGER NOT NULL DEFAULT 0,
+                        mime_type TEXT,
+                        bitrate INTEGER,
+                        sample_rate INTEGER,
+                        artists_json TEXT,
+                        source_type INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(album_id) REFERENCES albums(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(artist_id) REFERENCES artists(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO songs_new (
+                        id, title, artist_name, artist_id, album_artist, album_name, album_id,
+                        content_uri_string, album_art_uri_string, duration, genre, file_path,
+                        parent_directory_path, is_favorite, lyrics, track_number, disc_number,
+                        year, date_added, mime_type, bitrate, sample_rate, artists_json, source_type
+                    )
+                    SELECT
+                        id, title, artist_name, artist_id, album_artist, album_name, album_id,
+                        content_uri_string, album_art_uri_string, duration, genre, file_path,
+                        parent_directory_path, is_favorite, lyrics, track_number, disc_number,
+                        year, date_added, mime_type, bitrate, sample_rate, artists_json, source_type
+                    FROM songs
+                    WHERE source_type IN (0, 2, 4)
+                      AND lower(content_uri_string) NOT LIKE 'telegram:%'
+                      AND lower(content_uri_string) NOT LIKE 'gdrive:%'
+                      AND lower(content_uri_string) NOT LIKE 'navidrome:%'
+                      AND lower(content_uri_string) NOT LIKE 'jellyfin:%'
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE songs")
+                db.execSQL("ALTER TABLE songs_new RENAME TO songs")
+                createSongsEntityIndexes(db)
+
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO song_artist_cross_ref(song_id, artist_id, is_primary)
+                    SELECT song_id, artist_id, is_primary FROM song_artist_cross_ref_backup_50
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE song_artist_cross_ref_backup_50")
+
+                db.execSQL("DELETE FROM songs_fts")
+                db.execSQL("INSERT INTO songs_fts(rowid, title, artist_name) SELECT id, title, artist_name FROM songs")
+                db.execSQL(
+                    "DELETE FROM downloads WHERE lower(source) IN " +
+                        "('telegram', 'gdrive', 'navidrome', 'jellyfin')"
+                )
+
+                listOf(
+                    "telegram_songs",
+                    "telegram_channels",
+                    "telegram_topics",
+                    "gdrive_songs",
+                    "gdrive_folders",
+                    "navidrome_songs",
+                    "navidrome_playlists",
+                    "jellyfin_songs",
+                    "jellyfin_playlists"
+                ).forEach { table -> db.execSQL("DROP TABLE IF EXISTS $table") }
             }
         }
 

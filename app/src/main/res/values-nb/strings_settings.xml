@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Enhetsfunksjoner</string>
     <string name="settings_category_device_capabilities_subtitle">Lydspesifikasjoner, kodeker og dekoderinfo</string>
     <string name="settings_category_accounts_title">Kontoer</string>
-    <string name="settings_category_accounts_subtitle">Administrer Telegram, Google Drive, NetEase og andre tjenester</string>
     <string name="settings_category_about_title">Om</string>
     <string name="settings_category_about_subtitle">App-info, versjon og bidragsytere</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">Skann .lrc-filer automatisk</string>
     <string name="settings_auto_scan_lrc_subtitle">Skann og tildel .lrc-filer i samme mappe automatisk under synkronisering.</string>
     <string name="settings_lyrics_management_section">Administrasjon av sangtekster</string>
-    <string name="settings_lyrics_source_priority_title">Prioritet for sangtekstkilde</string>
-    <string name="settings_lyrics_source_priority_subtitle">Velg hvilken kilde som skal prøves først ved henting av sangtekster.</string>
-    <string name="settings_lyrics_embedded_first">Innebygd først</string>
-    <string name="settings_lyrics_local_first">Lokal (.lrc) først</string>
     <string name="settings_reset_imported_lyrics_title">Nullstill importerte sangtekster</string>
     <string name="settings_reset_imported_lyrics_subtitle">Fjern alle importerte sangtekster fra databasen.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Nullstill importerte sangtekster?</string>
@@ -265,9 +260,6 @@
     <string name="settings_gain_mode_subtitle">Spor: normaliser hver sang. Album: normaliser per album.</string>
     <string name="settings_gain_mode_track">Spor</string>
     <string name="settings_gain_mode_album">Album</string>
-    <string name="settings_cast_section">Cast</string>
-    <string name="settings_cast_autoplay_title">Auto-spill ved cast-tilkobling/-frakobling</string>
-    <string name="settings_cast_autoplay_subtitle">Start avspilling umiddelbart etter bytte av cast-tilkoblinger.</string>
     <string name="settings_headphones_section">Hodetelefoner</string>
     <string name="settings_headphones_resume_title">Gjenoppta når hodetelefoner kobles til</string>
     <string name="settings_headphones_resume_subtitle">Hvis avspillingen stoppet fordi hodetelefoner ble fjernet, gjenoppta automatisk når de kobles til igjen.</string>
@@ -605,7 +597,6 @@
     <string name="accounts_no_linked_subtitle">Koble til en leverandør for å administrere den fra denne skjermen.</string>
     <string name="accounts_connect_service">Koble til %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (Kommer snart)</string>
-    <string name="accounts_google_drive_soon">Google Drive kommer snart.</string>
     <string name="accounts_unable_open_screen">Kan ikke åpne denne skjermen akkurat nå.</string>
 
     <!-- About category -->
@@ -625,7 +616,6 @@
     <string name="about_contributors_section_subtitle">Live bidragsyterliste fra GitHub.</string>
     <string name="about_contributions_format">%1$d bidrag.</string>
     <string name="about_cd_open_github_profile">Åpne GitHub-profil</string>
-    <string name="about_cd_open_telegram">Åpne Telegram</string>
     <string name="about_cd_contributor_avatar">Avatar av %1$s</string>
     <string name="about_cd_contributor_icon">Ikon av %1$s</string>
 </resources>

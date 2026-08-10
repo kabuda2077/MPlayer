@@ -137,6 +137,7 @@ import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.screens.SetupScreen
 import com.theveloper.pixelplay.presentation.viewmodel.MainViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import com.theveloper.pixelplay.ui.theme.AppShadows
 import com.theveloper.pixelplay.ui.theme.PixelPlayTheme
 import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.utils.CrashHandler
@@ -703,11 +704,7 @@ class MainActivity : ComponentActivity() {
             rootView.rootView?.isHapticFeedbackEnabled = hapticsEnabled
         }
 
-        val horizontalPadding = if (navBarStyle == NavBarStyle.DEFAULT) {
-            if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
-        } else {
-            0.dp
-        }
+        val horizontalPadding = if (navBarStyle == NavBarStyle.DEFAULT) 14.dp else 0.dp
         val animatedBottomBarPadding by animateDpAsState(
             targetValue = if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 0.dp
@@ -809,10 +806,6 @@ class MainActivity : ComponentActivity() {
                         }
                         DrawerDestination.Equalizer -> navController.navigateSafely(Screen.Equalizer.route)
                         DrawerDestination.Settings -> navController.navigateSafely(Screen.Settings.route)
-                        DrawerDestination.Telegram -> {
-                            val intent = Intent(this@MainActivity, com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity::class.java)
-                            startActivity(intent)
-                        }
                     }
                 }
         ) {
@@ -827,7 +820,8 @@ class MainActivity : ComponentActivity() {
                                 .distinctUntilChanged()
                         }.collectAsStateWithLifecycle(initialValue = null)
                         val showPlayerContentArea = currentSongId != null
-                        val navBarElevation = 3.dp
+                        val navBarShadow = AppShadows.BottomFloating
+                        val navBarElevation = navBarShadow.elevation
 
                         val animatedNavBarCornerRadius = animateDpAsState(
                             targetValue = navBarCornerRadius.dp,
@@ -856,7 +850,13 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(navBarOccupiedHeight)
-                                .clipToBounds()
+                                .then(
+                                    if (navBarStyle == NavBarStyle.FULL_WIDTH) {
+                                        Modifier.clipToBounds()
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         ) {
                             val onSearchIconDoubleTap = remember(playerViewModel) {
                                 { playerViewModel.onSearchNavIconDoubleTapped() }
@@ -917,6 +917,8 @@ class MainActivity : ComponentActivity() {
                                             shape = navBarShapeCache.get(this, topDp.toPx(), 0.dp.toPx(), useSmoothCorners)
                                             clip = true
                                             shadowElevation = navBarElevationPx
+                                            ambientShadowColor = navBarShadow.ambientColor
+                                            spotShadowColor = navBarShadow.spotColor
                                         },
                                     color = NavigationBarDefaults.containerColor
                                 ) {

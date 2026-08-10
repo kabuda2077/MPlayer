@@ -8,6 +8,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
@@ -18,7 +19,11 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
+import com.theveloper.pixelplay.data.service.player.PlaybackTransportCommand
 import com.theveloper.pixelplay.data.stream.CloudStreamPlaybackInfoStore
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.theveloper.pixelplay.utils.MediaSourceKind
 import com.theveloper.pixelplay.utils.MediaItemBuilder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
@@ -70,7 +75,6 @@ class ControllerSyncCallbacks(
     val setTrackVolume: (Float) -> Unit,
     val emitToast: suspend (String) -> Unit,
     val showNoInternetDialog: suspend () -> Unit,
-    val ensureTelegramObservers: () -> Unit,
     val cancelSleepTimerForEot: () -> Unit,
     val resetLyricsSearchState: () -> Unit,
     val loadLyricsForCurrentSong: () -> Unit,
@@ -92,12 +96,12 @@ class MediaControllerSyncStateHolder @Inject constructor(
     private val mediaMapper: MediaMapper,
     private val playbackStateHolder: PlaybackStateHolder,
     private val libraryStateHolder: LibraryStateHolder,
-    private val castStateHolder: CastStateHolder,
     private val connectivityStateHolder: ConnectivityStateHolder,
     private val themeStateHolder: ThemeStateHolder,
     private val lyricsStateHolder: LyricsStateHolder,
     private val sleepTimerStateHolder: SleepTimerStateHolder,
     private val playbackDispatchStateHolder: PlaybackDispatchStateHolder,
+    private val playbackRequestCoordinator: PlaybackRequestCoordinator,
     private val cloudStreamPlaybackInfoStore: CloudStreamPlaybackInfoStore,
     @param:ApplicationContext private val context: Context,
 ) {
@@ -137,11 +141,23 @@ class MediaControllerSyncStateHolder @Inject constructor(
         mediaItem: MediaItem,
         allSongsById: Map<String, Song>? = null
     ): Song? {
-        val resolvedSong =
-            allSongsById?.get(mediaItem.mediaId)
-                ?: libraryStateHolder.allSongsById.value[mediaItem.mediaId]
-                ?: cb.getUiState().currentPlaybackQueue.find { it.id == mediaItem.mediaId }
-                ?: mediaMapper.resolveSongFromMediaItem(mediaItem)
+        val extras = mediaItem.mediaMetadata.extras
+        val contentUri = extras
+            ?.getString(MediaItemBuilder.EXTERNAL_EXTRA_CONTENT_URI)
+            ?.takeIf { it.isNotBlank() }
+        val queueSong = cb.getUiState().currentPlaybackQueue.find { song ->
+            song.id == mediaItem.mediaId &&
+                (contentUri == null || song.contentUriString == contentUri)
+        }
+        val libraryId = extras
+            ?.takeIf { it.containsKey(MediaItemBuilder.EXTERNAL_EXTRA_LIBRARY_ID) }
+            ?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_LIBRARY_ID)
+        val resolvedSong = queueSong
+            ?: libraryId?.let { id ->
+                allSongsById?.get(id.toString())
+                    ?: libraryStateHolder.allSongsById.value[id.toString()]
+            }
+            ?: mediaMapper.resolveSongFromMediaItem(mediaItem)
 
         return resolvedSong?.let { normalizeArtworkForResolvedSong(it, mediaItem) }
     }
@@ -239,14 +255,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
     }
 
     fun applyPreferredRepeatMode(@Player.RepeatMode mode: Int) {
-        playbackStateHolder.updateStablePlayerState { it.copy(repeatMode = mode) }
-
-        val castSession = castStateHolder.castSession.value
-        if (castSession != null && castSession.remoteMediaClient != null) {
-            pendingRepeatMode = mode
-            return
-        }
-
         val controller = cb.getController()
         if (controller == null) {
             pendingRepeatMode = mode
@@ -254,7 +262,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
         }
 
         if (controller.repeatMode != mode) {
-            controller.repeatMode = mode
+            playbackRequestCoordinator.dispatchTransport(
+                controller,
+                PlaybackTransportCommand.SetRepeatMode(mode)
+            )
         }
         pendingRepeatMode = null
     }
@@ -425,12 +436,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
         }
     }
 
-    private fun isRemoteSessionControllingPlayback(): Boolean {
-        val remoteClient = castStateHolder.castSession.value?.remoteMediaClient
-        return remoteClient != null &&
-                (castStateHolder.isRemotePlaybackActive.value || castStateHolder.isCastConnecting.value)
-    }
-
     private fun syncPlaybackPositionFromPlayer(
         mediaId: String?,
         reportedPositionMs: Long
@@ -440,7 +445,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
     }
 
     private fun syncDisplayedMediaItemIfChanged(player: Player) {
-        if (isRemoteSessionControllingPlayback()) return
 
         val mediaItem = player.currentMediaItem ?: return
         val currentSongId = playbackStateHolder.stablePlayerState.value.currentSong?.id
@@ -470,7 +474,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
             0L
         }
 
-        playbackStateHolder.updateStablePlayerState {
+        playbackStateHolder.projectControllerState {
             it.copy(
                 currentSong = song,
                 currentMediaItemIndex = expectedIndex,
@@ -535,12 +539,13 @@ class MediaControllerSyncStateHolder @Inject constructor(
     /** One-time snapshot of the controller's current state when it first attaches. */
     private fun applyInitialControllerState(playerCtrl: MediaController) {
         cb.setTrackVolume(playerCtrl.volume)
-        playbackStateHolder.updateStablePlayerState {
+        playbackStateHolder.projectControllerState {
             it.copy(
                 isShuffleEnabled = it.isShuffleEnabled,
                 repeatMode = playerCtrl.repeatMode,
                 isPlaying = playerCtrl.isPlaying,
-                playWhenReady = playerCtrl.playWhenReady
+                playWhenReady = playerCtrl.playWhenReady,
+                playbackSpeed = playerCtrl.playbackParameters.speed
             )
         }
         preparePlaybackAudioMetadataForMedia(playerCtrl.currentMediaItem?.mediaId)
@@ -559,7 +564,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     songDurationHintMs = song.duration.coerceAtLeast(0L),
                     currentPositionMs = initialPosition
                 )
-                playbackStateHolder.updateStablePlayerState {
+                playbackStateHolder.projectControllerState {
                     it.copy(
                         currentSong = song,
                         totalDuration = resolvedDuration
@@ -577,7 +582,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     playbackStateHolder.startProgressUpdates()
                 }
             } else {
-                playbackStateHolder.updateStablePlayerState {
+                playbackStateHolder.projectControllerState {
                     it.copy(
                         currentSong = null,
                         isPlaying = false,
@@ -604,8 +609,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
     private fun setupPlaybackListeners(playerCtrl: MediaController) {
         registerMediaControllerListener(playerCtrl, object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isRemoteSessionControllingPlayback()) return
-                playbackStateHolder.updateStablePlayerState {
+                playbackStateHolder.projectControllerState {
                     it.copy(
                         isPlaying = isPlaying,
                         playWhenReady = playerCtrl.playWhenReady
@@ -628,8 +632,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                if (isRemoteSessionControllingPlayback()) return
-                playbackStateHolder.updateStablePlayerState { it.copy(playWhenReady = playWhenReady) }
+                playbackStateHolder.projectControllerState { it.copy(playWhenReady = playWhenReady) }
                 if (
                     playWhenReady &&
                     playerCtrl.playbackState != Player.STATE_IDLE &&
@@ -639,8 +642,13 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 }
             }
 
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                playbackStateHolder.projectControllerState {
+                    it.copy(playbackSpeed = playbackParameters.speed)
+                }
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (isRemoteSessionControllingPlayback()) return
                 refreshPlaybackAudioMetadata(playerCtrl)
                 syncDisplayedMediaItemIfChanged(playerCtrl)
 
@@ -649,13 +657,13 @@ class MediaControllerSyncStateHolder @Inject constructor(
                 if (playbackState == Player.STATE_BUFFERING) {
                     bufferingDebounceJob = cb.scope.launch {
                         delay(500) // Wait 500ms before showing buffering indicator
-                        playbackStateHolder.updateStablePlayerState { state ->
+                        playbackStateHolder.projectControllerState { state ->
                             state.copy(isBuffering = true)
                         }
                     }
                 } else {
                     // Immediately hide buffering when not buffering
-                    playbackStateHolder.updateStablePlayerState { state ->
+                    playbackStateHolder.projectControllerState { state ->
                         state.copy(isBuffering = false)
                     }
                 }
@@ -670,14 +678,14 @@ class MediaControllerSyncStateHolder @Inject constructor(
                         currentPositionMs = readyPosition
                     )
                     syncPlaybackPositionFromPlayer(playerCtrl.currentMediaItem?.mediaId, readyPosition)
-                    playbackStateHolder.updateStablePlayerState { it.copy(totalDuration = resolvedDuration) }
+                    playbackStateHolder.projectControllerState { it.copy(totalDuration = resolvedDuration) }
                     playbackStateHolder.startProgressUpdates()
                 }
                 if (playbackState == Player.STATE_IDLE && playerCtrl.mediaItemCount == 0) {
                     playbackDispatchStateHolder.clearPreparingSongIfMatching()
-                    if (!castStateHolder.isCastConnecting.value && !castStateHolder.isRemotePlaybackActive.value) {
+                    run {
                         lyricsStateHolder.cancelLoading()
-                        playbackStateHolder.updateStablePlayerState {
+                        playbackStateHolder.projectControllerState {
                             it.copy(
                                 currentSong = null,
                                 isPlaying = false,
@@ -696,11 +704,10 @@ class MediaControllerSyncStateHolder @Inject constructor(
         })
     }
 
-    /** Media-item and timeline transitions (incl. EOT timer + Telegram offline guard). */
+    /** Media-item and timeline transitions, including the end-of-track timer. */
     private fun setupTransitionListeners(playerCtrl: MediaController) {
         registerMediaControllerListener(playerCtrl, object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                if (isRemoteSessionControllingPlayback()) return
                 playbackStateHolder.onPlaybackOccurrenceTransition(mediaItem?.mediaId)
                 preparePlaybackAudioMetadataForMedia(mediaItem?.mediaId)
                 transitionSchedulerJob?.cancel()
@@ -711,8 +718,14 @@ class MediaControllerSyncStateHolder @Inject constructor(
                         val previousSongId = playerCtrl.run { if (previousMediaItemIndex != C.INDEX_UNSET) getMediaItemAt(previousMediaItemIndex).mediaId else null }
 
                         if (sleepTimerStateHolder.isEndOfTrackTimerActive.value && activeEotSongId != null && previousSongId != null && previousSongId == activeEotSongId) {
-                            playerCtrl.seekTo(0L)
-                            playerCtrl.pause()
+                            playbackRequestCoordinator.dispatchTransport(
+                                playerCtrl,
+                                PlaybackTransportCommand.Seek(0L)
+                            )
+                            playbackRequestCoordinator.dispatchTransport(
+                                playerCtrl,
+                                PlaybackTransportCommand.Pause
+                            )
 
                             val finishedSongTitle = libraryStateHolder.allSongsById.value[previousSongId]?.title
                                 ?: context.getString(R.string.player_view_model_default_track_title)
@@ -729,22 +742,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
                     mediaItem?.let { transitionedItem ->
                         val song = resolveSongFromMediaItem(transitionedItem)
 
-                        // Offline check for Telegram songs
-                        if (song?.contentUriString?.startsWith("telegram:") == true) {
-                            cb.ensureTelegramObservers()
-                            val isOnline = connectivityStateHolder.isOnline.value
-                            if (!isOnline) {
-                                val fileId = song.telegramFileId
-                                if (fileId != null) {
-                                    val isCached = musicRepository.telegramRepository.isFileCached(fileId)
-                                    if (!isCached) {
-                                        playerCtrl.pause()
-                                        cb.showNoInternetDialog()
-                                    }
-                                }
-                            }
-                        }
-
                         val resolvedDuration = if (song != null) {
                             playbackStateHolder.resolveDurationForPlaybackState(
                                 reportedDurationMs = playerCtrl.duration,
@@ -755,7 +752,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
                             0L
                         }
                         cb.resetLyricsSearchState()
-                        playbackStateHolder.updateStablePlayerState {
+                        playbackStateHolder.projectControllerState {
                             it.copy(
                                 currentSong = song,
                                 currentMediaItemIndex = if (dualPlayerEngine.isUsingWindowedQueue()) {
@@ -783,9 +780,9 @@ class MediaControllerSyncStateHolder @Inject constructor(
                             cb.loadLyricsForCurrentSong()
                         }
                     } ?: run {
-                        if (!castStateHolder.isCastConnecting.value && !castStateHolder.isRemotePlaybackActive.value) {
+                        run {
                             lyricsStateHolder.cancelLoading()
-                            playbackStateHolder.updateStablePlayerState {
+                        playbackStateHolder.projectControllerState {
                                 it.copy(
                                     currentSong = null,
                                     isPlaying = false,
@@ -803,7 +800,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
             }
 
             override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                if (isRemoteSessionControllingPlayback()) return
                 syncDisplayedMediaItemIfChanged(playerCtrl)
                 // Skip updates during crossfade transitions to prevent UI freeze and jumpy state.
                 if (dualPlayerEngine.isTransitionRunning()) return
@@ -824,26 +820,13 @@ class MediaControllerSyncStateHolder @Inject constructor(
     private fun setupMetadataListeners(playerCtrl: MediaController) {
         registerMediaControllerListener(playerCtrl, object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
-                if (isRemoteSessionControllingPlayback()) return
                 refreshPlaybackAudioMetadata(playerCtrl, tracks)
             }
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 syncDisplayedMediaItemIfChanged(playerCtrl)
             }
-            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                // IMPORTANT: We don't use ExoPlayer's shuffle mode anymore
-                // Instead, we manually shuffle the queue to fix crossfade issues
-                // If ExoPlayer's shuffle gets enabled (e.g., from media button), turn it off and use our toggle
-                if (shuffleModeEnabled) {
-                    playerCtrl.shuffleModeEnabled = false
-                    // Trigger our manual shuffle instead
-                    if (!playbackStateHolder.stablePlayerState.value.isShuffleEnabled) {
-                        cb.toggleShuffle()
-                    }
-                }
-            }
             override fun onRepeatModeChanged(repeatMode: Int) {
-                playbackStateHolder.updateStablePlayerState { it.copy(repeatMode = repeatMode) }
+                playbackStateHolder.projectControllerState { it.copy(repeatMode = repeatMode) }
                 cb.scope.launch { userPreferencesRepository.setRepeatMode(repeatMode) }
             }
         })

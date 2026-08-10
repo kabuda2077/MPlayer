@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Gerätefähigkeiten</string>
     <string name="settings_category_device_capabilities_subtitle">Codecs, Decoder und Audio-Specs</string>
     <string name="settings_category_accounts_title">Accounts</string>
-    <string name="settings_category_accounts_subtitle">Telegram, Google Drive, Netease und mehr verwalten</string>
     <string name="settings_category_about_title">Über</string>
     <string name="settings_category_about_subtitle">Version, Credits und mehr</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">.lrc-Dateien automatisch scannen</string>
     <string name="settings_auto_scan_lrc_subtitle">.lrc-Dateien im selben Ordner werden beim Sync automatisch erkannt und zugewiesen.</string>
     <string name="settings_lyrics_management_section">Lyrics</string>
-    <string name="settings_lyrics_source_priority_title">Lyrics-Quell-Priorität</string>
-    <string name="settings_lyrics_source_priority_subtitle">Legt fest, welche Quelle beim Laden von Lyrics zuerst versucht wird.</string>
-    <string name="settings_lyrics_embedded_first">Eingebettet zuerst</string>
-    <string name="settings_lyrics_local_first">Lokal (.lrc) zuerst</string>
     <string name="settings_reset_imported_lyrics_title">Importierte Lyrics zurücksetzen</string>
     <string name="settings_reset_imported_lyrics_subtitle">Alle manuell importierten Lyrics aus der Datenbank löschen.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Importierte Lyrics zurücksetzen?</string>
@@ -265,9 +260,6 @@
     <string name="settings_gain_mode_subtitle">Track: jeden Song einzeln normalisieren. Album: Lautstärke pro Album angleichen.</string>
     <string name="settings_gain_mode_track">Track</string>
     <string name="settings_gain_mode_album">Album</string>
-    <string name="settings_cast_section">Cast</string>
-    <string name="settings_cast_autoplay_title">Autoplay beim Cast-Wechsel</string>
-    <string name="settings_cast_autoplay_subtitle">Wiedergabe startet automatisch, wenn eine Cast-Verbindung hergestellt oder getrennt wird.</string>
     <string name="settings_headphones_section">Kopfhörer</string>
     <string name="settings_headphones_resume_title">Fortsetzen beim Wiederverbinden</string>
     <string name="settings_headphones_resume_subtitle">Wurde die Musik durch das Trennen der Kopfhörer pausiert, läuft sie beim Wiederverbinden weiter.</string>
@@ -605,7 +597,6 @@
     <string name="accounts_no_linked_subtitle">Einen Anbieter verbinden, um ihn hier zu verwalten.</string>
     <string name="accounts_connect_service">Connect %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (Bald verfügbar)</string>
-    <string name="accounts_google_drive_soon">Google Drive kommt bald.</string>
     <string name="accounts_unable_open_screen">Dieser Bildschirm ist gerade nicht verfügbar.</string>
 
     <!-- About category -->
@@ -625,7 +616,6 @@
     <string name="about_contributors_section_subtitle">Aktuelle Mitwirkenden-Liste von GitHub.</string>
     <string name="about_contributions_format">%1$d Beiträge</string>
     <string name="about_cd_open_github_profile">GitHub-Profil öffnen</string>
-    <string name="about_cd_open_telegram">Telegram öffnen</string>
     <string name="about_cd_contributor_avatar">Avatar von %1$s</string>
     <string name="about_cd_contributor_icon">Icon von %1$s</string>
 </resources>

@@ -20,7 +20,7 @@
     <string name="settings_category_device_capabilities_title">Device Capabilities</string>
     <string name="settings_category_device_capabilities_subtitle">Audio specs, codecs, and decoder info</string>
     <string name="settings_category_accounts_title">Accounts</string>
-    <string name="settings_category_accounts_subtitle">Manage Telegram, Google Drive, NetEase, and more services</string>
+    <string name="settings_category_accounts_subtitle">Manage NetEase and QQ Music accounts</string>
     <string name="settings_category_about_title">About</string>
     <string name="settings_category_about_subtitle">App info, version, and credits</string>
 
@@ -69,17 +69,11 @@
     <string name="settings_auto_scan_lrc_title">Auto-scan .lrc files</string>
     <string name="settings_auto_scan_lrc_subtitle">Automatically scan and assign .lrc files in the same folder during library sync.</string>
     <string name="settings_lyrics_management_section">Lyrics Management</string>
-    <string name="settings_lyrics_source_priority_title">Lyrics Source Priority</string>
-    <string name="settings_lyrics_source_priority_subtitle">Choose which source to try first when fetching lyrics.</string>
-    <string name="settings_lyrics_embedded_first">Embedded First</string>
     <string name="settings_lyrics_remote_first">Remote First</string>
-    <string name="settings_lyrics_local_first">Local (.lrc) First</string>
     <string name="settings_lyrics_enable_ttml_title">Enable TTML lyrics</string>
     <string name="settings_lyrics_enable_ttml_subtitle">For NetEase songs, try AMLL TTML before the official lyrics API.</string>
-    <string name="settings_lyrics_enable_qq_title">Online lyrics</string>
-    <string name="settings_lyrics_enable_qq_subtitle">Automatically fetch online lyrics for cloud songs and allow manual online search.</string>
-    <string name="settings_lyrics_local_allow_qq_title">Allow QQ lyrics for local songs</string>
-    <string name="settings_lyrics_local_allow_qq_subtitle">When local files have no embedded or sidecar lyrics, try QQ Music as a fallback source.</string>
+    <string name="settings_lyrics_enable_online_title">Online lyrics</string>
+    <string name="settings_lyrics_enable_online_subtitle">Automatically fetch online lyrics for cloud songs and allow manual online search.</string>
     <string name="settings_lyrics_show_romanization_title">Show romanization</string>
     <string name="settings_lyrics_show_romanization_subtitle">Display pronunciation helpers such as pinyin or romaji when lyrics include them.</string>
     <string name="settings_reset_imported_lyrics_title">Reset Imported Lyrics</string>
@@ -198,8 +192,8 @@
     <string name="settings_theme_follow_system">Follow System</string>
     <string name="settings_smooth_corners_title">Use Smooth Corners</string>
     <string name="settings_smooth_corners_subtitle">Use complex shaped corners effectively improving aesthetics but may affect performance on low-end devices</string>
-    <string name="settings_disable_blur_all_over_title">Disable Blur Effects</string>
-    <string name="settings_disable_blur_all_over_subtitle">Turn off blur effects across the app to save battery and resources.</string>
+    <string name="settings_disable_blur_all_over_title">Blur Effects</string>
+    <string name="settings_disable_blur_all_over_subtitle">Use blur effects across the app.</string>
     <string name="settings_show_scrollbar_title">Show Scrollbar</string>
     <string name="settings_show_scrollbar_subtitle">Display lateral scrollbar on music lists for quick scrolling</string>
     <string name="settings_now_playing_section">Now Playing</string>
@@ -283,9 +277,6 @@
     <string name="settings_gain_mode_subtitle">Track: normalize each song. Album: normalize per album.</string>
     <string name="settings_gain_mode_track">Track</string>
     <string name="settings_gain_mode_album">Album</string>
-    <string name="settings_cast_section">Cast</string>
-    <string name="settings_cast_autoplay_title">Auto-play on cast connect/disconnect</string>
-    <string name="settings_cast_autoplay_subtitle">Start playing immediately after switching cast connections.</string>
     <string name="settings_headphones_section">Headphones</string>
     <string name="settings_headphones_resume_title">Resume when headphones reconnect</string>
     <string name="settings_headphones_resume_subtitle">If playback paused because headphones were removed, resume automatically when they connect again.</string>
@@ -623,7 +614,6 @@
     <string name="accounts_no_linked_subtitle">Connect a provider to manage it from this screen.</string>
     <string name="accounts_connect_service">Connect %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (Coming soon)</string>
-    <string name="accounts_google_drive_soon">Google Drive is coming soon.</string>
     <string name="accounts_unable_open_screen">Unable to open this screen right now.</string>
 
     <!-- About category -->
@@ -643,7 +633,6 @@
     <string name="about_contributors_section_subtitle">Live contributor list from GitHub.</string>
     <string name="about_contributions_format">%1$d contrib.</string>
     <string name="about_cd_open_github_profile">Open GitHub profile</string>
-    <string name="about_cd_open_telegram">Open Telegram</string>
     <string name="about_cd_contributor_avatar">Avatar of %1$s</string>
     <string name="about_cd_contributor_icon">Icon of %1$s</string>
 </resources>

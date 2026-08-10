@@ -1,47 +1,51 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
-import com.theveloper.pixelplay.data.model.SearchFilterType
-import com.theveloper.pixelplay.data.model.SearchHistoryItem
-import com.theveloper.pixelplay.data.model.SearchMode
 import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
 import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
+import com.theveloper.pixelplay.data.model.SearchFilterType
 import com.theveloper.pixelplay.data.model.SearchResultItem
+import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.search.OnlineSearchRepository
+import java.util.concurrent.atomic.AtomicLong
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicLong
-import javax.inject.Inject
-import javax.inject.Singleton
-import kotlinx.coroutines.FlowPreview
 
-/**
- * Manages search state and operations.
- * Extracted from PlayerViewModel to improve modularity.
- *
- * Responsibilities:
- * - Search query execution
- * - Search filter management
- * - Search history CRUD operations
- */
+data class UnifiedSearchState(
+    val query: String = "",
+    val onlinePlatform: OnlineSearchPlatform = OnlineSearchPlatform.NETEASE,
+    val libraryResults: ImmutableList<SearchResultItem> = persistentListOf(),
+    val onlineResults: ImmutableList<OnlineSearchResultItem> = persistentListOf(),
+    val libraryLoading: Boolean = false,
+    val onlineLoading: Boolean = false,
+    val libraryError: String? = null,
+    val onlineError: String? = null
+)
+
 @Singleton
 class SearchStateHolder @Inject constructor(
-    private val musicRepository: MusicRepository,
     private val onlineSearchRepository: OnlineSearchRepository,
+    private val musicRepository: MusicRepository,
 ) {
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
@@ -50,20 +54,11 @@ class SearchStateHolder @Inject constructor(
     private data class SearchRequest(
         val query: String,
         val requestId: Long,
-        val mode: SearchMode,
         val platform: OnlineSearchPlatform,
-        val filter: SearchFilterType,
     )
-
-    // Search State
-    private val _searchResults = MutableStateFlow<ImmutableList<SearchResultItem>>(persistentListOf())
-    val searchResults = _searchResults.asStateFlow()
 
     private val _onlineSearchResults = MutableStateFlow<ImmutableList<OnlineSearchResultItem>>(persistentListOf())
     val onlineSearchResults = _onlineSearchResults.asStateFlow()
-
-    private val _searchMode = MutableStateFlow(SearchMode.ONLINE)
-    val searchMode = _searchMode.asStateFlow()
 
     private val _onlineSearchPlatform = MutableStateFlow(OnlineSearchPlatform.NETEASE)
     val onlineSearchPlatform = _onlineSearchPlatform.asStateFlow()
@@ -74,11 +69,18 @@ class SearchStateHolder @Inject constructor(
     private val _onlineSearchError = MutableStateFlow<String?>(null)
     val onlineSearchError = _onlineSearchError.asStateFlow()
 
-    private val _selectedSearchFilter = MutableStateFlow(SearchFilterType.ALL)
-    val selectedSearchFilter = _selectedSearchFilter.asStateFlow()
+    private val _librarySearchResults = MutableStateFlow<ImmutableList<SearchResultItem>>(persistentListOf())
+    val librarySearchResults = _librarySearchResults.asStateFlow()
 
-    private val _searchHistory = MutableStateFlow<ImmutableList<SearchHistoryItem>>(persistentListOf())
-    val searchHistory = _searchHistory.asStateFlow()
+    private val _librarySearchLoading = MutableStateFlow(false)
+    val librarySearchLoading = _librarySearchLoading.asStateFlow()
+
+    private val _librarySearchError = MutableStateFlow<String?>(null)
+    val librarySearchError = _librarySearchError.asStateFlow()
+
+    private val _unifiedState = MutableStateFlow(UnifiedSearchState())
+    val unifiedState = _unifiedState.asStateFlow()
+    private var lastLibraryQuery: String = ""
 
     private val searchRequests = MutableSharedFlow<SearchRequest>(
         extraBufferCapacity = 1,
@@ -89,9 +91,6 @@ class SearchStateHolder @Inject constructor(
     private var scope: CoroutineScope? = null
     private var searchJob: Job? = null
 
-    /**
-     * Initialize with ViewModel scope.
-     */
     fun initialize(scope: CoroutineScope) {
         this.scope = scope
         observeSearchRequests()
@@ -105,94 +104,82 @@ class SearchStateHolder @Inject constructor(
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .collectLatest { request ->
                     val normalizedQuery = request.query
-
                     if (normalizedQuery.isBlank()) {
-                        clearResultsForMode(request.mode)
+                        clearResults()
                         return@collectLatest
                     }
 
                     try {
-                        when (request.mode) {
-                            SearchMode.LIBRARY -> {
-                                _onlineSearchLoading.value = false
-                                musicRepository.searchAll(normalizedQuery, request.filter).collect { resultsList ->
-                                    val sortedResults = resultsList.sortedWith(
-                                        compareBy { result ->
-                                            when (result) {
-                                                is SearchResultItem.SongItem -> 0
-                                                is SearchResultItem.AlbumItem -> 1
-                                                is SearchResultItem.ArtistItem -> 2
-                                                is SearchResultItem.PlaylistItem -> 3
-                                            }
-                                        }
-                                    )
-
-                                    if (request.requestId != latestSearchRequestId.get()) {
-                                        return@collect
-                                    }
-
-                                    val immutableResults = sortedResults.toImmutableList()
-                                    if (_searchResults.value != immutableResults) {
-                                        _searchResults.value = immutableResults
-                                    }
-                                }
-                            }
-                            SearchMode.ONLINE -> {
-                                _onlineSearchLoading.value = true
-                                _onlineSearchError.value = null
-                                val result = withContext(Dispatchers.IO) {
-                                    onlineSearchRepository.searchSongs(
-                                        query = normalizedQuery,
-                                        platform = request.platform
-                                    )
-                                }
-                                if (request.requestId != latestSearchRequestId.get()) {
-                                    return@collectLatest
-                                }
-                                result.fold(
-                                    onSuccess = { items ->
-                                        _onlineSearchResults.value = items.toImmutableList()
-                                        _onlineSearchError.value = null
-                                    },
-                                    onFailure = { error ->
-                                        Timber.e(error, "Error performing online search for query: $normalizedQuery")
-                                        _onlineSearchResults.value = persistentListOf()
-                                        _onlineSearchError.value = error.message
-                                    }
-                                )
-                                _onlineSearchLoading.value = false
-                            }
+                        _onlineSearchLoading.value = true
+                        _onlineSearchError.value = null
+                        val needsLibraryRefresh = normalizedQuery != lastLibraryQuery
+                        if (needsLibraryRefresh) {
+                            _librarySearchLoading.value = true
+                            _librarySearchError.value = null
                         }
+                        val (onlineResult, libraryResult) = coroutineScope {
+                            val online = async(Dispatchers.IO) {
+                                onlineSearchRepository.searchSongs(
+                                    query = normalizedQuery,
+                                    platform = request.platform
+                                )
+                            }
+                            val library = if (needsLibraryRefresh) {
+                                async(Dispatchers.IO) {
+                                    runCatching {
+                                        musicRepository.searchAll(
+                                            normalizedQuery,
+                                            SearchFilterType.ALL,
+                                            StorageFilter.ALL
+                                        ).first()
+                                    }
+                                }
+                            } else null
+                            online.await() to library?.await()
+                        }
+                        if (request.requestId != latestSearchRequestId.get()) {
+                            return@collectLatest
+                        }
+                        onlineResult.fold(
+                            onSuccess = { items ->
+                                _onlineSearchResults.value = items.toImmutableList()
+                                _onlineSearchError.value = null
+                            },
+                            onFailure = { error ->
+                                Timber.e(error, "Error performing online search for query: $normalizedQuery")
+                                _onlineSearchResults.value = persistentListOf()
+                                _onlineSearchError.value = error.message
+                            }
+                        )
+                        libraryResult?.fold(
+                            onSuccess = { items ->
+                                _librarySearchResults.value = items.toImmutableList()
+                                _librarySearchError.value = null
+                                lastLibraryQuery = normalizedQuery
+                            },
+                            onFailure = { error ->
+                                _librarySearchResults.value = persistentListOf()
+                                _librarySearchError.value = error.message
+                            }
+                        )
                     } catch (_: CancellationException) {
                         // Superseded by a newer query; ignore.
-                        if (request.mode == SearchMode.ONLINE) {
-                            _onlineSearchLoading.value = false
-                        }
                     } catch (e: Exception) {
                         if (request.requestId == latestSearchRequestId.get()) {
-                            Timber.e(e, "Error performing search for query: $normalizedQuery")
-                            when (request.mode) {
-                                SearchMode.LIBRARY -> _searchResults.value = persistentListOf()
-                                SearchMode.ONLINE -> {
-                                    _onlineSearchResults.value = persistentListOf()
-                                    _onlineSearchError.value = e.message
-                                    _onlineSearchLoading.value = false
-                                }
-                            }
+                            Timber.e(e, "Error performing online search for query: $normalizedQuery")
+                            _onlineSearchResults.value = persistentListOf()
+                            _onlineSearchError.value = e.message
+                            _librarySearchError.value = e.message
+                        }
+                    } finally {
+                        if (request.requestId == latestSearchRequestId.get()) {
+                            _onlineSearchLoading.value = false
+                            _librarySearchLoading.value = false
+                            publishUnifiedState(normalizedQuery)
                         }
                     }
                 }
         }
-    }
-
-    fun updateSearchFilter(filterType: SearchFilterType) {
-        _selectedSearchFilter.value = filterType
-    }
-
-    fun updateSearchMode(mode: SearchMode, query: String) {
-        if (_searchMode.value == mode) return
-        _searchMode.value = mode
-        performSearch(query)
     }
 
     fun updateOnlineSearchPlatform(platform: OnlineSearchPlatform, query: String) {
@@ -201,95 +188,51 @@ class SearchStateHolder @Inject constructor(
         performSearch(query)
     }
 
-    fun loadSearchHistory(limit: Int = 15) {
-        scope?.launch {
-            try {
-                val history = withContext(Dispatchers.IO) {
-                    musicRepository.getRecentSearchHistory(limit)
-                }
-                _searchHistory.value = history.toImmutableList()
-            } catch (e: Exception) {
-                Timber.e(e, "Error loading search history")
-            }
-        }
-    }
-
-    fun onSearchQuerySubmitted(query: String) {
-        scope?.launch {
-            if (query.isNotBlank()) {
-                try {
-                    withContext(Dispatchers.IO) {
-                        musicRepository.addSearchHistoryItem(query)
-                    }
-                    loadSearchHistory()
-                } catch (e: Exception) {
-                    Timber.e(e, "Error adding search history item")
-                }
-            }
-        }
-    }
-
     fun performSearch(query: String) {
         val normalizedQuery = query.trim()
-
         val requestId = latestSearchRequestId.incrementAndGet()
 
         if (normalizedQuery.isBlank()) {
-            clearResultsForMode(_searchMode.value)
+            clearResults()
         }
 
         searchRequests.tryEmit(
             SearchRequest(
                 query = normalizedQuery,
                 requestId = requestId,
-                mode = _searchMode.value,
-                platform = _onlineSearchPlatform.value,
-                filter = _selectedSearchFilter.value
+                platform = _onlineSearchPlatform.value
             )
         )
     }
 
-    private fun clearResultsForMode(mode: SearchMode) {
-        when (mode) {
-            SearchMode.LIBRARY -> {
-                if (_searchResults.value.isNotEmpty()) {
-                    _searchResults.value = persistentListOf()
-                }
-            }
-            SearchMode.ONLINE -> {
-                if (_onlineSearchResults.value.isNotEmpty()) {
-                    _onlineSearchResults.value = persistentListOf()
-                }
-                _onlineSearchLoading.value = false
-                _onlineSearchError.value = null
-            }
+    private fun clearOnlineResults() {
+        if (_onlineSearchResults.value.isNotEmpty()) {
+            _onlineSearchResults.value = persistentListOf()
         }
+        _onlineSearchLoading.value = false
+        _onlineSearchError.value = null
     }
 
-    fun deleteSearchHistoryItem(query: String) {
-        scope?.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    musicRepository.deleteSearchHistoryItemByQuery(query)
-                }
-                loadSearchHistory()
-            } catch (e: Exception) {
-                Timber.e(e, "Error deleting search history item")
-            }
-        }
+    private fun clearResults() {
+        clearOnlineResults()
+        _librarySearchResults.value = persistentListOf()
+        _librarySearchLoading.value = false
+        _librarySearchError.value = null
+        lastLibraryQuery = ""
+        publishUnifiedState("")
     }
 
-    fun clearSearchHistory() {
-        scope?.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    musicRepository.clearSearchHistory()
-                }
-                _searchHistory.value = persistentListOf()
-            } catch (e: Exception) {
-                Timber.e(e, "Error clearing search history")
-            }
-        }
+    private fun publishUnifiedState(query: String) {
+        _unifiedState.value = UnifiedSearchState(
+            query = query,
+            onlinePlatform = _onlineSearchPlatform.value,
+            libraryResults = _librarySearchResults.value,
+            onlineResults = _onlineSearchResults.value,
+            libraryLoading = _librarySearchLoading.value,
+            onlineLoading = _onlineSearchLoading.value,
+            libraryError = _librarySearchError.value,
+            onlineError = _onlineSearchError.value
+        )
     }
 
     fun onCleared() {

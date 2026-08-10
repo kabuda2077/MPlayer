@@ -6,8 +6,12 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.theveloper.pixelplay.data.plugin.PluginAudioSourceResolver
+import com.theveloper.pixelplay.data.plugin.PluginStreamRequestHeaders
 import com.theveloper.pixelplay.data.stream.CloudStreamSecurity
 import com.theveloper.pixelplay.data.worker.SyncManager
+import com.theveloper.pixelplay.utils.PlaybackTrace
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
+import com.theveloper.pixelplay.utils.PlaybackTraceOrigin
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.io.File
@@ -38,6 +42,12 @@ class DownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val contentUri = inputData.getString(KEY_CONTENT_URI) ?: return@withContext Result.failure()
         val entity = downloadDao.getByContentUri(contentUri) ?: return@withContext Result.failure()
+        val traceContext = PlaybackTraceContext(
+            requestId = inputData.getString(KEY_TRACE_ID) ?: PlaybackTrace.newRequestId(),
+            mediaId = entity.songId?.toString() ?: "${entity.source}:${entity.platformSongId}",
+            sourceUri = contentUri,
+            origin = PlaybackTraceOrigin.DOWNLOAD
+        )
         val target = DownloadTarget.fromContentUri(contentUri) ?: return@withContext fail(
             contentUri = contentUri,
             message = "暂不支持该来源下载"
@@ -57,7 +67,8 @@ class DownloadWorker @AssistedInject constructor(
 
             val stream = pluginResolver.resolve(
                 source = target.source,
-                platformSongId = target.platformSongId
+                platformSongId = target.platformSongId,
+                traceContext = traceContext
             )
             if (!CloudStreamSecurity.isSafeRemoteStreamUrl(
                     url = stream.url,
@@ -69,8 +80,10 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext fail(contentUri, "插件返回了无效音源")
             }
 
-            val requestBuilder = Request.Builder().url(stream.url)
-            stream.headers.forEach { (name, value) -> requestBuilder.header(name, value) }
+            val requestBuilder = PluginStreamRequestHeaders.applyTo(
+                builder = Request.Builder().url(stream.url),
+                headers = stream.headers
+            )
             okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.code != 200) {
                     return@withContext fail(contentUri, "下载请求失败：HTTP ${response.code}")
@@ -156,8 +169,10 @@ class DownloadWorker @AssistedInject constructor(
                 )
                 setProgress(workDataOf(KEY_PROGRESS to 100))
                 syncManager.notifyPublicDownloadCompleted()
-                Timber.d(
-                    "Download completed originSource=%s actualSource=%s id=%s quality=%s size=%d uri=%s",
+                Timber.tag(PlaybackTrace.LOG_TAG).d(
+                    "stage=download_completed requestId=%s mediaId=%s originSource=%s actualSource=%s id=%s quality=%s size=%d uri=%s",
+                    traceContext.requestId,
+                    traceContext.mediaId,
                     target.source.lxSource,
                     stream.source.orEmpty(),
                     target.platformSongId,
@@ -179,7 +194,13 @@ class DownloadWorker @AssistedInject constructor(
             throw e
         } catch (e: Exception) {
             pendingPublicDownload?.let { publicStore.delete(it.uri.toString()) }
-            Timber.w(e, "Download failed for ${entity.title}")
+            Timber.tag(PlaybackTrace.LOG_TAG).w(
+                e,
+                "stage=download_failed requestId=%s mediaId=%s title=%s",
+                traceContext.requestId,
+                traceContext.mediaId,
+                entity.title
+            )
             fail(contentUri, e.message ?: "下载失败")
         } finally {
             tempDownloadFile?.delete()
@@ -259,6 +280,7 @@ class DownloadWorker @AssistedInject constructor(
 
     companion object {
         const val KEY_CONTENT_URI = "content_uri"
+        const val KEY_TRACE_ID = "trace_id"
         const val KEY_PROGRESS = "progress"
         const val KEY_ERROR = "error"
         private const val PROGRESS_UPDATE_INTERVAL_MS = 500L

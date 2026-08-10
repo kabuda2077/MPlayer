@@ -12,7 +12,6 @@ import android.util.Log
 
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
-import dagger.Lazy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -24,38 +23,25 @@ import javax.inject.Singleton
 import androidx.core.net.toUri
 import com.theveloper.pixelplay.data.database.FavoritesDao
 import com.theveloper.pixelplay.data.database.MusicDao
-import com.theveloper.pixelplay.data.database.SearchHistoryDao
-import com.theveloper.pixelplay.data.database.SearchHistoryEntity
-import com.theveloper.pixelplay.data.database.TelegramChannelEntity
-import com.theveloper.pixelplay.data.database.TelegramDao
 import com.theveloper.pixelplay.data.database.toAlbum
 import com.theveloper.pixelplay.data.database.toArtist
-import com.theveloper.pixelplay.data.database.toSearchHistoryItem
 import com.theveloper.pixelplay.data.database.toSong
-import com.theveloper.pixelplay.data.database.toTelegramEntity
-import com.theveloper.pixelplay.data.database.toTelegramEntityWithThread
-import com.theveloper.pixelplay.data.database.TelegramTopicEntity
 import com.theveloper.pixelplay.data.model.Album
 import com.theveloper.pixelplay.data.model.Artist
-import com.theveloper.pixelplay.data.model.Genre
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.MusicFolder
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SearchFilterType
-import com.theveloper.pixelplay.data.model.SearchHistoryItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.SortOption
 import com.theveloper.pixelplay.data.model.FolderSource
 import com.theveloper.pixelplay.data.model.StorageFilter
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
-import com.theveloper.pixelplay.ui.theme.GenreThemeUtils
 import com.theveloper.pixelplay.utils.DirectoryFilterUtils
 import com.theveloper.pixelplay.utils.LogUtils
 import com.theveloper.pixelplay.utils.StorageType
 import com.theveloper.pixelplay.utils.StorageUtils
-import com.theveloper.pixelplay.utils.toHexString
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -90,12 +76,8 @@ class MusicRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
-    private val searchHistoryDao: SearchHistoryDao,
     private val musicDao: MusicDao,
     private val lyricsRepository: LyricsRepository,
-    private val telegramDao: TelegramDao,
-    private val telegramCacheManagerProvider: Lazy<com.theveloper.pixelplay.data.telegram.TelegramCacheManager>,
-    private val telegramRepositoryProvider: Lazy<com.theveloper.pixelplay.data.telegram.TelegramRepository>,
     private val songRepository: SongRepository,
     private val favoritesDao: FavoritesDao,
     private val artistImageRepository: ArtistImageRepository,
@@ -105,8 +87,6 @@ class MusicRepositoryImpl @Inject constructor(
     companion object {
         /** Maximum number of search results to load at once to avoid memory issues with large libraries. */
         private const val SEARCH_RESULTS_LIMIT = 100
-        private const val UNKNOWN_GENRE_NAME = "Unknown"
-        private const val UNKNOWN_GENRE_ID = "unknown"
     }
 
     private val directoryScanMutex = Mutex()
@@ -120,11 +100,6 @@ class MusicRepositoryImpl @Inject constructor(
     @Volatile private var prefetchJob: Job? = null
     @Volatile private var currentSongArtistPrefetchJob: Job? = null
     @Volatile private var currentSongArtistPrefetchSongId: Long? = null
-    @Volatile private var telegramDownloadSyncObserverStarted = false
-    private val telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager
-        get() = telegramCacheManagerProvider.get()
-    override val telegramRepository: com.theveloper.pixelplay.data.telegram.TelegramRepository
-        get() = telegramRepositoryProvider.get()
 
     private fun normalizePath(path: String): String =
         runCatching { File(path).canonicalPath }.getOrElse { File(path).absolutePath }
@@ -163,19 +138,6 @@ class MusicRepositoryImpl @Inject constructor(
             }
         }
         .stateIn(repositoryScope, SharingStarted.Eagerly, CachedDirFilter())
-
-    private fun ensureTelegramDownloadSyncObserverStarted() {
-        if (telegramDownloadSyncObserverStarted) return
-        telegramDownloadSyncObserverStarted = true
-
-        repositoryScope.launch {
-            telegramRepository.songFileUpdated.collect {
-                androidx.work.WorkManager.getInstance(context).enqueue(
-                    com.theveloper.pixelplay.data.worker.SyncWorker.incrementalSyncWork()
-                )
-            }
-        }
-    }
 
     private fun List<Artist>.missingImageCandidates(): List<Pair<Long, String>> =
         asSequence()
@@ -385,34 +347,6 @@ class MusicRepositoryImpl @Inject constructor(
             allowedParentDirs = allowedParentDirs,
             applyDirectoryFilter = applyDirectoryFilter
         )?.toSong()
-    }
-
-    override suspend fun saveTelegramSongs(songs: List<Song>) {
-        val entities = songs.mapNotNull { it.toTelegramEntity() }
-        if (entities.isNotEmpty()) {
-            ensureTelegramDownloadSyncObserverStarted()
-            telegramDao.insertSongs(entities)
-            telegramRepository.warmUpArtworkForSongs(entities)
-            // Trigger sync to update main DB
-            androidx.work.WorkManager.getInstance(context).enqueue(
-                com.theveloper.pixelplay.data.worker.SyncWorker.incrementalSyncWork()
-            )
-        }
-    }
-
-    override suspend fun replaceTelegramSongsForChannel(chatId: Long, songs: List<Song>) {
-        val entities = songs.mapNotNull { it.toTelegramEntity() }.filter { it.chatId == chatId }
-        ensureTelegramDownloadSyncObserverStarted()
-        telegramDao.deleteSongsByChatId(chatId)
-        if (entities.isNotEmpty()) {
-            telegramDao.insertSongs(entities)
-            telegramRepository.warmUpArtworkForSongs(entities)
-        }
-        // Sync into the unified `songs` table is triggered later by saveTelegramChannel().
-        // We deliberately do NOT enqueue here: the SyncWorker gates Telegram processing on
-        // an existing channel row (telegramDao.getAllChannels()), and on first add this
-        // function runs BEFORE the channel entity is persisted. Triggering here would race
-        // and skip the sync, leaving songs invisible until the next app launch.
     }
 
     /**
@@ -697,11 +631,7 @@ class MusicRepositoryImpl @Inject constructor(
             StorageFilter.ALL -> matching
             StorageFilter.ONLINE -> matching.filter { playlist ->
                 playlist.source.equals("NETEASE", ignoreCase = true) ||
-                    playlist.source.equals("QQMUSIC", ignoreCase = true) ||
-                    playlist.source.equals("TELEGRAM", ignoreCase = true) ||
-                    playlist.source.equals("GDRIVE", ignoreCase = true) ||
-                    playlist.source.equals("NAVIDROME", ignoreCase = true) ||
-                    playlist.source.equals("JELLYFIN", ignoreCase = true)
+                    playlist.source.equals("QQMUSIC", ignoreCase = true)
             }
             StorageFilter.OFFLINE -> emptyList()
         }
@@ -788,70 +718,6 @@ class MusicRepositoryImpl @Inject constructor(
                 }
             }
         }.flowOn(Dispatchers.Default)
-    }
-
-    override suspend fun addSearchHistoryItem(query: String) {
-        withContext(Dispatchers.IO) {
-            searchHistoryDao.deleteByQuery(query)
-            searchHistoryDao.insert(SearchHistoryEntity(query = query, timestamp = System.currentTimeMillis()))
-        }
-    }
-
-    override suspend fun getRecentSearchHistory(limit: Int): List<SearchHistoryItem> {
-        return withContext(Dispatchers.IO) {
-            searchHistoryDao.getRecentSearches(limit).map { it.toSearchHistoryItem() }
-        }
-    }
-
-    override suspend fun deleteSearchHistoryItemByQuery(query: String) {
-        withContext(Dispatchers.IO) {
-            searchHistoryDao.deleteByQuery(query)
-        }
-    }
-
-    override suspend fun clearSearchHistory() {
-        withContext(Dispatchers.IO) {
-            searchHistoryDao.clearAll()
-        }
-    }
-
-    override fun getMusicByGenre(genreId: String): Flow<List<Song>> {
-        return combine(
-            userPreferencesRepository.mockGenresEnabledFlow,
-            userPreferencesRepository.allowedDirectoriesFlow,
-            userPreferencesRepository.blockedDirectoriesFlow
-        ) { mockEnabled, allowedDirs, blockedDirs ->
-            Triple(mockEnabled, allowedDirs, blockedDirs)
-        }.flatMapLatest { (mockEnabled, allowedDirs, blockedDirs) ->
-            flow {
-                val (allowedParentDirs, applyDirectoryFilter) =
-                    computeAllowedDirs(allowedDirs, blockedDirs)
-                val genreName = if (mockEnabled) "Mock" else genreId
-                emit(
-                    if (genreName.equals("unknown", ignoreCase = true)) {
-                        musicDao.getSongsWithNullGenre(
-                            allowedParentDirs = allowedParentDirs,
-                            applyDirectoryFilter = applyDirectoryFilter
-                        )
-                    } else {
-                        // getSongsByGenreContaining uses a LIKE query so that a song stored as
-                        // "Rock, Pop" is returned when browsing either "Rock" or "Pop".
-                        musicDao.getSongsByGenreContaining(
-                            genreName = genreName,
-                            genrePrefix = "$genreName,%",          // "Rock,..." / "Rock, ..."
-                            genreSuffixWithSpace = "%, $genreName", // "..., Rock"
-                            genreSuffix = "%,$genreName",          // "...,Rock"
-                            genreMiddleWithSpace = "%, $genreName,%", // "..., Rock,..."
-                            genreMiddle = "%,$genreName,%",        // "...,Rock,..."
-                            allowedParentDirs = allowedParentDirs,
-                            applyDirectoryFilter = applyDirectoryFilter
-                        )
-                    }
-                )
-            }.flatMapLatest { it }
-        }.map { entities ->
-            entities.map { it.toSong() }
-        }.flowOn(Dispatchers.IO)
     }
 
     override fun getSongsByIds(songIds: List<String>): Flow<List<Song>> {
@@ -995,87 +861,16 @@ class MusicRepositoryImpl @Inject constructor(
         return if (longId != null) {
             musicDao.getSongById(longId).map { it?.toSong() }.flowOn(Dispatchers.IO)
         } else {
-            combine(
-                telegramDao.getSongsByIds(listOf(songId)),
-                telegramDao.getAllChannels()
-            ) { songs, channels ->
-                val channelMap = channels.associateBy { it.chatId }
-                songs.firstOrNull()?.let {
-                    it.toSong(channelTitle = channelMap[it.chatId]?.title)
-                }
-            }.flowOn(Dispatchers.IO)
+            flowOf(null)
         }
-    }
-
-    override fun getGenres(): Flow<List<Genre>> {
-        return combine(
-            userPreferencesRepository.allowedDirectoriesFlow,
-            userPreferencesRepository.blockedDirectoriesFlow
-        ) { allowedDirs, blockedDirs ->
-            allowedDirs to blockedDirs
-        }.flatMapLatest { (allowedDirs, blockedDirs) ->
-            flow {
-                val (allowedParentDirs, applyDirectoryFilter) =
-                    computeAllowedDirs(allowedDirs, blockedDirs)
-                emit(
-                    combine(
-                        musicDao.getUniqueGenres(
-                            allowedParentDirs = allowedParentDirs,
-                            applyDirectoryFilter = applyDirectoryFilter
-                        ),
-                        musicDao.hasUnknownGenre(
-                            allowedParentDirs = allowedParentDirs,
-                            applyDirectoryFilter = applyDirectoryFilter
-                        )
-                    ) { genreNames, hasUnknown ->
-                        val knownGenres = genreNames
-                            .asSequence()
-                            .flatMap { raw -> raw.split(",") } // split "Rock, Pop" → ["Rock", "Pop"]
-                            .map { it.trim() }
-                            .filter { it.isNotBlank() }
-                            .map { buildGenre(it) }
-                            .distinctBy { it.id }
-                            .sortedBy { it.name.lowercase() }
-                            .toList()
-                        val unknownAlreadyPresent = knownGenres.any { it.id == UNKNOWN_GENRE_ID }
-                        if (hasUnknown && !unknownAlreadyPresent) {
-                            knownGenres + buildGenre(UNKNOWN_GENRE_NAME)
-                        } else {
-                            knownGenres
-                        }
-                    }
-                )
-            }.flatMapLatest { it }
-        }.conflate().flowOn(Dispatchers.IO)
-    }
-
-    private fun buildGenre(genreName: String): Genre {
-        val id = if (genreName.equals(UNKNOWN_GENRE_NAME, ignoreCase = true)) {
-            UNKNOWN_GENRE_ID
-        } else {
-            genreName
-                .lowercase()
-                .replace(" ", "_")
-                .replace("/", "_")
-        }
-        val lightThemeColor = GenreThemeUtils.getGenreThemeColor(id, isDark = false)
-        val darkThemeColor = GenreThemeUtils.getGenreThemeColor(id, isDark = true)
-        return Genre(
-            id = id,
-            name = genreName,
-            lightColorHex = lightThemeColor.container.toHexString(),
-            onLightColorHex = lightThemeColor.onContainer.toHexString(),
-            darkColorHex = darkThemeColor.container.toHexString(),
-            onDarkColorHex = darkThemeColor.onContainer.toHexString()
-        )
     }
 
     override suspend fun getLyrics(
         song: Song,
-        sourcePreference: LyricsSourcePreference,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        traceContext: com.theveloper.pixelplay.utils.PlaybackTraceContext?
     ): Lyrics? {
-        return lyricsRepository.getLyrics(song, sourcePreference, forceRefresh)
+        return lyricsRepository.getLyrics(song, forceRefresh, traceContext)
     }
 
     override suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>? {
@@ -1101,12 +896,12 @@ class MusicRepositoryImpl @Inject constructor(
         return lyricsRepository.searchRemoteByQuery(title, artist)
     }
 
-    override suspend fun updateLyrics(songId: Long, lyrics: String) {
-        lyricsRepository.updateLyrics(songId, lyrics)
+    override suspend fun updateLyrics(song: Song, lyrics: String) {
+        lyricsRepository.updateLyrics(song, lyrics)
     }
 
-    override suspend fun resetLyrics(songId: Long) {
-        lyricsRepository.resetLyrics(songId)
+    override suspend fun resetLyrics(song: Song) {
+        lyricsRepository.resetLyrics(song)
     }
 
     override suspend fun resetAllLyrics() {
@@ -1163,135 +958,6 @@ class MusicRepositoryImpl @Inject constructor(
         musicDao.deleteById(id)
     }
 
-    override suspend fun clearTelegramData() {
-        // Delete all Telegram playlists from app playlists
-        val allChannels = telegramDao.getAllChannels().first()
-        allChannels.forEach { channel ->
-            telegramRepository.deleteAppPlaylistForTelegramChannel(channel.chatId)
-            telegramRepository.deleteAllTopicPlaylistsForChannel(channel.chatId)
-        }
-
-        musicDao.clearAllTelegramSongs()
-        telegramDao.clearAll()
-        // Clear all Telegram caches (TDLib files, embedded art, memory)
-        telegramRepository.clearMemoryCache()
-        telegramCacheManager.clearAllCache()
-    }
-
-    override suspend fun saveTelegramChannel(channel: TelegramChannelEntity) {
-        telegramDao.insertChannel(channel)
-
-        // Create or update the corresponding app playlist.
-        // Forum channels use per-topic playlists (managed by replaceTelegramSongsForTopic),
-        // so we skip the flat channel-level playlist when topics exist.
-        try {
-            val topics = withContext(Dispatchers.IO) {
-                telegramDao.getTopicsByChannelOnce(channel.chatId)
-            }
-            if (topics.isEmpty()) {
-                // Flat (non-forum) channel: create/update a single channel playlist
-                val channelSongs = withContext(Dispatchers.IO) {
-                    telegramDao.getSongsByChatId(channel.chatId)
-                }
-                telegramRepository.updateAppPlaylistForTelegramChannel(
-                    channel.chatId,
-                    channel.title,
-                    channelSongs
-                )
-            }
-            // Forum channels: topic playlists are managed by replaceTelegramSongsForTopic
-        } catch (e: Exception) {
-            Log.e("MusicRepo", "Failed to update app playlist for Telegram channel ${channel.chatId}", e)
-        }
-
-        // Trigger the unified-library sync now that the channel row exists. SyncWorker's
-        // Telegram phase is gated on telegramDao.getAllChannels() being non-empty, so this
-        // is the earliest moment the sync can succeed. KEEP (not REPLACE) ensures we never
-        // cancel a heavier full/rebuild that might be running under the same unique name.
-        requestTelegramUnifiedSync()
-    }
-
-    override fun getAllTelegramChannels(): Flow<List<TelegramChannelEntity>> {
-        return telegramDao.getAllChannels()
-    }
-
-    override suspend fun deleteTelegramChannel(chatId: Long) {
-        musicDao.clearTelegramSongsForChat(chatId)
-        telegramDao.deleteSongsByChatId(chatId)
-        telegramDao.deleteTopicsByChannel(chatId)     // NEW: remove topics
-        telegramDao.deleteChannel(chatId)
-        telegramRepository.deleteAppPlaylistForTelegramChannel(chatId)
-        telegramRepository.deleteAllTopicPlaylistsForChannel(chatId)  // NEW: remove topic playlists
-    }
-
-    override suspend fun saveTelegramTopics(chatId: Long, topics: List<TelegramTopicEntity>) {
-        telegramDao.insertTopics(topics)
-    }
-
-    override suspend fun replaceTopicsForChannel(
-        chatId: Long,
-        freshTopics: List<TelegramTopicEntity>
-    ) {
-        val existingTopics = telegramDao.getTopicsByChannelOnce(chatId)
-        val freshThreadIds = freshTopics.map { it.threadId }.toSet()
-
-        // Delete topics that are no longer returned by Telegram
-        val removedTopics = existingTopics.filter { it.threadId !in freshThreadIds }
-        for (removed in removedTopics) {
-            // Delete their songs from the telegram_songs table
-            telegramDao.deleteSongsByTopicId(chatId, removed.threadId)
-            // Delete their songs from the main music DB
-            musicDao.clearTelegramSongsForTopic(chatId, removed.threadId)
-            // Delete their playlist from the app playlist store
-            telegramRepository.deleteAppPlaylistForTopic(chatId, removed.threadId)
-            // Delete the topic row itself
-            telegramDao.deleteTopic(removed.id)
-        }
-
-        // Insert/update the fresh topic list
-        if (freshTopics.isNotEmpty()) {
-            telegramDao.insertTopics(freshTopics)
-        }
-    }
-
-    override suspend fun getTopicsForChannel(chatId: Long): List<TelegramTopicEntity> {
-        return telegramDao.getTopicsByChannelOnce(chatId)
-    }
-    override fun getAllTelegramTopics(): Flow<List<TelegramTopicEntity>> {
-        return telegramDao.getAllTopics()
-    }
-
-    override suspend fun replaceTelegramSongsForTopic(
-        chatId: Long,
-        threadId: Long,
-        topicName: String,
-        songs: List<Song>
-    ) {
-        // Stamp each song entity with the threadId before inserting
-        val entities = songs.mapNotNull { it.toTelegramEntityWithThread(threadId) }
-            .filter { it.chatId == chatId }
-
-        ensureTelegramDownloadSyncObserverStarted()
-        telegramDao.deleteSongsByTopicId(chatId, threadId)
-        if (entities.isNotEmpty()) {
-            telegramDao.insertSongs(entities)
-            telegramRepository.warmUpArtworkForSongs(entities)
-        }
-
-        // Create/update the per-topic app playlist
-        telegramRepository.updateAppPlaylistForTopic(chatId, threadId, topicName, entities)
-
-        // Best-effort sync trigger: if no worker is in flight yet, KEEP enqueues a fresh
-        // incremental run that will catch the rows being committed during the topic
-        // loop. This is the safety net for forum flows that fail mid-loop and never
-        // reach the final saveTelegramChannel() call (the dashboard's syncForumChannel
-        // path in particular — its only sync trigger is the end-of-flow channel save).
-        // Subsequent topic insertions are no-ops here because the existing worker is
-        // running; the calling VM's finally block ensures a follow-up sync runs
-        // afterwards to pick up rows added past the worker's Telegram phase.
-        requestTelegramUnifiedSync()
-    }
-
     override suspend fun getSongIdsSorted(
         sortOption: SortOption,
         storageFilter: com.theveloper.pixelplay.data.model.StorageFilter
@@ -1323,15 +989,4 @@ class MusicRepositoryImpl @Inject constructor(
             musicDao.getSongIdByContentUri(contentUri)
         }
 
-    override fun requestTelegramUnifiedSync() {
-        // KEEP — never disturb a full/rebuild sync that shares this unique work name.
-        // If no worker is queued or running, this enqueues a fresh incremental run.
-        // If one is already in flight, we let it complete; its Telegram phase reads
-        // telegram_songs at run time and will pick up rows committed before then.
-        androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
-            com.theveloper.pixelplay.data.worker.SyncWorker.WORK_NAME,
-            androidx.work.ExistingWorkPolicy.KEEP,
-            com.theveloper.pixelplay.data.worker.SyncWorker.incrementalSyncWork()
-        )
-    }
 }

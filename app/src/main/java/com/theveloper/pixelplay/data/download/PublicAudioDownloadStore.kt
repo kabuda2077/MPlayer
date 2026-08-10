@@ -82,6 +82,7 @@ class PublicAudioDownloadStore @Inject constructor(
         if (entity.status != DownloadStatus.COMPLETED) return null
         val publicUri = entity.publicUri?.takeIf { it.isNotBlank() } ?: return null
         val uri = runCatching { Uri.parse(publicUri) }.getOrNull() ?: return null
+        if (!isReadable(uri)) return null
         val size = entity.sizeBytes.takeIf { it > 0L } ?: querySize(uri)
         if (size <= 0L) return null
         return DownloadedAudioFile(
@@ -92,6 +93,12 @@ class PublicAudioDownloadStore @Inject constructor(
             quality = entity.actualQuality
         )
     }
+
+    private fun isReadable(uri: Uri): Boolean = runCatching {
+        resolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+    }.onFailure { error ->
+        Timber.d(error, "Unable to open stale public download uri: $uri")
+    }.getOrDefault(false)
 
     private fun querySize(uri: Uri): Long {
         val projection = arrayOf(MediaStore.Audio.Media.SIZE)

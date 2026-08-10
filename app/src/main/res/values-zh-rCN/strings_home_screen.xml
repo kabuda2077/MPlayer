@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">如果可用，可从仓库的 GitHub Actions 工作流产物 (artifacts) 中获取。</string>
     <string name="beta_sheet_nightly_report_title">报告 Nightly 问题</string>
     <string name="beta_sheet_nightly_report_body">在报告 Nightly 版本的问题时，请务必说明该问题发生于 Nightly 版本，而非正式发布版本。请尽可能提供构建日期、工作流运行名称或编号，或者提交 SHA。并请检查最新的正式版本中是否会出现相同问题。</string>
-    <string name="beta05_title">Beta 0.5.0 升级</string>
-    <string name="beta05_clean_install_title">建议全新安装</string>
-    <string name="beta05_clean_install_body">如果您从 Beta 0.5.0 升级，此更新可能需要全新的媒体库数据，而不是旧的缓存状态。</string>
-    <string name="beta05_if_wrong_meta_title">如果元数据或媒体库条目看起来有误</string>
-    <string name="beta05_if_wrong_meta_body">歌曲元数据错误、艺术家或专辑不匹配，或出现类似重复的条目，通常意味着只需全新安装即可解决。</string>
-    <string name="beta05_dont_show">不再显示</string>
-    <string name="beta05_got_it">知道了</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">糟糕！出错了</string>

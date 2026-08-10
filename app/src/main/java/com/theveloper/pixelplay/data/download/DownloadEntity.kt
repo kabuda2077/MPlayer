@@ -33,7 +33,7 @@ data class DownloadEntity(
     @ColumnInfo(name = "content_uri_string")
     val contentUriString: String,
     @ColumnInfo(name = "song_id")
-    val songId: Long,
+    val songId: Long?,
     @ColumnInfo(name = "title")
     val title: String,
     @ColumnInfo(name = "artist")

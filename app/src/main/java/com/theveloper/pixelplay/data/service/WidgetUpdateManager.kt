@@ -5,7 +5,6 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.model.PlayerInfo
-import com.theveloper.pixelplay.data.service.wear.WearStatePublisher
 import com.theveloper.pixelplay.ui.glancewidget.BarWidget4x1
 import com.theveloper.pixelplay.ui.glancewidget.ControlWidget4x2
 import com.theveloper.pixelplay.ui.glancewidget.GridWidget2x2
@@ -21,31 +20,26 @@ import timber.log.Timber
 import kotlin.math.abs
 
 /**
- * Owns the Glance widget + Wear OS state-publishing pipeline, extracted from
+ * Owns the Glance widget update pipeline, extracted from
  * [MusicService] during the Pass 5 service decomposition.
  *
  * Responsibilities:
- *  - Debouncing the many `requestFullUpdate` triggers fired by player/cast events.
+ *  - Debouncing the many `requestFullUpdate` triggers fired by player events.
  *  - Diffing the freshly built [PlayerInfo] against the last published one so we
- *    only re-render widgets / re-publish Wear state when something user-visible
- *    actually changed.
- *  - Rendering every Glance widget variant and publishing to the watch.
+ *    only re-render widgets when something user-visible actually changed.
+ *  - Rendering every Glance widget variant.
  *
  * State *assembly* stays in the service (it is intimately tied to the player,
- * repositories, favorites and theme), supplied here through [buildPlayerInfo] and
- * [resolveCurrentMediaIdForWear]. This manager only orchestrates the *update*.
+ * repositories, favorites and theme), supplied here through [buildPlayerInfo].
+ * This manager only orchestrates the *update*.
  */
 internal class WidgetUpdateManager(
     private val context: Context,
     private val scope: CoroutineScope,
-    private val wearStatePublisher: WearStatePublisher,
     private val buildPlayerInfo: suspend () -> PlayerInfo,
-    private val resolveCurrentMediaIdForWear: suspend () -> String?,
 ) {
     private companion object {
         private const val TAG = "MusicService_PixelPlay"
-        // Shorter debounce for forced (user-visible) state changes so the watch can
-        // foreground PixelPlay quickly; longer one coalesces incidental updates.
         private const val FORCED_DEBOUNCE_MS = 250L
         private const val NORMAL_DEBOUNCE_MS = 300L
         private const val FOLLOW_UP_DELAY_MS = 250L
@@ -89,7 +83,6 @@ internal class WidgetUpdateManager(
      */
     fun clearCachedState() {
         lastWidgetPlayerInfo = null
-        wearStatePublisher.clearCache()
     }
 
     private suspend fun processUpdateInternal() {
@@ -97,20 +90,9 @@ internal class WidgetUpdateManager(
         val oldInfo = lastWidgetPlayerInfo
 
         val shouldUpdateWidgets = oldInfo == null || shouldUpdateWidget(oldInfo, playerInfo)
-        val shouldPublishWear = oldInfo == null || shouldPublishWearState(oldInfo, playerInfo)
-
-        if (shouldUpdateWidgets || shouldPublishWear) {
-            lastWidgetPlayerInfo = playerInfo
-        }
-
         if (shouldUpdateWidgets) {
+            lastWidgetPlayerInfo = playerInfo
             updateGlanceWidgets(playerInfo)
-        }
-
-        if (shouldPublishWear) {
-            val currentMediaId = resolveCurrentMediaIdForWear()
-            // Publish state to Wear OS watch
-            wearStatePublisher.publishState(currentMediaId, playerInfo)
         }
     }
 
@@ -127,17 +109,8 @@ internal class WidgetUpdateManager(
         if (old.isShuffleEnabled != new.isShuffleEnabled) return true
         if (old.repeatMode != new.repeatMode) return true
         if (old.totalDurationMs != new.totalDurationMs) return true
-        if (old.wearThemePalette != new.wearThemePalette) return true
-
         val drift = abs(old.currentPositionMs - new.currentPositionMs)
         return drift > 3000L
-    }
-
-    private fun shouldPublishWearState(old: PlayerInfo, new: PlayerInfo): Boolean {
-        return shouldUpdateWidget(old, new) ||
-            old.wearQueueRevision != new.wearQueueRevision ||
-            old.lyrics != new.lyrics ||
-            old.isLoadingLyrics != new.isLoadingLyrics
     }
 
     private suspend fun updateGlanceWidgets(playerInfo: PlayerInfo) = withContext(Dispatchers.IO) {
@@ -193,8 +166,6 @@ internal class WidgetUpdateManager(
             lyrics = null,
             isLoadingLyrics = false,
             queue = queue.take(QUEUE_PREVIEW_LIMIT),
-            wearThemePalette = null,
-            wearQueueRevision = "",
         )
     }
 }

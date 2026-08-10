@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Minimizar reproductor</string>
     <string name="player_now_playing">Reproduciendo ahora</string>
     <string name="player_cd_cloud_stream">Transmisión en la nube</string>
-    <string name="player_cd_cast">Transmitir</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Reproducción local</string>
     <string name="player_connecting">Conectando…</string>
     <string name="player_cd_open_queue">Abrir cola</string>    
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Prepárate para conectar</string>
-    <string name="cast_perm_body">Permite que PixelPlayer vea tus dispositivos cercanos y tu Wi‑Fi actual para que podamos mantener sincronizados tu transmisión, el audio Bluetooth y los altavoces.</string>
-    <string name="cast_perm_nearby_title">Dispositivos cercanos</string>
-    <string name="cast_perm_nearby_desc">Necesario para leer y controlar tus dispositivos de audio Bluetooth conectados.</string>
-    <string name="cast_perm_location_title">Ubicación para Wi‑Fi</string>
-    <string name="cast_perm_location_desc">Android requiere Ubicación para compartir la red Wi‑Fi (SSID) en la que estás para que podamos encontrar dispositivos de transmisión compatibles.</string>
-    <string name="cast_allow_access">Permitir acceso</string>
-    <string name="cast_perm_footer">Solo usamos estos permisos para la interconectividad de dispositivos: transmitir, controlar altavoces cercanos y mantener el audio sincronizado.</string>
-    <string name="cast_title_connect">Conectar dispositivo</string>
-    <string name="cast_scanning_nearby">Escaneando cerca</string>
-    <string name="cast_subtitle_session">Sesión de transmisión</string>
-    <string name="cast_connecting">Conectando</string>
-    <string name="cast_connected">Conectado</string>
-    <string name="cast_this_phone">Este teléfono</string>
-    <string name="cast_bluetooth_audio">Audio Bluetooth</string>
-    <string name="cast_local_playback">Reproducción local</string>
-    <string name="cast_playing">Reproduciendo</string>
-    <string name="cast_paused">Pausado</string>
-    <string name="cast_volume_device">Volumen del dispositivo</string>
-    <string name="cast_volume_phone">Volumen del teléfono</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Nivel de batería</string>
-    <string name="cast_cd_volume_level">Nivel de volumen</string>
-    <string name="cast_disconnect">Desconectar</string>
-    <string name="cast_connectivity">Conectividad</string>
-    <string name="cast_turn_on_wifi_bt">Activar Wi‑Fi o Bluetooth</string>
-    <string name="cast_cd_refresh_connections">Actualizar conexiones</string>
-    <string name="cast_wifi">Wi‑Fi</string>
-    <string name="cast_wifi_off">Desactivado</string>
-    <string name="cast_wifi_on">Activado</string>
-    <string name="cast_wifi_connected">Conectado</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Desactivado</string>
-    <string name="cast_bt_on">Activado</string>
-    <string name="cast_bt_connected">Conectado</string>
-    <string name="cast_nearby_devices">Dispositivos cercanos</string>
-    <string name="cast_cd_refresh_devices">Actualizar dispositivos</string>
-    <string name="cast_status_connected">Conectado</string>
-    <string name="cast_status_connecting">Conectando</string>
-    <string name="cast_status_available_connect">Disponible para conectar</string>
-    <string name="cast_status_available">Disponible</string>
-    <string name="cast_connecting_ellipsis">Conectando…</string>
-    <string name="cast_searching">Buscando dispositivos…</string>
-    <string name="cast_searching_hint">Asegúrate de que tu TV o altavoz esté encendido y comparta la misma red Wi‑Fi.</string>
-    <string name="cast_tab_controls">Controles</string>
-    <string name="cast_tab_devices">Dispositivos</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Servidor de medios Cast</string>
-    <string name="cast_server_notification_title">Transmitiendo a dispositivo</string>
-    <string name="cast_server_notification_text">Sirviendo medios al dispositivo Cast</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">La búsqueda no está disponible temporalmente para este formato de audio en Cast porque puede bloquear la sesión de Cast.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Temporizador de apagado</string>

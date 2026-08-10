@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +23,20 @@ interface PluginDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(plugin: PluginEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(plugins: List<PluginEntity>)
+
+    @Query("DELETE FROM audio_source_plugins")
+    suspend fun clearAll()
+
+    @Transaction
+    suspend fun replaceAll(plugins: List<PluginEntity>) {
+        clearAll()
+        if (plugins.isNotEmpty()) {
+            upsertAll(plugins)
+        }
+    }
 
     @Query("UPDATE audio_source_plugins SET enabled = 0, updated_at = :updatedAt")
     suspend fun disableAll(updatedAt: Long)

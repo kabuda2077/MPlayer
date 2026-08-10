@@ -473,39 +473,12 @@ fun PlaylistItem(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    if (playlist.source == "TELEGRAM" || playlist.source == "TELEGRAM_TOPIC") {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            painter = painterResource(R.drawable.telegram),
-                            contentDescription = "Telegram",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    if (playlist.source == "TELEGRAM_TOPIC") {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Rounded.Topic,
-                            contentDescription = "Topic",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                     if (playlist.source == "QQMUSIC") {
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Rounded.Album,
                             contentDescription = "QQ Music",
                             tint = Color(0xFF2E7D32), // 修改为绿色
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    if (playlist.source == "NAVIDROME") {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            painter = painterResource(R.drawable.ic_navidrome),
-                            contentDescription = "Navidrome",
-                            tint = Color.Unspecified,
                             modifier = Modifier.size(18.dp)
                         )
                     }

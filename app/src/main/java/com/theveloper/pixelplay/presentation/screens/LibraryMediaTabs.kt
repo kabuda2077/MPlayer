@@ -594,15 +594,15 @@ fun LibraryArtistsTab(
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                val genresPullToRefreshState = rememberPullToRefreshState()
+                val artistsPullToRefreshState = rememberPullToRefreshState()
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = onRefresh,
-                    state = genresPullToRefreshState,
+                    state = artistsPullToRefreshState,
                     modifier = Modifier.fillMaxSize(),
                     indicator = {
                         PullToRefreshDefaults.LoadingIndicator(
-                            state = genresPullToRefreshState,
+                            state = artistsPullToRefreshState,
                             isRefreshing = isRefreshing,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )

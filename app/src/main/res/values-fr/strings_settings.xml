@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Capacités de l\'appareil</string>
     <string name="settings_category_device_capabilities_subtitle">Spécifications audio, codecs et infos sur le décodeur</string>
     <string name="settings_category_accounts_title">Comptes</string>
-    <string name="settings_category_accounts_subtitle">Gérer Telegram, Google Drive, NetEase Music et d\'autres services</string>
     <string name="settings_category_about_title">À propos</string>
     <string name="settings_category_about_subtitle">Infos sur l\'application, version et crédits</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">Analyse auto des fichiers .lrc</string>
     <string name="settings_auto_scan_lrc_subtitle">Analyser et assigner automatiquement les fichiers .lrc du même dossier lors de la synchro.</string>
     <string name="settings_lyrics_management_section">Gestion des paroles</string>
-    <string name="settings_lyrics_source_priority_title">Priorité des sources de paroles</string>
-    <string name="settings_lyrics_source_priority_subtitle">Choisissez quelle source essayer en premier pour récupérer les paroles.</string>
-    <string name="settings_lyrics_embedded_first">Intégrées d\'abord</string>
-    <string name="settings_lyrics_local_first">Locales (.lrc) d\'abord</string>
     <string name="settings_reset_imported_lyrics_title">Réinitialiser les paroles importées</string>
     <string name="settings_reset_imported_lyrics_subtitle">Supprimer toutes les paroles importées de la base de données.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Réinitialiser les paroles importées ?</string>
@@ -261,9 +256,6 @@
     <string name="settings_gain_mode_subtitle">Piste : normaliser chaque chanson. Album : normaliser par album.</string>
     <string name="settings_gain_mode_track">Piste</string>
     <string name="settings_gain_mode_album">Album</string>
-    <string name="settings_cast_section">Cast</string>
-    <string name="settings_cast_autoplay_title">Lecture auto lors de la connexion/déconnexion Cast</string>
-    <string name="settings_cast_autoplay_subtitle">Démarrer la lecture immédiatement après avoir changé de connexion Cast.</string>
     <string name="settings_headphones_section">Casque</string>
     <string name="settings_headphones_resume_title">Reprendre lors de la reconnexion du casque</string>
     <string name="settings_headphones_resume_subtitle">Si la lecture a été mise en pause car le casque a été retiré, elle reprendra automatiquement lors de sa reconnexion.</string>
@@ -601,7 +593,6 @@
     <string name="accounts_no_linked_subtitle">Connectez un fournisseur pour le gérer depuis cet écran.</string>
     <string name="accounts_connect_service">Connecter %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (Bientôt disponible)</string>
-    <string name="accounts_google_drive_soon">Google Drive arrive bientôt.</string>
     <string name="accounts_unable_open_screen">Impossible d\'ouvrir cet écran pour le moment.</string>
 
     <!-- About category -->
@@ -621,7 +612,6 @@
     <string name="about_contributors_section_subtitle">Liste des contributeurs en direct de GitHub.</string>
     <string name="about_contributions_format">%1$d contrib.</string>
     <string name="about_cd_open_github_profile">Ouvrir le profil GitHub</string>
-    <string name="about_cd_open_telegram">Ouvrir Telegram</string>
     <string name="about_cd_contributor_avatar">Avatar de %1$s</string>
     <string name="about_cd_contributor_icon">Icône de %1$s</string>
 </resources>

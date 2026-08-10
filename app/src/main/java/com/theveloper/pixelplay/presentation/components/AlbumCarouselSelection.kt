@@ -215,9 +215,7 @@ fun AlbumCarouselSection(
                         title = song.title,
                         modifier = Modifier.fillMaxSize(),
                         targetSize = targetSize,
-                        placeholderModel = if (song.albumArtUriString?.startsWith("telegram_art") == true) {
-                             "${song.albumArtUriString}?quality=thumb"
-                        } else null
+                        placeholderModel = null
                     )
                 }
             }

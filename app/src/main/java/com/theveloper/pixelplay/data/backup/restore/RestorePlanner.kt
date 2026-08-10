@@ -47,7 +47,7 @@ class RestorePlanner @Inject constructor(
                 manifest = manifest,
                 backupUri = uri.toString(),
                 availableModules = availableModules,
-                selectedModules = availableModules,
+                selectedModules = availableModules.intersect(BackupSection.defaultSelection),
                 moduleDetails = moduleDetails,
                 warnings = warnings
             )

@@ -5,8 +5,12 @@ import android.os.PowerManager
 import com.theveloper.pixelplay.MainCoroutineExtension
 import com.theveloper.pixelplay.data.model.PlaybackQueueItemSnapshot
 import com.theveloper.pixelplay.data.model.PlaybackQueueSnapshot
+import com.theveloper.pixelplay.data.model.Lyrics
+import com.theveloper.pixelplay.data.model.LyricsMediaKey
+import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.service.player.DualPlayerEngine
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
 import io.mockk.every
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -25,7 +29,6 @@ class PlaybackStateHolderTest {
 
     private val dualPlayerEngine: DualPlayerEngine = mockk(relaxed = true)
     private val userPreferencesRepository: UserPreferencesRepository = mockk(relaxed = true)
-    private val castStateHolder: CastStateHolder = mockk(relaxed = true)
     private val queueStateHolder: QueueStateHolder = mockk(relaxed = true)
     private val appContext: Context = mockk(relaxed = true)
     private val powerManager: PowerManager = mockk(relaxed = true)
@@ -33,8 +36,8 @@ class PlaybackStateHolderTest {
     private fun createHolder() = PlaybackStateHolder(
         dualPlayerEngine = dualPlayerEngine,
         userPreferencesRepository = userPreferencesRepository,
-        castStateHolder = castStateHolder,
         queueStateHolder = queueStateHolder,
+        playbackRequestCoordinator = PlaybackRequestCoordinator(),
         appContext = appContext
     )
 
@@ -170,5 +173,35 @@ class PlaybackStateHolderTest {
         holder.syncCurrentPositionFromPlayer("duplicate-song", 0L)
 
         assertEquals(0L, holder.currentPosition.value)
+    }
+
+    @Test
+    fun `lyrics result cannot cross sources that share the same numeric media id`() {
+        val holder = createHolder()
+        val qqSong = Song(
+            id = "42",
+            title = "QQ track",
+            artist = "Artist",
+            artistId = -1L,
+            album = "Album",
+            albumId = -1L,
+            path = "",
+            contentUriString = "qqmusic://42",
+            albumArtUriString = null,
+            duration = 1_000L,
+            mimeType = null,
+            bitrate = null,
+            sampleRate = null
+        )
+        val neteaseSong = qqSong.copy(
+            title = "Netease track",
+            contentUriString = "netease://42"
+        )
+        val wrongLyrics = Lyrics(plain = listOf("wrong source"), areFromRemote = true)
+
+        holder.projectControllerState { it.copy(currentSong = qqSong) }
+        holder.onLyricsLoaded(LyricsMediaKey.fromSong(neteaseSong).value, wrongLyrics)
+
+        assertEquals(null, holder.stablePlayerState.value.lyrics)
     }
 }

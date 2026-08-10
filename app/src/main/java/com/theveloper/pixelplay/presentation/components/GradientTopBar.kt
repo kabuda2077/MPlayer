@@ -101,7 +101,7 @@ fun HomeGradientTopBar(
     onNavigationIconClick: () -> Unit,
     onMoreOptionsClick: () -> Unit,
     onBetaClick: () -> Unit,
-    onTelegramClick: () -> Unit,
+    onCloudClick: () -> Unit,
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
     showBetaEntry: Boolean = false,
@@ -166,7 +166,7 @@ fun HomeGradientTopBar(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ),
-                    onClick = onTelegramClick
+                    onClick = onCloudClick
                 ) {
                     Icon(
                          imageVector = Icons.Rounded.Cloud,

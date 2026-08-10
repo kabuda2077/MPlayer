@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Свернуть плеер</string>
     <string name="player_now_playing">Сейчас играет</string>
     <string name="player_cd_cloud_stream">Облачный поток</string>
-    <string name="player_cd_cast">Трансляция</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Локальное воспроизведение</string>
     <string name="player_connecting">Подключение…</string>
     <string name="player_cd_open_queue">Открыть очередь</string>
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Подготовьтесь к подключению</string>
-    <string name="cast_perm_body">Разрешите PixelPlayer видеть ближайшие устройства и текущую сеть Wi-Fi, чтобы синхронизировать трансляцию, Bluetooth-аудио и колонки.</string>
-    <string name="cast_perm_nearby_title">Ближайшие устройства</string>
-    <string name="cast_perm_nearby_desc">Требуется для обнаружения и управления подключёнными Bluetooth-аудиоустройствами.</string>
-    <string name="cast_perm_location_title">Геолокация для Wi-Fi</string>
-    <string name="cast_perm_location_desc">Android требует доступ к геолокации, чтобы определить сеть Wi-Fi (SSID) и найти совместимые устройства для трансляции.</string>
-    <string name="cast_allow_access">Разрешить доступ</string>
-    <string name="cast_perm_footer">Эти разрешения используются только для подключения устройств, трансляции, управления ближайшими колонками и синхронизации звука.</string>
-    <string name="cast_title_connect">Подключить устройство</string>
-    <string name="cast_scanning_nearby">Поиск поблизости</string>
-    <string name="cast_subtitle_session">Сеанс трансляции</string>
-    <string name="cast_connecting">Подключение</string>
-    <string name="cast_connected">Подключено</string>
-    <string name="cast_this_phone">Этот телефон</string>
-    <string name="cast_bluetooth_audio">Bluetooth-аудио</string>
-    <string name="cast_local_playback">Локальное воспроизведение</string>
-    <string name="cast_playing">Воспроизведение</string>
-    <string name="cast_paused">Пауза</string>
-    <string name="cast_volume_device">Громкость устройства</string>
-    <string name="cast_volume_phone">Громкость телефона</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Уровень заряда</string>
-    <string name="cast_cd_volume_level">Уровень громкости</string>
-    <string name="cast_disconnect">Отключить</string>
-    <string name="cast_connectivity">Подключения</string>
-    <string name="cast_turn_on_wifi_bt">Включите Wi-Fi или Bluetooth</string>
-    <string name="cast_cd_refresh_connections">Обновить подключения</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">Выкл.</string>
-    <string name="cast_wifi_on">Вкл.</string>
-    <string name="cast_wifi_connected">Подключено</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Выкл.</string>
-    <string name="cast_bt_on">Вкл.</string>
-    <string name="cast_bt_connected">Подключено</string>
-    <string name="cast_nearby_devices">Ближайшие устройства</string>
-    <string name="cast_cd_refresh_devices">Обновить устройства</string>
-    <string name="cast_status_connected">Подключено</string>
-    <string name="cast_status_connecting">Подключение</string>
-    <string name="cast_status_available_connect">Доступно для подключения</string>
-    <string name="cast_status_available">Доступно</string>
-    <string name="cast_connecting_ellipsis">Подключение...</string>
-    <string name="cast_searching">Поиск устройств…</string>
-    <string name="cast_searching_hint">Убедитесь, что телевизор или колонка включены и подключены к той же сети Wi-Fi.</string>
-    <string name="cast_tab_controls">Управление</string>
-    <string name="cast_tab_devices">Устройства</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Сервер трансляции</string>
-    <string name="cast_server_notification_title">Трансляция на устройство</string>
-    <string name="cast_server_notification_text">Передача медиа на устройство Cast</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Перемотка временно недоступна для этого аудиоформата при трансляции, так как может привести к сбою сеанса Cast.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Таймер сна</string>

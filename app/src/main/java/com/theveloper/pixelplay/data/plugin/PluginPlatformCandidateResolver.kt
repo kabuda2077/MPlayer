@@ -26,7 +26,6 @@ class PluginPlatformCandidateResolver @Inject constructor(
     }
 
     suspend fun candidatesFor(song: Song, source: PluginSource): List<PluginPlatformCandidate> {
-        if (source == PluginSource.MIGU) return emptyList()
         val cacheKey = cacheKey(song, source)
         synchronized(cache) {
             cache[cacheKey]?.let { return it }
@@ -38,7 +37,6 @@ class PluginPlatformCandidateResolver @Inject constructor(
                 PluginSource.QQ_MUSIC -> searchQq(song)
                 PluginSource.KUGOU -> searchKugou(song)
                 PluginSource.KUWO -> searchKuwo(song)
-                PluginSource.MIGU -> emptyList()
             }
         }.onFailure { throwable ->
             Timber.w(throwable, "Plugin candidate search failed source=%s title=%s", source.lxSource, song.title)
@@ -153,7 +151,7 @@ class PluginPlatformCandidateResolver @Inject constructor(
         val candidates = mutableListOf<PluginPlatformCandidate>()
         for (keyword in searchKeywords(song)) {
             for (item in qqMusicApiService.searchSongs(keyword, page = 1, pageSize = 10)) {
-                val id = normalizeCandidateId(item.id) ?: item.mid.takeIf { it.isNotBlank() } ?: continue
+                val id = normalizeCandidateId(item.qqSongId) ?: item.mid.takeIf { it.isNotBlank() } ?: continue
                 matchCandidate(
                     song = song,
                     source = PluginSource.QQ_MUSIC,

@@ -8,7 +8,6 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
-import android.util.LruCache
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.media3.common.AudioAttributes as Media3AudioAttributes
@@ -20,9 +19,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DataSpec
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -36,41 +32,33 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mp3.Mp3Extractor
 import androidx.media3.extractor.flac.FlacExtractor
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
 import com.theveloper.pixelplay.data.model.TransitionSettings
-import com.theveloper.pixelplay.data.telegram.TelegramRepository
+import com.theveloper.pixelplay.data.stream.OnlineAudioCacheManager
 import com.theveloper.pixelplay.utils.envelope
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.theveloper.pixelplay.utils.PlaybackTrace
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
+import com.theveloper.pixelplay.utils.PlaybackTraceOrigin
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.io.File
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.net.ProxySelector
-import java.net.SocketAddress
-import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import okhttp3.OkHttpClient
 
-import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
-import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
-import com.theveloper.pixelplay.data.plugin.KugouStreamProxy
-import com.theveloper.pixelplay.data.plugin.KuwoStreamProxy
-import com.theveloper.pixelplay.data.qqmusic.QqMusicStreamProxy
-import androidx.core.net.toUri
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 
 data class ActiveDecoderInfo(
@@ -175,22 +163,6 @@ internal fun shouldDisableAudioOffloadOnEarlyBuffering(
         !isPostMediaItemTransition
 }
 
-private class LocalProxyBypassSelector : ProxySelector() {
-    private val delegate = getDefault()
-
-    override fun select(uri: URI?): List<Proxy> {
-        val host = uri?.host?.lowercase()
-        if (host in setOf("127.0.0.1", "localhost", "0.0.0.0", "::1", "[::1]")) {
-            return listOf(Proxy.NO_PROXY)
-        }
-        return delegate?.select(uri).orEmpty().ifEmpty { listOf(Proxy.NO_PROXY) }
-    }
-
-    override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: java.io.IOException?) {
-        delegate?.connectFailed(uri, sa, ioe)
-    }
-}
-
 /** ExoPlayer [DefaultLoadControl] buffer durations (ms) for a build of the player. */
 internal data class LoadControlBufferProfile(
     val minBufferMs: Int,
@@ -213,14 +185,14 @@ internal fun loadControlBufferProfileFor(isLowRamDevice: Boolean): LoadControlBu
         LoadControlBufferProfile(
             minBufferMs = 15_000,
             maxBufferMs = 30_000,
-            bufferForPlaybackMs = 1_000,
+            bufferForPlaybackMs = 2_500,
             bufferForPlaybackAfterRebufferMs = 5_000
         )
     } else {
         LoadControlBufferProfile(
             minBufferMs = 30_000,
             maxBufferMs = 60_000,
-            bufferForPlaybackMs = 1_000,
+            bufferForPlaybackMs = 2_500,
             bufferForPlaybackAfterRebufferMs = 5_000
         )
     }
@@ -238,17 +210,10 @@ internal fun loadControlBufferProfileFor(isLowRamDevice: Boolean): LoadControlBu
 @Singleton
 class DualPlayerEngine @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val telegramRepository: TelegramRepository,
-    private val telegramStreamProxy: com.theveloper.pixelplay.data.telegram.TelegramStreamProxy,
-    private val neteaseStreamProxy: NeteaseStreamProxy,
-    private val qqMusicStreamProxy: QqMusicStreamProxy,
-    private val kugouStreamProxy: KugouStreamProxy,
-    private val kuwoStreamProxy: KuwoStreamProxy,
-    private val navidromeStreamProxy: NavidromeStreamProxy,
-    private val jellyfinStreamProxy: com.theveloper.pixelplay.data.jellyfin.JellyfinStreamProxy,
-    private val gdriveStreamProxy: com.theveloper.pixelplay.data.gdrive.GDriveStreamProxy,
-    private val telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager,
-    private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
+    private val playbackSourceResolver: PlaybackSourceGateway,
+    private val playbackPrefetchController: PlaybackPrefetchController,
+    private val onlineAudioCacheManager: OnlineAudioCacheManager,
+    private val playbackWorkBudget: PlaybackWorkBudget,
     private val okHttpClient: OkHttpClient
 ) {
     private companion object {
@@ -262,11 +227,10 @@ class DualPlayerEngine @Inject constructor(
         private const val POST_TRANSITION_OFFLOAD_GUARD_MS = 2_000L
         private const val MAX_AUXILIARY_TIMELINE_ITEMS = 200
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
-        private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "kugou", "kuwo", "navidrome", "jellyfin", "gdrive")
-        // Subset of REMOTE_MEDIA_SCHEMES: schemes that need proxy resolution.
-        // http/https resolve directly and must NOT enter the resolvedUriCache lookup path.
-        private val CLOUD_PROXY_SCHEMES = setOf("telegram", "netease", "qqmusic", "kugou", "kuwo", "navidrome", "jellyfin", "gdrive")
-        private val LOCAL_PROXY_HOSTS = setOf("127.0.0.1", "localhost", "0.0.0.0", "::1")
+        private val REMOTE_MEDIA_SCHEMES =
+            MediaSourceClassifier.playbackResolvableSchemes + setOf("http", "https")
+        // Custom schemes resolved by the plugin-backed Media3 DataSource.
+        private val PLUGIN_SOURCE_SCHEMES = MediaSourceClassifier.playbackResolvableSchemes
     }
 
     data class TransitionTarget(
@@ -282,7 +246,6 @@ class DualPlayerEngine @Inject constructor(
     private var transitionJob: Job? = null
     private var bufferingFallbackJob: Job? = null
     private var transitionRunning = false
-    private var preResolutionJob: Job? = null
     private var queueSnapshot: List<MediaItem> = emptyList()
     private var activeWindowStartIndex = 0
     private var activePlayerUsesWindowedQueue = false
@@ -538,6 +501,9 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            if (::playerA.isInitialized && mediaItem?.mediaId == playerA.currentMediaItem?.mediaId) {
+                playbackPrefetchController.advancePlaybackGeneration()
+            }
             lastMediaItemTransitionAtMs = SystemClock.elapsedRealtime()
             cancelAudioOffloadFallback()
             AdvancedPerformanceDiagnostics.recordEventIfEnabled(
@@ -557,42 +523,9 @@ class DualPlayerEngine @Inject constructor(
                 cancelNext()
             }
 
-            val uri = mediaItem?.localConfiguration?.uri
-            if (uri?.scheme == "telegram") {
-                scope.launch {
-                    val result = telegramRepository.resolveTelegramUri(uri.toString())
-                    val fileId = result?.first
-                    telegramCacheManager.setActivePlayback(fileId)
-                    Timber.tag("DualPlayerEngine").d("Telegram playback active: fileId=$fileId")
-                }
-            } else {
-                telegramCacheManager.setActivePlayback(null)
-            }
             applyWakeModeForCurrentItem()
 
-            // --- Pre-Resolve Next/Prev Tracks with Debounce to prevent flooding ---
-            preResolutionJob?.cancel()
-            preResolutionJob = scope.launch {
-                delay(600) // Wait for user to stop skipping/navigating
-                try {
-                    val currentIndex = playerA.currentMediaItemIndex
-                    if (currentIndex != C.INDEX_UNSET) {
-                        // Resolve each neighbour directly — no intermediate list allocation.
-                        if (currentIndex + 1 < playerA.mediaItemCount) {
-                            playerA.getMediaItemAt(currentIndex + 1).localConfiguration?.uri
-                                ?.takeIf { it.scheme in CLOUD_PROXY_SCHEMES }
-                                ?.let { resolveCloudUri(it) }
-                        }
-                        if (currentIndex - 1 >= 0) {
-                            playerA.getMediaItemAt(currentIndex - 1).localConfiguration?.uri
-                                ?.takeIf { it.scheme in CLOUD_PROXY_SCHEMES }
-                                ?.let { resolveCloudUri(it) }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("DualPlayerEngine").w(e, "Pre-resolution error")
-                }
-            }
+            scheduleAdjacentPreResolution(mediaItem?.mediaId ?: "timeline")
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -754,33 +687,34 @@ class DualPlayerEngine @Inject constructor(
     }
 
     fun triggerAdjacentPreResolution() {
-        if (!::playerA.isInitialized) return
-        preResolutionJob?.cancel()
-        val currentIndex = playerA.currentMediaItemIndex
-        if (currentIndex != C.INDEX_UNSET) {
-            val adjacentCloudUris = mutableListOf<Uri>()
-            if (currentIndex + 1 < playerA.mediaItemCount) {
-                playerA.getMediaItemAt(currentIndex + 1).localConfiguration?.uri?.let { uri ->
-                    if (uri.scheme in REMOTE_MEDIA_SCHEMES) adjacentCloudUris.add(uri)
-                }
-            }
-            if (currentIndex - 1 >= 0) {
-                playerA.getMediaItemAt(currentIndex - 1).localConfiguration?.uri?.let { uri ->
-                    if (uri.scheme in REMOTE_MEDIA_SCHEMES) adjacentCloudUris.add(uri)
-                }
-            }
+        scheduleAdjacentPreResolution("timeline")
+    }
 
-            if (adjacentCloudUris.isNotEmpty()) {
-                preResolutionJob = scope.launch {
-                    delay(600) // Wait for user to stop skipping/navigating
-                    try {
-                        for (uriToResolve in adjacentCloudUris) {
-                            resolveCloudUri(uriToResolve)
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("DualPlayerEngine").w(e, "Error during pre-resolution triggered manually")
-                    }
+    private fun scheduleAdjacentPreResolution(key: String) {
+        if (!::playerA.isInitialized) return
+        playbackPrefetchController.launchLatest(
+            scope = scope,
+            slot = PlaybackWorkSlot.ADJACENT_SOURCE_RESOLUTION,
+            key = key
+        ) {
+            delay(600L)
+            try {
+                val currentIndex = playerA.currentMediaItemIndex
+                if (currentIndex == C.INDEX_UNSET) return@launchLatest
+                val targetIndex = when {
+                    currentIndex + 1 < playerA.mediaItemCount -> currentIndex + 1
+                    currentIndex - 1 >= 0 -> currentIndex - 1
+                    else -> C.INDEX_UNSET
                 }
+                if (targetIndex == C.INDEX_UNSET) return@launchLatest
+                val target = playerA.getMediaItemAt(targetIndex)
+                if (target.localConfiguration?.uri?.scheme in PLUGIN_SOURCE_SCHEMES) {
+                    preResolveMediaItem(target)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.tag("DualPlayerEngine").w(error, "Adjacent source pre-resolution failed")
             }
         }
     }
@@ -788,7 +722,6 @@ class DualPlayerEngine @Inject constructor(
     fun getAudioSessionId(): Int = if (::playerA.isInitialized) playerA.audioSessionId else 0
 
     private var isReleased = false
-    private val resolvedUriCache = LruCache<String, Uri>(100)
 
     // Whether the OS classifies this as a low-RAM device. Used to cap the player's max
     // prefetch depth so hi-res/lossless buffering (and the second player during a crossfade)
@@ -1026,6 +959,7 @@ class DualPlayerEngine @Inject constructor(
     private fun buildAdaptiveLoadControl(): DefaultLoadControl {
         val isLowRam = (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
             .isLowRamDevice
+        val profile = loadControlBufferProfileFor(isLowRam)
         // setPrioritizeTimeOverSizeThresholds(true): instructs ExoPlayer to use buffered
         // *duration* (not buffered *bytes*) as the criterion for deciding when to start
         // playback and when to stop buffering. This is required for correct behaviour with
@@ -1034,27 +968,15 @@ class DualPlayerEngine @Inject constructor(
         // Without this flag ExoPlayer falls back to a default byte threshold that was
         // designed for typical compressed audio (~128–320 kbps) and will underperform on
         // files with bitrates above ~1 Mbps.
-        return if (isLowRam) {
-            DefaultLoadControl.Builder()
-                .setBufferDurationsMs(
-                    /* minBufferMs                      */ 15_000,
-                    /* maxBufferMs                      */ 30_000,
-                    /* bufferForPlaybackMs              */  2_500,
-                    /* bufferForPlaybackAfterRebufferMs */  5_000
-                )
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build()
-        } else {
-            DefaultLoadControl.Builder()
-                .setBufferDurationsMs(
-                    /* minBufferMs                      */ 30_000,
-                    /* maxBufferMs                      */ 60_000,
-                    /* bufferForPlaybackMs              */  2_500,
-                    /* bufferForPlaybackAfterRebufferMs */  5_000
-                )
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build()
-        }
+        return DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                profile.minBufferMs,
+                profile.maxBufferMs,
+                profile.bufferForPlaybackMs,
+                profile.bufferForPlaybackAfterRebufferMs
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
     }
 
     private fun buildPlayer(): ExoPlayer {
@@ -1125,38 +1047,13 @@ class DualPlayerEngine @Inject constructor(
             .setUsage(C.USAGE_MEDIA)
             .build()
             
-        val resolver = object : ResolvingDataSource.Resolver {
-            override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
-                val uri = dataSpec.uri
-                currentProxyUriForStaleLocalProxy(uri)?.let { freshUri ->
-                    Timber.tag("DualPlayerEngine").d(
-                        "resolveDataSpec: refreshed local proxy URI %s -> %s",
-                        uri,
-                        freshUri
-                    )
-                    return dataSpec.buildUpon().setUri(freshUri).build()
-                }
-
-                val scheme = uri.scheme
-                if (scheme in CLOUD_PROXY_SCHEMES) {
-                    val originalUri = uri.toString()
-                    val resolved = resolvedUriCache.get(originalUri)
-                    if (resolved != null) {
-                        val freshResolved = currentProxyUriForStaleLocalProxy(resolved) ?: resolved
-                        return dataSpec.buildUpon().setUri(freshResolved).build()
-                    }
-                    Timber.tag("DualPlayerEngine").d("resolveDataSpec: Cache MISS for %s — using original URI", scheme)
-                }
-                return dataSpec
-            }
-        }
-        
-        val playerHttpClient = okHttpClient.newBuilder()
-            .proxySelector(LocalProxyBypassSelector())
-            .build()
-        val httpDataSourceFactory = OkHttpDataSource.Factory(playerHttpClient)
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
-        val resolvingFactory = ResolvingDataSource.Factory(dataSourceFactory, resolver)
+        val dataSourceFactory = PluginPlaybackDataSource.Factory(
+            context = context,
+            okHttpClient = okHttpClient,
+            sourceResolver = playbackSourceResolver,
+            onlineAudioCacheManager = onlineAudioCacheManager,
+            playbackWorkBudget = playbackWorkBudget
+        )
         val extractorsFactory = DefaultExtractorsFactory()
             // FLAG_WORKAROUND_IGNORE_EDIT_LISTS intentionally removed: it breaks Opus files
             // by discarding the edit list that encodes the pre-skip (encoder delay), causing
@@ -1170,7 +1067,7 @@ class DualPlayerEngine @Inject constructor(
         val loadControl = buildAdaptiveLoadControl()
 
         return ExoPlayer.Builder(context, renderersFactory)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(resolvingFactory, extractorsFactory))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory))
             .setLoadControl(loadControl)
             .build().apply {
             setAudioAttributes(audioAttributes, false)
@@ -1236,145 +1133,48 @@ class DualPlayerEngine @Inject constructor(
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
-    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
-        val canonicalUri = canonicalCloudUriFromLocalProxy(uri) ?: uri
-        val uriString = canonicalUri.toString()
-        resolvedUriCache.get(uriString)?.let { cached ->
-            return@withContext currentProxyUriForStaleLocalProxy(cached) ?: cached
-        }
+    suspend fun warmPlaybackSource(
+        uri: Uri,
+        playbackRequestId: String? = null,
+        mediaId: String? = null
+    ): Uri = playbackSourceResolver.resolve(
+        PlaybackSourceRequest(
+            uri = uri,
+            traceContext = playbackRequestId?.let {
+                PlaybackTraceContext(
+                    requestId = it,
+                    mediaId = mediaId,
+                    sourceUri = uri.toString(),
+                    origin = PlaybackTraceOrigin.DATA_SOURCE
+                )
+            }
+        )
+    ).resolvedUri
 
-        val resolved: Uri? = when (canonicalUri.scheme) {
-            "telegram" -> resolveTelegramUriAsync(canonicalUri, uriString)
-            "netease" -> resolveNeteaseUriAsync(uriString)
-            "qqmusic" -> resolveQqMusicUriAsync(uriString)
-            "kugou" -> resolveKugouUriAsync(uriString)
-            "kuwo" -> resolveKuwoUriAsync(uriString)
-            "navidrome" -> resolveNavidromeUriAsync(uriString)
-            "jellyfin" -> resolveJellyfinUriAsync(uriString)
-            "gdrive" -> resolveGDriveUriAsync(uriString)
-            else -> null
-        }
+    fun invalidatePlaybackSource(uri: Uri): Boolean = playbackSourceResolver.invalidate(uri)
 
-        if (resolved != null) {
-            resolvedUriCache.put(uriString, resolved)
-            return@withContext resolved
-        }
-        uri
-    }
-
-    private fun canonicalCloudUriFromLocalProxy(uri: Uri): Uri? {
-        val scheme = uri.scheme ?: return null
-        if (scheme != "http" && scheme != "https") return null
-        val host = uri.host?.lowercase() ?: return null
-        if (host !in LOCAL_PROXY_HOSTS) return null
-
-        val pathSegments = uri.pathSegments
-        if (pathSegments.size < 2) return null
-        val route = pathSegments[0]
-        val id = pathSegments[1]
-        return when (route) {
-            "netease" -> id.toLongOrNull()?.let { Uri.parse("netease://$it") }
-            "qqmusic" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("qqmusic://$it") }
-            "kugou" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("kugou://$it") }
-            "kuwo" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("kuwo://$it") }
-            "navidrome" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("navidrome://$it") }
-            "jellyfin" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("jellyfin://$it") }
-            "gdrive" -> id.takeIf { it.isNotBlank() }?.let { Uri.parse("gdrive://$it") }
-            else -> null
-        }
-    }
-
-    private fun currentProxyUriForStaleLocalProxy(uri: Uri): Uri? {
-        val cloudUri = canonicalCloudUriFromLocalProxy(uri) ?: return null
-        val proxyUrl = when (cloudUri.scheme) {
-            "netease" -> neteaseStreamProxy.resolveNeteaseUri(cloudUri.toString())
-            "qqmusic" -> qqMusicStreamProxy.resolveQqMusicUri(cloudUri.toString())
-            "kugou" -> kugouStreamProxy.resolveKugouUri(cloudUri.toString())
-            "kuwo" -> kuwoStreamProxy.resolveKuwoUri(cloudUri.toString())
-            "navidrome" -> navidromeStreamProxy.resolveNavidromeUri(cloudUri.toString())
-            "jellyfin" -> jellyfinStreamProxy.resolveJellyfinUri(cloudUri.toString())
-            "gdrive" -> gdriveStreamProxy.resolveGDriveUri(cloudUri.toString())
-            else -> null
-        }
-        return proxyUrl?.takeIf { it.isNotBlank() }?.toUri()
-    }
-
-    private suspend fun resolveTelegramUriAsync(uri: Uri, uriString: String): Uri? = withContext(Dispatchers.IO) {
-        val pathSegments = uri.pathSegments
-        val fileId = if (pathSegments.isNotEmpty()) {
-            telegramRepository.resolveTelegramUri(uriString)?.first
-        } else {
-            uri.host?.toIntOrNull()
-        } ?: return@withContext null
-
-        val fileInfo = telegramRepository.getFile(fileId)
-        if (fileInfo?.local?.isDownloadingCompleted == true && fileInfo.local.path.isNotEmpty()) {
-            return@withContext Uri.fromFile(File(fileInfo.local.path))
-        }
-
-        if (!connectivityStateHolder.isOnline.value) {
-            connectivityStateHolder.triggerOfflineBlockedEvent()
-            return@withContext null
-        }
-
-        if (!telegramStreamProxy.ensureReady(5_000L)) return@withContext null
-        val proxyUrl = telegramStreamProxy.getProxyUrl(fileId, 0L)
-        if (proxyUrl.isNotEmpty()) Uri.parse(proxyUrl) else null
-    }
-
-    private suspend fun resolveNeteaseUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!neteaseStreamProxy.ensureReady(5_000L)) return@withContext null
-        neteaseStreamProxy.resolveNeteaseUri(uriString)?.let { Uri.parse(it) }
-    }
-
-    private suspend fun resolveQqMusicUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!qqMusicStreamProxy.ensureReady(5_000L)) return@withContext null
-        qqMusicStreamProxy.warmUpStreamUrl(uriString)
-        qqMusicStreamProxy.resolveQqMusicUri(uriString)?.let { Uri.parse(it) }
-    }
-
-    private suspend fun resolveKugouUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!kugouStreamProxy.ensureReady(5_000L)) return@withContext null
-        kugouStreamProxy.warmUpStreamUrl(uriString)
-        kugouStreamProxy.resolveKugouUri(uriString)?.let { Uri.parse(it) }
-    }
-
-    private suspend fun resolveKuwoUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!kuwoStreamProxy.ensureReady(5_000L)) return@withContext null
-        kuwoStreamProxy.warmUpStreamUrl(uriString)
-        kuwoStreamProxy.resolveKuwoUri(uriString)?.let { Uri.parse(it) }
-    }
-
-    private suspend fun resolveNavidromeUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!navidromeStreamProxy.ensureReady(5_000L)) return@withContext null
-        navidromeStreamProxy.warmUpStreamUrl(uriString)
-        navidromeStreamProxy.resolveNavidromeUri(uriString)?.toUri()
-    }
-
-    private suspend fun resolveJellyfinUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!jellyfinStreamProxy.ensureReady(5_000L)) return@withContext null
-        jellyfinStreamProxy.warmUpStreamUrl(uriString)
-        jellyfinStreamProxy.resolveJellyfinUri(uriString)?.toUri()
-    }
-
-    private suspend fun resolveGDriveUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!connectivityStateHolder.isOnline.value) {
-            connectivityStateHolder.triggerOfflineBlockedEvent()
-            return@withContext null
-        }
-        if (!gdriveStreamProxy.ensureReady(5_000L)) return@withContext null
-        gdriveStreamProxy.resolveGDriveUri(uriString)?.toUri()
+    private suspend fun preResolveMediaItem(mediaItem: MediaItem) {
+        val uri = mediaItem.localConfiguration?.uri ?: return
+        if (uri.scheme !in PLUGIN_SOURCE_SCHEMES) return
+        warmPlaybackSource(
+            uri = uri,
+            playbackRequestId = PlaybackTrace.requestId(mediaItem),
+            mediaId = mediaItem.mediaId
+        )
     }
 
     suspend fun resolveMediaItem(mediaItem: MediaItem): MediaItem {
         val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
-        val uriToResolve = canonicalCloudUriFromLocalProxy(uri) ?: uri
+        val uriToResolve = playbackSourceResolver.canonicalize(uri)
         val scheme = uriToResolve.scheme
-        // Use CLOUD_PROXY_SCHEMES: http/https resolve directly via ExoPlayer and never
-        // reach resolveCloudUri, so checking them wastes an IO dispatch.
-        if (scheme !in CLOUD_PROXY_SCHEMES) return mediaItem
-        val resolvedUri = resolveCloudUri(uriToResolve)
-        return if (resolvedUri == uri) mediaItem else mediaItem.buildUpon().setUri(resolvedUri).build()
+        // HTTP(S) already points at media and never enters plugin source resolution.
+        if (scheme !in PLUGIN_SOURCE_SCHEMES) return mediaItem
+        warmPlaybackSource(
+            uri = uriToResolve,
+            playbackRequestId = PlaybackTrace.requestId(mediaItem),
+            mediaId = mediaItem.mediaId
+        )
+        return mediaItem
     }
 
     suspend fun prepareNext(target: TransitionTarget, startPositionMs: Long = 0L) {
@@ -1391,7 +1191,11 @@ class DualPlayerEngine @Inject constructor(
     }
 
     private suspend fun prepareNext(mediaItem: MediaItem, preferredAbsoluteIndex: Int, startPositionMs: Long = 0L) {
-        try {
+        playbackPrefetchController.runLatest(
+            slot = PlaybackWorkSlot.AUXILIARY_PLAYER,
+            key = mediaItem.mediaId
+        ) {
+          try {
             val snapshot = ensureQueueSnapshot()
             val currentAbsoluteIndex = resolveCurrentAbsoluteIndex(playerA.currentMediaItem ?: mediaItem, snapshot)
             val targetIndex = when {
@@ -1400,6 +1204,7 @@ class DualPlayerEngine @Inject constructor(
                 else -> findMediaItemIndex(snapshot, mediaItem.mediaId, currentAbsoluteIndex)
             }
             val resolvedItem = resolveMediaItem(mediaItem)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             val auxiliaryPlayer = getOrCreateAuxiliaryPlayer()
 
             auxiliaryPlayer.stop()
@@ -1426,13 +1231,18 @@ class DualPlayerEngine @Inject constructor(
             auxiliaryPlayer.prepare()
             auxiliaryPlayer.volume = 0f
             auxiliaryPlayer.pause()
-        } catch (e: Exception) {
+          } catch (cancelled: CancellationException) {
+            throw cancelled
+          } catch (e: Exception) {
             resetPreparedWindowState()
             Timber.tag("TransitionDebug").e(e, "Failed to prepare next player")
+          }
         }
     }
 
     fun cancelNext() {
+        playbackPrefetchController.cancel(PlaybackWorkSlot.ADJACENT_SOURCE_RESOLUTION)
+        playbackPrefetchController.cancel(PlaybackWorkSlot.AUXILIARY_PLAYER)
         val shouldPublishMasterPlayer = transitionRunning
         transitionJob?.cancel()
         transitionRunning = false
@@ -1491,12 +1301,12 @@ class DualPlayerEngine @Inject constructor(
         }
 
         if (auxiliaryPlayer.playbackState == Player.STATE_IDLE) auxiliaryPlayer.prepare()
-        if (auxiliaryPlayer.playbackState == Player.STATE_BUFFERING) {
-            if (!awaitPlayerReady(auxiliaryPlayer, 3000L)) {
-                playerA.volume = 1f
-                setPauseAtEndOfMediaItems(false)
-                return
-            }
+        if (auxiliaryPlayer.playbackState != Player.STATE_READY &&
+            !awaitPlayerReady(auxiliaryPlayer, 3000L)
+        ) {
+            playerA.volume = 1f
+            setPauseAtEndOfMediaItems(false)
+            return
         }
 
         val outgoingStartVolume = playerA.volume.coerceIn(0f, 1f)
@@ -1538,6 +1348,7 @@ class DualPlayerEngine @Inject constructor(
         removeMasterPlayerListeners(outgoingPlayer)
 
         playerA = incomingPlayer
+        playbackPrefetchController.advancePlaybackGeneration()
         playerB = outgoingPlayer
         activeWindowStartIndex = preparedWindowStartIndex
         activePlayerUsesWindowedQueue = preparedPlayerUsesWindowedQueue
@@ -1646,7 +1457,9 @@ class DualPlayerEngine @Inject constructor(
             suspendCancellableCoroutine { cont ->
                 val listener = object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState != Player.STATE_BUFFERING) {
+                        if (playbackState == Player.STATE_READY ||
+                            playbackState == Player.STATE_ENDED
+                        ) {
                             player.removeListener(this)
                             if (cont.isActive) cont.resume(playbackState == Player.STATE_READY)
                         }
@@ -1654,6 +1467,13 @@ class DualPlayerEngine @Inject constructor(
                 }
                 player.addListener(listener)
                 cont.invokeOnCancellation { player.removeListener(listener) }
+                val stateAfterRegistration = player.playbackState
+                if (stateAfterRegistration == Player.STATE_READY ||
+                    stateAfterRegistration == Player.STATE_ENDED
+                ) {
+                    player.removeListener(listener)
+                    if (cont.isActive) cont.resume(stateAfterRegistration == Player.STATE_READY)
+                }
             }
         } ?: false
     }
@@ -1661,7 +1481,8 @@ class DualPlayerEngine @Inject constructor(
 
     fun release() {
         transitionJob?.cancel()
-        preResolutionJob?.cancel()
+        playbackPrefetchController.cancel(PlaybackWorkSlot.ADJACENT_SOURCE_RESOLUTION)
+        playbackPrefetchController.cancel(PlaybackWorkSlot.AUXILIARY_PLAYER)
         cancelAudioOffloadFallback()
         scope.coroutineContext[Job]?.cancel()
         abandonAudioFocus()

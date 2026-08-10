@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Oynatıcıyı daralt</string>
     <string name="player_now_playing">Şimdi Çalıyor</string>
     <string name="player_cd_cloud_stream">Bulut akışı</string>
-    <string name="player_cd_cast">Yayınla</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Yerel oynatma</string>
     <string name="player_connecting">Bağlanıyor…</string>
     <string name="player_cd_open_queue">Sırayı Aç</string>
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Bağlanmaya hazırlanın</string>
-    <string name="cast_perm_body">Allow PixelPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
-    <string name="cast_perm_nearby_title">Yakındaki cihazlar</string>
-    <string name="cast_perm_nearby_desc">Bağlı Bluetooth ses cihazlarınızı okumak ve kontrol etmek için gereklidir.</string>
-    <string name="cast_perm_location_title">Wi‑Fi için konum</string>
-    <string name="cast_perm_location_desc">Android, uyumlu yayın cihazlarını bulabilmemiz için bulunduğunuz Wi‑Fi ağını (SSID) paylaşmak adına Konum izni gerektirir.</string>
-    <string name="cast_allow_access">Erişime izin ver</string>
-    <string name="cast_perm_footer">Bu izinleri yalnızca cihazlar arası etkileşim — yayınlama, yakındaki hoparlörleri kontrol etme ve sesi senkronize tutma — için kullanırız.</string>
-    <string name="cast_title_connect">Cihazı bağla</string>
-    <string name="cast_scanning_nearby">Yakındakiler taranıyor</string>
-    <string name="cast_subtitle_session">Yayın oturumu</string>
-    <string name="cast_connecting">Bağlanıyor</string>
-    <string name="cast_connected">Connected</string>
-    <string name="cast_this_phone">Bu telefon</string>
-    <string name="cast_bluetooth_audio">Bluetooth ses</string>
-    <string name="cast_local_playback">Yerel oynatma</string>
-    <string name="cast_playing">Playing</string>
-    <string name="cast_paused">Duraklatıldı</string>
-    <string name="cast_volume_device">Cihaz sesi</string>
-    <string name="cast_volume_phone">Telefon sesi</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Pil seviyesi</string>
-    <string name="cast_cd_volume_level">Ses seviyesi</string>
-    <string name="cast_disconnect">Bağlantıyı kes</string>
-    <string name="cast_connectivity">Bağlantı</string>
-    <string name="cast_turn_on_wifi_bt">Wi-Fi veya Bluetooth\'u açın</string>
-    <string name="cast_cd_refresh_connections">Bağlantıları yenile</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">Kapalı</string>
-    <string name="cast_wifi_on">Açık</string>
-    <string name="cast_wifi_connected">Connected</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Kapalı</string>
-    <string name="cast_bt_on">Açık</string>
-    <string name="cast_bt_connected">Connected</string>
-    <string name="cast_nearby_devices">Yakındaki cihazlar</string>
-    <string name="cast_cd_refresh_devices">Cihazları yenile</string>
-    <string name="cast_status_connected">Connected</string>
-    <string name="cast_status_connecting">Bağlanıyor</string>
-    <string name="cast_status_available_connect">Bağlantı için kullanılabilir</string>
-    <string name="cast_status_available">Kullanılabilir</string>
-    <string name="cast_connecting_ellipsis">Bağlanıyor...</string>
-    <string name="cast_searching">Cihazlar aranıyor…</string>
-    <string name="cast_searching_hint">TV\'nizin veya hoparlörünüzün açık ve aynı Wi‑Fi ağında olduğundan emin olun.</string>
-    <string name="cast_tab_controls">Kontroller</string>
-    <string name="cast_tab_devices">Cihazlar</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Yayın medya sunucusu</string>
-    <string name="cast_server_notification_title">Cihaza yayınlanıyor</string>
-    <string name="cast_server_notification_text">Yayın cihazına medya sunuluyor</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Yayın oturumunun çökmesine neden olabileceği için bu ses formatında yayın sırasında sarma geçici olarak kullanılamıyor.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Uyku zamanlayıcısı</string>

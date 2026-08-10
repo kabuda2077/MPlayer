@@ -7,6 +7,8 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.stream.ResolvedStream
 import com.theveloper.pixelplay.di.AppScope
+import com.theveloper.pixelplay.utils.PlaybackTrace
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -22,6 +24,7 @@ class PluginAudioSourceResolver @Inject constructor(
     private val musicDao: MusicDao,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val candidateResolver: PluginPlatformCandidateResolver,
+    private val streamVerifier: PluginStreamVerifier,
     @param:AppScope private val appScope: CoroutineScope
 ) {
     private val preferredQuality = MutableStateFlow(PluginQuality.HIGH)
@@ -38,7 +41,8 @@ class PluginAudioSourceResolver @Inject constructor(
     suspend fun resolve(
         source: PluginSource,
         platformSongId: String,
-        requestedQuality: PluginQuality? = null
+        requestedQuality: PluginQuality? = null,
+        traceContext: PlaybackTraceContext? = null
     ): ResolvedStream {
         val plugin = pluginRepository.ensureEnabledPluginLoaded()
         val state = pluginRepository.runtimeState.value
@@ -92,6 +96,14 @@ class PluginAudioSourceResolver @Inject constructor(
                 }
 
                 for (candidate in candidates) {
+                    logAttempt(
+                        stage = "plugin_attempt",
+                        traceContext = traceContext,
+                        originSource = source,
+                        targetSource = targetSource,
+                        quality = quality,
+                        candidate = candidate
+                    )
                     val info = buildMusicInfo(
                         song = originalSong,
                         originalSource = source,
@@ -110,6 +122,15 @@ class PluginAudioSourceResolver @Inject constructor(
                             info = info,
                             candidate = candidate
                         )
+                        streamVerifier.verify(stream)
+                        logAttempt(
+                            stage = "plugin_verified",
+                            traceContext = traceContext,
+                            originSource = source,
+                            targetSource = targetSource,
+                            quality = quality,
+                            candidate = candidate
+                        )
                         val effectiveQuality = PluginQuality.fromAlias(stream.quality) ?: quality
                         if (effectiveQuality.rank >= quality.rank) {
                             recentFailures.remove(failureKey)
@@ -122,6 +143,22 @@ class PluginAudioSourceResolver @Inject constructor(
                         )
                     } catch (e: PluginResolveException) {
                         lastFailure = e
+                        Timber.tag(PlaybackTrace.LOG_TAG).w(
+                            "stage=plugin_failed requestId=%s mediaId=%s origin=%s target=%s quality=%s candidate=%s reason=%s",
+                            traceContext?.requestId,
+                            traceContext?.mediaId,
+                            source.lxSource,
+                            targetSource.lxSource,
+                            quality.lxQuality,
+                            candidate.id,
+                            e.message
+                        )
+                        if (e is PluginResolveException.InvalidAudioSource) {
+                            Timber.w(
+                                "Plugin stream rejected origin=${source.lxSource} target=${targetSource.lxSource} " +
+                                    "id=${candidate.id} quality=${quality.lxQuality} reason=${e.message}"
+                            )
+                        }
                         logDebug(
                             "Plugin musicUrl failed origin=${source.lxSource} target=${targetSource.lxSource} " +
                                 "id=${candidate.id} quality=${quality.lxQuality} score=${candidate.matchScore} error=${e.message}"
@@ -300,6 +337,29 @@ class PluginAudioSourceResolver @Inject constructor(
 
     private fun logDebug(message: String) {
         if (BuildConfig.DEBUG) Timber.d(message)
+    }
+
+    private fun logAttempt(
+        stage: String,
+        traceContext: PlaybackTraceContext?,
+        originSource: PluginSource,
+        targetSource: PluginSource,
+        quality: PluginQuality,
+        candidate: PluginPlatformCandidate
+    ) {
+        if (!BuildConfig.DEBUG) return
+        Timber.tag(PlaybackTrace.LOG_TAG).d(
+            "stage=%s requestId=%s mediaId=%s origin=%s target=%s quality=%s candidate=%s match=%s score=%s",
+            stage,
+            traceContext?.requestId,
+            traceContext?.mediaId,
+            originSource.lxSource,
+            targetSource.lxSource,
+            quality.lxQuality,
+            candidate.id,
+            candidate.matchType,
+            candidate.matchScore
+        )
     }
 
     private data class CachedFailure(

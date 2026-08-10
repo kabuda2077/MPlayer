@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Player minimieren</string>
     <string name="player_now_playing">Aktuelle Wiedergabe</string>
     <string name="player_cd_cloud_stream">Cloud-Stream</string>
-    <string name="player_cd_cast">Cast</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Lokale Wiedergabe</string>
     <string name="player_connecting">Verbinde…</string>
     <string name="player_cd_open_queue">Queue öffnen</string>    
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Bereit zum Verbinden</string>
-    <string name="cast_perm_body">Damit Cast und Bluetooth-Audio funktionieren, braucht PixelPlayer Zugriff auf Geräte in der Nähe und dein WLAN.</string>
-    <string name="cast_perm_nearby_title">Geräte in der Nähe</string>
-    <string name="cast_perm_nearby_desc">Benötigt, um verbundene Bluetooth-Audiogeräte zu erkennen und zu steuern.</string>
-    <string name="cast_perm_location_title">Standort für WLAN</string>
-    <string name="cast_perm_location_desc">Android braucht den Standort, um das WLAN zu erkennen und Cast-Geräte zu finden.</string>
-    <string name="cast_allow_access">Zugriff erlauben</string>
-    <string name="cast_perm_footer">Nur für Geräteverbindungen – Cast, Lautsprecher und Audio-Sync.</string>
-    <string name="cast_title_connect">Gerät verbinden</string>
-    <string name="cast_scanning_nearby">Geräte in der Nähe suchen</string>
-    <string name="cast_subtitle_session">Cast-Sitzung</string>
-    <string name="cast_connecting">Verbinde</string>
-    <string name="cast_connected">Verbunden</string>
-    <string name="cast_this_phone">Dieses Handy</string>
-    <string name="cast_bluetooth_audio">Bluetooth-Audio</string>
-    <string name="cast_local_playback">Lokale Wiedergabe</string>
-    <string name="cast_playing">Spielt</string>
-    <string name="cast_paused">Pausiert</string>
-    <string name="cast_volume_device">Gerätelautstärke</string>
-    <string name="cast_volume_phone">Handylautstärke</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Akkustand</string>
-    <string name="cast_cd_volume_level">Lautstärke</string>
-    <string name="cast_disconnect">Trennen</string>
-    <string name="cast_connectivity">Verbindung</string>
-    <string name="cast_turn_on_wifi_bt">WLAN oder Bluetooth einschalten</string>
-    <string name="cast_cd_refresh_connections">Verbindungen aktualisieren</string>
-    <string name="cast_wifi">WLAN</string>
-    <string name="cast_wifi_off">Aus</string>
-    <string name="cast_wifi_on">An</string>
-    <string name="cast_wifi_connected">Verbunden</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Aus</string>
-    <string name="cast_bt_on">An</string>
-    <string name="cast_bt_connected">Verbunden</string>
-    <string name="cast_nearby_devices">Geräte in der Nähe</string>
-    <string name="cast_cd_refresh_devices">Geräte aktualisieren</string>
-    <string name="cast_status_connected">Verbunden</string>
-    <string name="cast_status_connecting">Verbinde</string>
-    <string name="cast_status_available_connect">Verbindung möglich</string>
-    <string name="cast_status_available">Verfügbar</string>
-    <string name="cast_connecting_ellipsis">Verbinde...</string>
-    <string name="cast_searching">Geräte suchen…</string>
-    <string name="cast_searching_hint">TV oder Lautsprecher einschalten und ins selbe WLAN einbinden.</string>
-    <string name="cast_tab_controls">Steuerung</string>
-    <string name="cast_tab_devices">Geräte</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Cast-Medienserver</string>
-    <string name="cast_server_notification_title">Casting läuft</string>
-    <string name="cast_server_notification_text">Medien werden an Cast-Gerät gesendet</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Spulen ist für dieses Audioformat über Cast vorübergehend nicht verfügbar, da dies die Cast-Sitzung abstürzen lassen kann.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Sleep Timer</string>

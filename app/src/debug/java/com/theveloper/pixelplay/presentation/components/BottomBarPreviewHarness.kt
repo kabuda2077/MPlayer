@@ -82,7 +82,6 @@ private fun BottomBarPreviewHarness(selectedIndex: Int) {
                 MiniPlayerContentInternal(
                     song = previewSong,
                     isPlaying = true,
-                    isCastConnecting = false,
                     isPreparingPlayback = false,
                     onPlayPause = {},
                     onPrevious = {},

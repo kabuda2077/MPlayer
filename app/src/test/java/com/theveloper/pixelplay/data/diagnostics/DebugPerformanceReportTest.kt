@@ -79,10 +79,9 @@ class DebugPerformanceReportTest {
         ),
         controllers = ControllerSection(
             widgetActive = true,
-            wearActive = false,
             androidAutoActive = true,
             connectedControllers = listOf(
-                ConnectedController("com.google.android.projection.gearhead", isAndroidAuto = true, isWear = false)
+                ConnectedController("com.google.android.projection.gearhead", isAndroidAuto = true)
             )
         ),
         timings = mapOf(

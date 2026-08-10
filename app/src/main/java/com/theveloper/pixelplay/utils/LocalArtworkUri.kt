@@ -46,15 +46,15 @@ object LocalArtworkUri {
         if (!looksLikeVolatileArtworkUri(uriString)) return null
 
         val fileName = uriString.substringAfterLast('/').substringBefore('?')
-        if (!fileName.startsWith("song_art_")) {
-            return null
+        if (fileName.startsWith("song_art_")) {
+            return fileName
+                .removePrefix("song_art_")
+                .substringBefore('_')
+                .substringBefore('.')
+                .toLongOrNull()
         }
 
-        return fileName
-            .removePrefix("song_art_")
-            .substringBefore('_')
-            .substringBefore('.')
-            .toLongOrNull()
+        return fileName.toLongOrNull()
     }
 
     fun extractCacheBustToken(uriString: String?): String? {
@@ -75,15 +75,7 @@ object LocalArtworkUri {
     }
 
     fun isLikelyLocalMedia(contentUriString: String): Boolean {
-        val normalized = contentUriString.lowercase()
-        return !normalized.startsWith("telegram://") &&
-            !normalized.startsWith("netease://") &&
-            !normalized.startsWith("qqmusic://") &&
-            !normalized.startsWith("kugou://") &&
-            !normalized.startsWith("kuwo://") &&
-            !normalized.startsWith("navidrome://") &&
-            !normalized.startsWith("jellyfin://") &&
-            !normalized.startsWith("gdrive://")
+        return MediaSourceClassifier.isLocal(contentUriString)
     }
 
     fun resolveSongArtworkUri(

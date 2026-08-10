@@ -478,15 +478,14 @@ internal fun UnifiedPlayerSaveQueueLayer(
 
 @OptIn(UnstableApi::class)
 @Composable
-internal fun UnifiedPlayerCastLayer(
-    showCastSheet: Boolean,
+internal fun UnifiedPlayerAudioOutputLayer(
+    visible: Boolean,
     internalIsKeyboardVisible: Boolean,
     albumColorScheme: ColorScheme,
     playerViewModel: PlayerViewModel,
     onDismiss: () -> Unit,
-    onExpansionChanged: (Float) -> Unit
 ) {
-    if (!showCastSheet || internalIsKeyboardVisible) return
+    if (!visible || internalIsKeyboardVisible) return
 
     CompositionLocalProvider(
         LocalMaterialTheme provides albumColorScheme
@@ -496,10 +495,9 @@ internal fun UnifiedPlayerCastLayer(
             typography = MaterialTheme.typography,
             shapes = MaterialTheme.shapes
         ) {
-            CastBottomSheet(
+            AudioOutputBottomSheet(
                 playerViewModel = playerViewModel,
-                onDismiss = onDismiss,
-                onExpansionChanged = onExpansionChanged
+                onDismiss = onDismiss
             )
         }
     }

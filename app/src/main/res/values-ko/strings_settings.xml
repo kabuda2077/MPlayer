@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">기기 성능</string>
     <string name="settings_category_device_capabilities_subtitle">오디오 사양, 코덱 및 디코더 정보</string>
     <string name="settings_category_accounts_title">계정</string>
-    <string name="settings_category_accounts_subtitle">Telegram, Google Drive, NetEase Music 및 기타 서비스 관리</string>
     <string name="settings_category_about_title">정보</string>
     <string name="settings_category_about_subtitle">앱 정보, 버전 및 제작진</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">.lrc 파일 자동 스캔</string>
     <string name="settings_auto_scan_lrc_subtitle">라이브러리 동기화 중 같은 폴더에 있는 .lrc 파일을 자동으로 스캔하여 할당합니다.</string>
     <string name="settings_lyrics_management_section">가사 관리</string>
-    <string name="settings_lyrics_source_priority_title">가사 소스 우선순위</string>
-    <string name="settings_lyrics_source_priority_subtitle">가사를 가져올 때 먼저 시도할 소스를 선택하세요.</string>
-    <string name="settings_lyrics_embedded_first">내장 가사 우선</string>
-    <string name="settings_lyrics_local_first">로컬(.lrc) 우선</string>
     <string name="settings_reset_imported_lyrics_title">가져온 가사 초기화</string>
     <string name="settings_reset_imported_lyrics_subtitle">데이터베이스에서 가져온 모든 가사를 삭제합니다.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">가져온 가사를 초기화하시겠습니까?</string>
@@ -265,9 +260,6 @@
     <string name="settings_gain_mode_subtitle">트랙: 각 노래를 정규화합니다. 앨범: 앨범별로 정규화합니다.</string>
     <string name="settings_gain_mode_track">트랙</string>
     <string name="settings_gain_mode_album">앨범</string>
-    <string name="settings_cast_section">전송(Cast)</string>
-    <string name="settings_cast_autoplay_title">전송 연결/해제 시 자동 재생</string>
-    <string name="settings_cast_autoplay_subtitle">전송 연결 전환 후 즉시 재생을 시작합니다.</string>
     <string name="settings_headphones_section">헤드폰</string>
     <string name="settings_headphones_resume_title">헤드폰 재연결 시 재개</string>
     <string name="settings_headphones_resume_subtitle">헤드폰이 제거되어 재생이 일시 중지된 경우, 다시 연결될 때 자동으로 재개합니다.</string>
@@ -605,7 +597,6 @@
     <string name="accounts_no_linked_subtitle">이 화면에서 관리할 제공업체를 연결하세요.</string>
     <string name="accounts_connect_service">%1$s 연결</string>
     <string name="accounts_service_coming_soon">%1$s (출시 예정)</string>
-    <string name="accounts_google_drive_soon">Google Drive는 곧 지원될 예정입니다.</string>
     <string name="accounts_unable_open_screen">현재 이 화면을 열 수 없습니다.</string>
 
     <!-- About category -->
@@ -625,7 +616,6 @@
     <string name="about_contributors_section_subtitle">GitHub의 실시간 기여자 목록입니다.</string>
     <string name="about_contributions_format">기여 %1$d회</string>
     <string name="about_cd_open_github_profile">GitHub 프로필 열기</string>
-    <string name="about_cd_open_telegram">Telegram 열기</string>
     <string name="about_cd_contributor_avatar">%1$s 아바타</string>
     <string name="about_cd_contributor_icon">%1$s 아이콘</string>
 </resources>

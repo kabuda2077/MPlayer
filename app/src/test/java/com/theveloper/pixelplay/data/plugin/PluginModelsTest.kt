@@ -1,14 +1,33 @@
 package com.theveloper.pixelplay.data.plugin
 
 import com.google.common.truth.Truth.assertThat
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
+import com.theveloper.pixelplay.utils.MediaSourceKind
 import org.junit.jupiter.api.Test
 
 class PluginModelsTest {
     @Test
     fun mapsPixelPlayerUrisToPluginSources() {
-        assertThat(PluginSource.fromUri("netease://123")).isEqualTo(PluginSource.NETEASE)
-        assertThat(PluginSource.fromUri("qqmusic://abc")).isEqualTo(PluginSource.QQ_MUSIC)
-        assertThat(PluginSource.fromUri("file:///music/a.mp3")).isNull()
+        assertThat(MediaSourceClassifier.pluginSource("netease://123")).isEqualTo(PluginSource.NETEASE)
+        assertThat(MediaSourceClassifier.pluginSource("qqmusic://abc")).isEqualTo(PluginSource.QQ_MUSIC)
+        assertThat(MediaSourceClassifier.pluginSource("kugou://hash")).isEqualTo(PluginSource.KUGOU)
+        assertThat(MediaSourceClassifier.pluginSource("kuwo://123")).isEqualTo(PluginSource.KUWO)
+        assertThat(MediaSourceClassifier.pluginSource("file:///music/a.mp3")).isNull()
+        assertThat(MediaSourceClassifier.pluginSource("unsupported://123")).isNull()
+        assertThat(MediaSourceClassifier.isDownloadable("unsupported://123")).isFalse()
+    }
+
+    @Test
+    fun unknownCustomSchemeIsNotClassifiedAsLocal() {
+        assertThat(MediaSourceClassifier.classify("future-source://123"))
+            .isEqualTo(MediaSourceKind.UNKNOWN)
+        assertThat(MediaSourceClassifier.isLocal("future-source://123")).isFalse()
+        assertThat(MediaSourceClassifier.isLocal("file:///music/a.mp3")).isTrue()
+        assertThat(MediaSourceClassifier.isLocal("content://media/external/audio/media/1")).isTrue()
+        assertThat(MediaSourceClassifier.requiresPlaybackResolution("qqmusic://mid")).isTrue()
+        assertThat(MediaSourceClassifier.requiresPlaybackResolution("unsupported://123")).isFalse()
+        assertThat(MediaSourceClassifier.isLibraryPersistable("netease://123")).isTrue()
+        assertThat(MediaSourceClassifier.isLibraryPersistable("kugou://hash")).isFalse()
     }
 
     @Test

@@ -5,8 +5,8 @@ import com.theveloper.pixelplay.data.media.AudioMetadataReader
 import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.LyricsMediaKey
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.LyricsSearchResult
 import com.theveloper.pixelplay.data.repository.MusicRepository
@@ -14,6 +14,7 @@ import com.theveloper.pixelplay.data.repository.NoLyricsFoundException
 import com.theveloper.pixelplay.utils.LyricsImportSecurity
 import com.theveloper.pixelplay.utils.LyricsImportValidationResult
 import com.theveloper.pixelplay.utils.ValidatedLyricsImport
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,8 +36,8 @@ import kotlinx.coroutines.withContext
  * Used to update StablePlayerState in PlayerViewModel.
  */
 interface LyricsLoadCallback {
-    fun onLoadingStarted(songId: String)
-    fun onLyricsLoaded(songId: String, lyrics: Lyrics?)
+    fun onLoadingStarted(mediaKey: String)
+    fun onLyricsLoaded(mediaKey: String, lyrics: Lyrics?)
 }
 
 /**
@@ -103,11 +104,13 @@ class LyricsStateHolder @Inject constructor(
 
         coroutineScope.launch {
             stablePlayerState
-                .map { it.currentSong?.id }
+                .map { state -> state.currentSong?.let(LyricsMediaKey::fromSong)?.value }
                 .distinctUntilChanged()
-                .collect { songId ->
-                    if (songId != null) {
-                        updateSyncOffsetForSong(songId)
+                .collect { mediaKey ->
+                    if (mediaKey != null) {
+                        updateSyncOffsetForMedia(mediaKey)
+                    } else {
+                        _currentSongSyncOffset.value = 0
                     }
                 }
         }
@@ -116,21 +119,17 @@ class LyricsStateHolder @Inject constructor(
     /**
      * Load lyrics for a song.
      * @param song The song to load lyrics for
-     * @param sourcePreference The preferred source for lyrics
      */
-    fun loadLyricsForSong(song: Song, sourcePreference: LyricsSourcePreference) {
+    fun loadLyricsForSong(song: Song, traceContext: PlaybackTraceContext? = null) {
         loadingJob?.cancel()
-        val targetSongId = song.id
+        val targetMediaKey = LyricsMediaKey.fromSong(song).value
 
         loadingJob = scope?.launch {
-            loadCallback?.onLoadingStarted(targetSongId)
+            loadCallback?.onLoadingStarted(targetMediaKey)
 
             val fetchedLyrics = try {
                 withContext(Dispatchers.IO) {
-                    musicRepository.getLyrics(
-                        song = song,
-                        sourcePreference = sourcePreference
-                    )
+                    musicRepository.getLyrics(song = song, traceContext = traceContext)
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -138,7 +137,7 @@ class LyricsStateHolder @Inject constructor(
                 null
             }
 
-            loadCallback?.onLyricsLoaded(targetSongId, fetchedLyrics)
+            loadCallback?.onLyricsLoaded(targetMediaKey, fetchedLyrics)
         }
     }
 
@@ -152,9 +151,10 @@ class LyricsStateHolder @Inject constructor(
     /**
      * Set sync offset for a song.
      */
-    fun setSyncOffset(songId: String, offsetMs: Int) {
+    fun setSyncOffset(song: Song, offsetMs: Int) {
+        val mediaKey = LyricsMediaKey.fromSong(song).value
         scope?.launch {
-            userPreferencesRepository.setLyricsSyncOffset(songId, offsetMs)
+            userPreferencesRepository.setLyricsSyncOffset(mediaKey, offsetMs)
             _currentSongSyncOffset.value = offsetMs
         }
     }
@@ -162,8 +162,8 @@ class LyricsStateHolder @Inject constructor(
     /**
      * Update sync offset from song ID (called when song changes).
      */
-    suspend fun updateSyncOffsetForSong(songId: String) {
-        val offset = userPreferencesRepository.getLyricsSyncOffset(songId)
+    suspend fun updateSyncOffsetForMedia(mediaKey: String) {
+        val offset = userPreferencesRepository.getLyricsSyncOffset(mediaKey)
         _currentSongSyncOffset.value = offset
     }
 
@@ -182,12 +182,11 @@ class LyricsStateHolder @Inject constructor(
     }
 
     /**
-     * Fetch lyrics for the given song, respecting the user's source preference.
+     * Fetch lyrics for the given song using the repository's fixed source strategy.
      */
     fun fetchLyricsForSong(
         song: Song,
         forcePickResults: Boolean,
-        @Suppress("UNUSED_PARAMETER") sourcePreference: LyricsSourcePreference,
         contextHelper: (Int) -> String
     ) {
         loadingJob?.cancel()
@@ -250,9 +249,7 @@ class LyricsStateHolder @Inject constructor(
             _searchUiState.value = LyricsSearchUiState.Success(result.lyrics)
 
             // 1. Update DB cache
-            currentSong.id.toLongOrNull()?.let { songId ->
-                musicRepository.updateLyrics(songId, result.rawLyrics)
-            }
+            musicRepository.updateLyrics(currentSong, result.rawLyrics)
 
             // 2. Attempt metadata write-back to the audio file
             val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(currentSong, result.rawLyrics)
@@ -266,18 +263,16 @@ class LyricsStateHolder @Inject constructor(
     /**
      * Import from file.
      */
-    fun importLyricsFromFile(songId: Long, validatedImport: ValidatedLyricsImport, currentSong: Song?) {
+    fun importLyricsFromFile(currentSong: Song, validatedImport: ValidatedLyricsImport) {
         scope?.launch {
             val sanitizedContent = validatedImport.sanitizedContent
             val parsedLyrics = validatedImport.parsedLyrics
 
-            musicRepository.updateLyrics(songId, sanitizedContent)
+            musicRepository.updateLyrics(currentSong, sanitizedContent)
 
-            if (currentSong != null && currentSong.id.toLongOrNull() == songId) {
-                val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(currentSong, sanitizedContent)
-                val updatedSong = currentSong.withPersistedLyrics(sanitizedContent, refreshedAlbumArtUri)
-                _songUpdates.emit(updatedSong to parsedLyrics.takeIf(::hasValidLyrics))
-            }
+            val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(currentSong, sanitizedContent)
+            val updatedSong = currentSong.withPersistedLyrics(sanitizedContent, refreshedAlbumArtUri)
+            _songUpdates.emit(updatedSong to parsedLyrics.takeIf(::hasValidLyrics))
 
             _messageEvents.emit("Lyrics imported successfully!")
         }
@@ -289,8 +284,6 @@ class LyricsStateHolder @Inject constructor(
      * stays decoupled from the AI layer. Toasts are surfaced through [messageEvents] as usual.
      */
     fun translateLyricsViaAi(currentSong: Song, lyricsObj: Lyrics?, cb: LyricsTranslationCallbacks) {
-        val songId = currentSong.id.toLongOrNull() ?: return
-
         if (lyricsObj?.synced != null) {
             val hasValidTranslation = lyricsObj.synced.any { !it.translation.isNullOrBlank() }
             if (hasValidTranslation) {
@@ -303,10 +296,9 @@ class LyricsStateHolder @Inject constructor(
             _messageEvents.emit(cb.getString(R.string.lyrics_translate_progress))
 
             val rawLyrics = withContext(Dispatchers.IO) {
-                currentSong.lyrics?.takeIf { it.isNotBlank() }
+                musicRepository.getStoredLyrics(currentSong)?.second
                     ?: readLocalLyricsFile(currentSong)
                     ?: readEmbeddedLyricsFromFile(currentSong)
-                    ?: musicRepository.getStoredLyrics(currentSong)?.second
             }
 
             if (rawLyrics.isNullOrBlank()) {
@@ -324,7 +316,7 @@ class LyricsStateHolder @Inject constructor(
                 if (translatedText.isNotBlank()) {
                     val validation = LyricsImportSecurity.validateImportedLrcContent(translatedText)
                     if (validation is LyricsImportValidationResult.Valid) {
-                        importLyricsFromFile(songId, validation.value, currentSong)
+                        importLyricsFromFile(currentSong, validation.value)
                         _messageEvents.emit(cb.getString(R.string.lyrics_translate_success))
                     } else {
                         val reason = (validation as LyricsImportValidationResult.Invalid).reason
@@ -346,11 +338,11 @@ class LyricsStateHolder @Inject constructor(
         }
     }
 
-    fun resetLyrics(songId: Long) {
+    fun resetLyrics(song: Song) {
         resetSearchState()
         scope?.launch {
-            musicRepository.resetLyrics(songId)
-            _songUpdates.emit(Song.emptySong().copy(id = songId.toString()) to null)
+            musicRepository.resetLyrics(song)
+            _songUpdates.emit(song.copy(lyrics = null) to null)
         }
     }
 
@@ -375,11 +367,6 @@ class LyricsStateHolder @Inject constructor(
     }
 
     private fun readEmbeddedLyricsFromFile(song: Song): String? {
-        song.lyrics
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-
         return runCatching {
             AudioMetadataReader.read(File(song.path))
                 ?.lyrics
@@ -406,7 +393,7 @@ class LyricsStateHolder @Inject constructor(
     }
 
     private suspend fun persistLyricsToFileMetadataIfPossible(song: Song, rawLyrics: String): String? {
-        val songId = song.id.toLongOrNull() ?: return null
+        val songId = song.libraryId ?: return null
         val normalizedLyrics = rawLyrics.trim()
         if (normalizedLyrics.isBlank()) return null
 

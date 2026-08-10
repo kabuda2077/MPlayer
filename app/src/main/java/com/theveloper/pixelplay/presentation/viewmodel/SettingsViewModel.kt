@@ -30,7 +30,6 @@ import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.repository.LyricsRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.stream.OnlineAudioCacheManager
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.worker.SyncManager
 import com.theveloper.pixelplay.data.worker.SyncProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,7 +59,6 @@ data class SettingsUiState(
     val playerThemePreference: String = ThemePreference.ALBUM_ART,
     val albumArtPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default,
     val albumArtColorAccuracy: Int = AlbumArtColorAccuracy.DEFAULT,
-    val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
     val navBarCompactMode: Boolean = false,
@@ -68,7 +66,6 @@ data class SettingsUiState(
     val libraryNavigationMode: String = LibraryNavigationMode.TAB_ROW,
     val launchTab: String = LaunchTab.HOME,
     val keepPlayingInBackground: Boolean = true,
-    val disableCastAutoplay: Boolean = false,
     val resumeOnHeadsetReconnect: Boolean = false,
     val showQueueHistory: Boolean = true,
     val isCrossfadeEnabled: Boolean = false,
@@ -77,18 +74,15 @@ data class SettingsUiState(
     val crossfadeDuration: Int = 2000,
     val persistentShuffleEnabled: Boolean = false,
     val folderBackGestureNavigation: Boolean = true,
-    val lyricsSourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
     val autoScanLrcFiles: Boolean = false,
     val enableOnlineTtmlLyrics: Boolean = true,
-    val enableQqLyrics: Boolean = true,
-    val localSongsAllowQqLyrics: Boolean = true,
+    val enableOnlineLyrics: Boolean = true,
     val showLyricsRomanization: Boolean = false,
     val blockedDirectories: Set<String> = emptySet(),
     val availableModels: List<GeminiModel> = emptyList(),
     val isLoadingModels: Boolean = false,
     val modelsFetchError: String? = null,
     val appRebrandDialogShown: Boolean = false,
-    val beta05CleanInstallDisclaimerDismissed: Boolean? = null,
     val fullPlayerLoadingTweaks: FullPlayerLoadingTweaks = FullPlayerLoadingTweaks(),
     val showPlayerFileInfo: Boolean = true,
     // Developer Options
@@ -98,7 +92,7 @@ data class SettingsUiState(
     val onlineAudioCacheSizeLabel: String = "0.0 MB",
     val tapBackgroundClosesPlayer: Boolean = false,
     val hapticsEnabled: Boolean = true,
-    val useAnimatedLyrics: Boolean = false,
+    val useAnimatedLyrics: Boolean = true,
     val animatedLyricsBlurEnabled: Boolean = true,
     val animatedLyricsBlurStrength: Float = 2.5f,
     val disableBlurAllOver: Boolean = false,
@@ -146,7 +140,6 @@ private sealed interface SettingsUiUpdate {
         val playerThemePreference: String,
         val albumArtPaletteStyle: AlbumArtPaletteStyle,
         val albumArtColorAccuracy: Int,
-        val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
         val navBarCompactMode: Boolean,
@@ -158,7 +151,6 @@ private sealed interface SettingsUiUpdate {
     
     data class Group2(
         val keepPlayingInBackground: Boolean,
-        val disableCastAutoplay: Boolean,
         val resumeOnHeadsetReconnect: Boolean,
         val showQueueHistory: Boolean,
         val isCrossfadeEnabled: Boolean,
@@ -166,11 +158,9 @@ private sealed interface SettingsUiUpdate {
         val crossfadeDuration: Int,
         val persistentShuffleEnabled: Boolean,
         val folderBackGestureNavigation: Boolean,
-        val lyricsSourcePreference: LyricsSourcePreference,
         val autoScanLrcFiles: Boolean,
         val enableOnlineTtmlLyrics: Boolean,
-        val enableQqLyrics: Boolean,
-        val localSongsAllowQqLyrics: Boolean,
+        val enableOnlineLyrics: Boolean,
         val showLyricsRomanization: Boolean,
         val blockedDirectories: Set<String>,
         val hapticsEnabled: Boolean,
@@ -505,7 +495,6 @@ class SettingsViewModel @Inject constructor(
                 themePreferencesRepository.playerThemePreferenceFlow,
                 themePreferencesRepository.albumArtPaletteStyleFlow,
                 themePreferencesRepository.albumArtColorAccuracyFlow,
-                userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
                 userPreferencesRepository.navBarCompactModeFlow,
@@ -520,14 +509,13 @@ class SettingsViewModel @Inject constructor(
                     playerThemePreference = values[2] as String,
                     albumArtPaletteStyle = values[3] as AlbumArtPaletteStyle,
                     albumArtColorAccuracy = values[4] as Int,
-                    mockGenresEnabled = values[5] as Boolean,
-                    navBarCornerRadius = values[6] as Int,
-                    navBarStyle = values[7] as String,
-                    navBarCompactMode = values[8] as Boolean,
-                    libraryNavigationMode = values[9] as String,
-                    carouselStyle = values[10] as String,
-                    launchTab = values[11] as String,
-                    showPlayerFileInfo = values[12] as Boolean
+                    navBarCornerRadius = values[5] as Int,
+                    navBarStyle = values[6] as String,
+                    navBarCompactMode = values[7] as Boolean,
+                    libraryNavigationMode = values[8] as String,
+                    carouselStyle = values[9] as String,
+                    launchTab = values[10] as String,
+                    showPlayerFileInfo = values[11] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -537,7 +525,6 @@ class SettingsViewModel @Inject constructor(
                         playerThemePreference = update.playerThemePreference,
                         albumArtPaletteStyle = update.albumArtPaletteStyle,
                         albumArtColorAccuracy = update.albumArtColorAccuracy,
-                        mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
                         navBarCompactMode = update.navBarCompactMode,
@@ -554,7 +541,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             combine<Any?, SettingsUiUpdate.Group2>(
                 userPreferencesRepository.keepPlayingInBackgroundFlow,
-                userPreferencesRepository.disableCastAutoplayFlow,
                 userPreferencesRepository.resumeOnHeadsetReconnectFlow,
                 userPreferencesRepository.showQueueHistoryFlow,
                 userPreferencesRepository.isCrossfadeEnabledFlow,
@@ -562,11 +548,9 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.crossfadeDurationFlow,
                 userPreferencesRepository.persistentShuffleEnabledFlow,
                 userPreferencesRepository.folderBackGestureNavigationFlow,
-                userPreferencesRepository.lyricsSourcePreferenceFlow,
                 userPreferencesRepository.autoScanLrcFilesFlow,
                 userPreferencesRepository.enableOnlineTtmlLyricsFlow,
-                userPreferencesRepository.enableQqLyricsFlow,
-                userPreferencesRepository.localSongsAllowQqLyricsFlow,
+                userPreferencesRepository.enableOnlineLyricsFlow,
                 userPreferencesRepository.showLyricsRomanizationFlow,
                 userPreferencesRepository.blockedDirectoriesFlow,
                 userPreferencesRepository.hapticsEnabledFlow,
@@ -577,32 +561,28 @@ class SettingsViewModel @Inject constructor(
             ) { values ->
                 SettingsUiUpdate.Group2(
                     keepPlayingInBackground = values[0] as Boolean,
-                    disableCastAutoplay = values[1] as Boolean,
-                    resumeOnHeadsetReconnect = values[2] as Boolean,
-                    showQueueHistory = values[3] as Boolean,
-                    isCrossfadeEnabled = values[4] as Boolean,
-                    hiFiModeEnabled = values[5] as Boolean,
-                    crossfadeDuration = values[6] as Int,
-                    persistentShuffleEnabled = values[7] as Boolean,
-                    folderBackGestureNavigation = values[8] as Boolean,
-                    lyricsSourcePreference = values[9] as LyricsSourcePreference,
-                    autoScanLrcFiles = values[10] as Boolean,
-                    enableOnlineTtmlLyrics = values[11] as Boolean,
-                    enableQqLyrics = values[12] as Boolean,
-                    localSongsAllowQqLyrics = values[13] as Boolean,
-                    showLyricsRomanization = values[14] as Boolean,
-                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[15] as Set<String>),
-                    hapticsEnabled = values[16] as Boolean,
-                    animatedLyricsBlurEnabled = values[17] as Boolean,
-                    animatedLyricsBlurStrength = values[18] as Float,
-                    disableBlurAllOver = values[19] as Boolean,
-                    showScrollbar = values[20] as Boolean
+                    resumeOnHeadsetReconnect = values[1] as Boolean,
+                    showQueueHistory = values[2] as Boolean,
+                    isCrossfadeEnabled = values[3] as Boolean,
+                    hiFiModeEnabled = values[4] as Boolean,
+                    crossfadeDuration = values[5] as Int,
+                    persistentShuffleEnabled = values[6] as Boolean,
+                    folderBackGestureNavigation = values[7] as Boolean,
+                    autoScanLrcFiles = values[8] as Boolean,
+                    enableOnlineTtmlLyrics = values[9] as Boolean,
+                    enableOnlineLyrics = values[10] as Boolean,
+                    showLyricsRomanization = values[11] as Boolean,
+                    blockedDirectories = @Suppress("UNCHECKED_CAST") (values[12] as Set<String>),
+                    hapticsEnabled = values[13] as Boolean,
+                    animatedLyricsBlurEnabled = values[14] as Boolean,
+                    animatedLyricsBlurStrength = values[15] as Float,
+                    disableBlurAllOver = values[16] as Boolean,
+                    showScrollbar = values[17] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
                     state.copy(
                         keepPlayingInBackground = update.keepPlayingInBackground,
-                        disableCastAutoplay = update.disableCastAutoplay,
                         resumeOnHeadsetReconnect = update.resumeOnHeadsetReconnect,
                         showQueueHistory = update.showQueueHistory,
                         isCrossfadeEnabled = update.isCrossfadeEnabled,
@@ -610,11 +590,9 @@ class SettingsViewModel @Inject constructor(
                         crossfadeDuration = update.crossfadeDuration,
                         persistentShuffleEnabled = update.persistentShuffleEnabled,
                         folderBackGestureNavigation = update.folderBackGestureNavigation,
-                        lyricsSourcePreference = update.lyricsSourcePreference,
                         autoScanLrcFiles = update.autoScanLrcFiles,
                         enableOnlineTtmlLyrics = update.enableOnlineTtmlLyrics,
-                        enableQqLyrics = update.enableQqLyrics,
-                        localSongsAllowQqLyrics = update.localSongsAllowQqLyrics,
+                        enableOnlineLyrics = update.enableOnlineLyrics,
                         showLyricsRomanization = update.showLyricsRomanization,
                         blockedDirectories = update.blockedDirectories,
                         hapticsEnabled = update.hapticsEnabled,
@@ -643,12 +621,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.backupInfoDismissedFlow.collect { dismissed ->
                 _uiState.update { it.copy(backupInfoDismissed = dismissed) }
-            }
-        }
-
-        viewModelScope.launch {
-            userPreferencesRepository.beta05CleanInstallDisclaimerDismissedFlow.collect { dismissed ->
-                _uiState.update { it.copy(beta05CleanInstallDisclaimerDismissed = dismissed) }
             }
         }
 
@@ -725,12 +697,6 @@ class SettingsViewModel @Inject constructor(
     fun setAppRebrandDialogShown(wasShown: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setAppRebrandDialogShown(wasShown)
-        }
-    }
-
-    fun setBeta05CleanInstallDisclaimerDismissed(dismissed: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setBeta05CleanInstallDisclaimerDismissed(dismissed)
         }
     }
 
@@ -888,12 +854,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setDisableCastAutoplay(disabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setDisableCastAutoplay(disabled)
-        }
-    }
-
     fun setResumeOnHeadsetReconnect(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setResumeOnHeadsetReconnect(enabled)
@@ -936,12 +896,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setLyricsSourcePreference(preference: LyricsSourcePreference) {
-        viewModelScope.launch {
-            userPreferencesRepository.setLyricsSourcePreference(preference)
-        }
-    }
-
     fun setAutoScanLrcFiles(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setAutoScanLrcFiles(enabled)
@@ -956,20 +910,7 @@ class SettingsViewModel @Inject constructor(
 
     fun setOnlineLyricsEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            userPreferencesRepository.setEnableQqLyrics(enabled)
-            userPreferencesRepository.setEnableOnlineTtmlLyrics(enabled)
-        }
-    }
-
-    fun setEnableQqLyrics(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setEnableQqLyrics(enabled)
-        }
-    }
-
-    fun setLocalSongsAllowQqLyrics(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setLocalSongsAllowQqLyrics(enabled)
+            userPreferencesRepository.setEnableOnlineLyrics(enabled)
         }
     }
 

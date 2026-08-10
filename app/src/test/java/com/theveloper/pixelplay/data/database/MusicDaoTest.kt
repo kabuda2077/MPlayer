@@ -117,7 +117,6 @@ import java.io.IOException
 //    // - getSongsByIds, getSongsByAlbumId, getSongsByArtistId, getSongCount
 //    // - getAlbumById, searchAlbums, getAlbumCount, getAlbumsByArtistId
 //    // - getArtistById, searchArtists, getArtistCount
-//    // - getSongsByGenre, getUniqueGenres
 //    // - getAllUniqueAlbumArtUrisFromSongs
 //    // - Test pagination (offset, pageSize) thoroughly
 //    // - Test onConflictStrategy (REPLACE) for inserts

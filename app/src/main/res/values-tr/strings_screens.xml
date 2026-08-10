@@ -80,15 +80,11 @@
     <string name="search_cd_clear_search_query">Aramayı temizle</string>
     <string name="search_recent_searches">Son aramalar</string>
     <string name="search_action_clear_all">Tümünü temizle</string>
-    <string name="search_cd_search_history_icon">Geçmiş</string>
-    <string name="search_cd_delete_search_history_item">Arama geçmişi öğesini sil</string>
     <string name="search_cd_no_results">Sonuç yok</string>
     <string name="search_no_results_for_query">\"%1$s\" için sonuç bulunamadı</string>
     <string name="search_nothing_found">Hiçbir şey bulunamadı</string>
     <string name="search_try_different_or_filters">Farklı bir arama terimi deneyin veya filtrelerinizi kontrol edin.</string>
     <string name="search_no_results_found">Sonuç bulunamadı.</string>
-    <string name="browse_by_genre">Türe göre göz at</string>
-    <string name="no_genres_available">Mevcut tür yok.</string>
 
     <!-- ArtistDetailScreen -->
     <string name="artist_cd_play_title">%1$s Oynat</string>
@@ -198,30 +194,6 @@
     <string name="playlist_creation_rule_forgotten_sub">Bir süredir çalmadığınız favori parçalar.</string>
     <string name="playlist_creation_rule_new_gems_title">Yeni Cevherler</string>
     <string name="playlist_creation_rule_new_gems_sub">Düşük çalma sayısına sahip, yakın zamanda eklenen parçalar.</string>
-
-    <!-- GenreDetailScreen -->
-    <string name="genre_quick_fill">Türü Hızlı Doldur</string>
-    <string name="genre_sort_title">Sırala &amp; Oynat</string>
-    <string name="genre_sort_action_shuffle">Karıştır</string>
-    <string name="genre_sort_by_title">Sıralama Kriteri</string>
-    <string name="genre_sort_artist_option">Sanatçı</string>
-    <string name="genre_sort_album_option">Albüm</string>
-    <string name="genre_sort_title_option">Başlık</string>
-    <string name="genre_cd_generic_artist">Genel sanatçı</string>
-    <string name="genre_shuffle_label">%1$s Karışık</string>
-
-    <!-- QuickFillScreen -->
-    <string name="quick_fill_select_songs">Şarkıları Seç</string>
-    <string name="quick_fill_choose_genre">Tür Seç</string>
-    <string name="quick_fill_search_songs_placeholder">Şarkı ara</string>
-    <string name="quick_fill_new_genre">Yeni Tür</string>
-    <string name="quick_fill_cd_add_custom_genre">Özel Ekle</string>
-    <string name="quick_fill_add_custom_genre_title">Özel Tür Ekle</string>
-    <string name="quick_fill_genre_name_placeholder">Tür Adı</string>
-    <string name="quick_fill_select_icon">Simge Seç</string>
-    <string name="quick_fill_select_genre_label_format">Tür: %1$s</string>
-    <string name="quik_fill_select_a_genre_label">Bir tür seçin</string>
-    <string name="quick_fill_action_title">Hızlı Doldur</string>
 
     <!-- MashupScreen -->
     <string name="mashup_title">DJ Alanı</string>

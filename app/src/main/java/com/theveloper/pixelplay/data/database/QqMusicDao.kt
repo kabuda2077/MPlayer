@@ -26,6 +26,9 @@ interface QqMusicDao {
     @Query("SELECT * FROM qqmusic_songs WHERE id IN (:ids)")
     fun getSongsByIds(ids: List<String>): Flow<List<QqMusicSongEntity>>
 
+    @Query("SELECT * FROM qqmusic_songs WHERE song_mid = :songMid AND song_id IS NOT NULL ORDER BY date_added DESC LIMIT 1")
+    suspend fun getSongWithNumericIdByMid(songMid: String): QqMusicSongEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSongs(songs: List<QqMusicSongEntity>)
 

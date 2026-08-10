@@ -64,10 +64,18 @@ private const val SONG_DETAIL_PROJECTION = """
     songs.mime_type AS mime_type,
     songs.bitrate AS bitrate,
     songs.sample_rate AS sample_rate,
-    songs.telegram_chat_id AS telegram_chat_id,
-    songs.telegram_file_id AS telegram_file_id,
     songs.artists_json AS artists_json,
     songs.source_type AS source_type
+"""
+
+private const val SONG_LYRICS_JOIN = """
+    LEFT JOIN lyrics AS song_lyrics ON song_lyrics.mediaKey =
+        CASE
+            WHEN instr(songs.content_uri_string, ':') = 0
+                OR lower(substr(songs.content_uri_string, 1, instr(songs.content_uri_string, ':') - 1)) IN ('file', 'content')
+            THEN 'library:' || songs.id
+            ELSE 'uri:' || songs.content_uri_string
+        END
 """
 
 // Projection for list queries: excludes lyrics to prevent CursorWindow overflow (2MB limit)
@@ -76,8 +84,7 @@ private const val SONG_LIST_PROJECTION = """
     id, title, artist_name, artist_id, album_artist, album_name, album_id,
     content_uri_string, album_art_uri_string, duration, genre, file_path,
     parent_directory_path, is_favorite, NULL AS lyrics, track_number, disc_number,
-    year, date_added, mime_type, bitrate, sample_rate, telegram_chat_id,
-    telegram_file_id, artists_json, source_type
+    year, date_added, mime_type, bitrate, sample_rate, artists_json, source_type
 """
 
 data class DeviceCapabilitySongRow(
@@ -238,67 +245,22 @@ interface MusicDao {
     @Query("DELETE FROM lyrics WHERE songId IN (:songIds)")
     suspend fun deleteLyricsBySongIds(songIds: List<Long>)
 
-    @Query("SELECT id FROM songs WHERE source_type = 1")
-    suspend fun getAllTelegramSongIds(): List<Long>
-
-    @Query("""
-        SELECT id FROM songs
-        WHERE source_type = 1
-        AND (telegram_chat_id = :chatId
-             OR content_uri_string LIKE 'telegram://' || :chatId || '/%')
-    """)
-    suspend fun getTelegramSongIdsByChatId(chatId: Long): List<Long>
-
-    @Query("""
-        SELECT s.id FROM songs s
-        INNER JOIN telegram_songs ts
-            ON ts.chat_id = s.telegram_chat_id
-            AND ('telegram://' || ts.chat_id || '/' || ts.message_id) = s.content_uri_string
-        WHERE ts.chat_id = :chatId AND ts.thread_id = :threadId
-    """)
-    suspend fun getTelegramSongIdsByTopicId(chatId: Long, threadId: Long): List<Long>
-
     @Query("SELECT id FROM songs WHERE source_type = 2")
     suspend fun getAllNeteaseSongIds(): List<Long>
-
-    @Query("SELECT id FROM songs WHERE source_type = 3")
-    suspend fun getAllGDriveSongIds(): List<Long>
 
     @Query("SELECT id FROM songs WHERE source_type = 4")
     suspend fun getAllQqMusicSongIds(): List<Long>
 
-    @Query("SELECT id FROM songs WHERE source_type = 5")
-    suspend fun getAllNavidromeSongIds(): List<Long>
-
-    @Query("SELECT id FROM songs WHERE source_type = 6")
-    suspend fun getAllJellyfinSongIds(): List<Long>
-
-    @Query("UPDATE songs SET source_type = 1 WHERE content_uri_string LIKE 'telegram://%' AND source_type != 1")
-    suspend fun repairTelegramSourceTypes(): Int
-
     @Query("UPDATE songs SET source_type = 2 WHERE content_uri_string LIKE 'netease://%' AND source_type != 2")
     suspend fun repairNeteaseSourceTypes(): Int
-
-    @Query("UPDATE songs SET source_type = 3 WHERE content_uri_string LIKE 'gdrive://%' AND source_type != 3")
-    suspend fun repairGDriveSourceTypes(): Int
 
     @Query("UPDATE songs SET source_type = 4 WHERE content_uri_string LIKE 'qqmusic://%' AND source_type != 4")
     suspend fun repairQqMusicSourceTypes(): Int
 
-    @Query("UPDATE songs SET source_type = 5 WHERE content_uri_string LIKE 'navidrome://%' AND source_type != 5")
-    suspend fun repairNavidromeSourceTypes(): Int
-
-    @Query("UPDATE songs SET source_type = 6 WHERE content_uri_string LIKE 'jellyfin://%' AND source_type != 6")
-    suspend fun repairJellyfinSourceTypes(): Int
-
     @Transaction
     suspend fun repairSourceTypesFromContentUris() {
-        repairTelegramSourceTypes()
         repairNeteaseSourceTypes()
-        repairGDriveSourceTypes()
         repairQqMusicSourceTypes()
-        repairNavidromeSourceTypes()
-        repairJellyfinSourceTypes()
     }
 
     @Transaction
@@ -322,52 +284,10 @@ interface MusicDao {
     }
 
     @Transaction
-    suspend fun clearAllGDriveSongs() {
-        val gdriveSongIds = getAllGDriveSongIds()
-        if (gdriveSongIds.isEmpty()) return
-        deleteSongsAndRelatedData(gdriveSongIds)
-    }
-
-    @Transaction
     suspend fun clearAllQqMusicSongs() {
         val qqMusicSongIds = getAllQqMusicSongIds()
         if (qqMusicSongIds.isEmpty()) return
         deleteSongsAndRelatedData(qqMusicSongIds)
-    }
-
-    @Transaction
-    suspend fun clearAllNavidromeSongs() {
-        val navidromeSongIds = getAllNavidromeSongIds()
-        if (navidromeSongIds.isEmpty()) return
-        deleteSongsAndRelatedData(navidromeSongIds)
-    }
-
-    @Transaction
-    suspend fun clearAllJellyfinSongs() {
-        val jellyfinSongIds = getAllJellyfinSongIds()
-        if (jellyfinSongIds.isEmpty()) return
-        deleteSongsAndRelatedData(jellyfinSongIds)
-    }
-
-    @Transaction
-    suspend fun clearAllTelegramSongs() {
-        val telegramSongIds = getAllTelegramSongIds()
-        if (telegramSongIds.isEmpty()) return
-        deleteSongsAndRelatedData(telegramSongIds)
-    }
-
-    @Transaction
-    suspend fun clearTelegramSongsForChat(chatId: Long) {
-        val telegramSongIds = getTelegramSongIdsByChatId(chatId)
-        if (telegramSongIds.isEmpty()) return
-        deleteSongsAndRelatedData(telegramSongIds)
-    }
-
-    @Transaction
-    suspend fun clearTelegramSongsForTopic(chatId: Long, threadId: Long) {
-        val songIds = getTelegramSongIdsByTopicId(chatId, threadId)
-        if (songIds.isEmpty()) return
-        deleteSongsAndRelatedData(songIds)
     }
 
     /**
@@ -432,7 +352,6 @@ interface MusicDao {
     fun getDistinctParentDirectoriesFlow(): Flow<List<String>>
 
     // --- Song Queries ---
-    // Updated getSongs to include Telegram songs (negative IDs) regardless of directory filter
     @Query("SELECT " + SONG_LIST_PROJECTION + """
         FROM songs
         WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
@@ -446,19 +365,14 @@ interface MusicDao {
     @Query("SELECT " + SONG_LIST_PROJECTION + " FROM songs WHERE id IN (:songIds)")
     suspend fun getSongsByIdsListSimple(songIds: List<Long>): List<SongEntity>
 
-    /**
-     * Resolves the unified-table song id for a given content URI. Used when the
-     * currently-playing song was loaded from a non-unified source (e.g. raw Telegram
-     * repository Songs whose ids are "chatId_messageId" strings) and we need the
-     * matching negative-Long id to position the song inside the library list.
-     */
+    /** Resolves the unified-table song id for a content URI. */
     @Query("SELECT id FROM songs WHERE content_uri_string = :contentUri LIMIT 1")
     suspend fun getSongIdByContentUri(contentUri: String): Long?
 
     @Query(
         "SELECT " + SONG_DETAIL_PROJECTION + """
         FROM songs
-        LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
+        """ + SONG_LYRICS_JOIN + """
         WHERE songs.content_uri_string = :contentUri
         LIMIT 1
         """
@@ -468,7 +382,7 @@ interface MusicDao {
     @Query(
         "SELECT " + SONG_DETAIL_PROJECTION + """
         FROM songs
-        LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
+        """ + SONG_LYRICS_JOIN + """
         WHERE songs.id = :songId
         """
     )
@@ -477,7 +391,7 @@ interface MusicDao {
     @Query(
         "SELECT " + SONG_DETAIL_PROJECTION + """
         FROM songs
-        LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
+        """ + SONG_LYRICS_JOIN + """
         WHERE songs.id = :songId
         """
     )
@@ -486,7 +400,7 @@ interface MusicDao {
     @Query(
         "SELECT " + SONG_DETAIL_PROJECTION + """
         FROM songs
-        LEFT JOIN lyrics AS song_lyrics ON song_lyrics.songId = songs.id
+        """ + SONG_LYRICS_JOIN + """
         WHERE songs.file_path = :path
         LIMIT 1
         """
@@ -1213,22 +1127,6 @@ interface MusicDao {
         }
     }
 
-    // --- Paginated Genre Query ---
-    /**
-     * Returns a PagingSource for songs in a specific genre.
-     */
-    @Query("""
-        SELECT * FROM songs
-        WHERE (:applyDirectoryFilter = 0 OR parent_directory_path IN (:allowedParentDirs))
-        AND genre LIKE :genreName
-        ORDER BY title ASC
-    """)
-    fun getSongsByGenrePaginated(
-        genreName: String,
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): PagingSource<Int, SongEntity>
-
     // --- Album Queries ---
     @Query("""
         SELECT
@@ -1759,87 +1657,6 @@ interface MusicDao {
     @Query("SELECT custom_image_uri FROM artists WHERE id = :artistId")
     suspend fun getArtistCustomImage(artistId: Long): String?
 
-    // --- Genre Queries ---
-    // Example: Get all songs for a specific genre
-    @Query("""
-        SELECT * FROM songs
-        WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        AND genre LIKE :genreName
-        ORDER BY title ASC
-    """)
-    fun getSongsByGenre(
-        genreName: String,
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): Flow<List<SongEntity>>
-
-    // Multi-genre aware query: matches songs where the genre column equals the name (case-
-    // insensitively, via LIKE), or contains it as part of a comma-separated list.
-    // SQLite LIKE is case-insensitive for ASCII letters by default, which is sufficient
-    // for genre names. All six arms use LIKE so that "rock" matches "Rock", "Rock,Pop",
-    // "Rock, Pop", "Pop,Rock", "Pop, Rock", and "Pop,Rock,Jazz".
-    @Query("""
-        SELECT * FROM songs
-        WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        AND (
-            genre LIKE :genreName
-            OR genre LIKE :genrePrefix
-            OR genre LIKE :genreSuffixWithSpace
-            OR genre LIKE :genreSuffix
-            OR genre LIKE :genreMiddleWithSpace
-            OR genre LIKE :genreMiddle
-        )
-        ORDER BY title ASC
-    """)
-    fun getSongsByGenreContaining(
-        genreName: String,
-        genrePrefix: String,
-        genreSuffixWithSpace: String,
-        genreSuffix: String,
-        genreMiddleWithSpace: String,
-        genreMiddle: String,
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): Flow<List<SongEntity>>
-
-    @Query("""
-        SELECT * FROM songs
-        WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        AND (genre IS NULL OR genre = '')
-        ORDER BY title ASC
-    """)
-    fun getSongsWithNullGenre(
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): Flow<List<SongEntity>>
-
-    // Example: Get all unique genre names
-    @Query("SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL AND genre != '' ORDER BY genre ASC")
-    fun getUniqueGenres(): Flow<List<String>>
-
-    @Query("""
-        SELECT DISTINCT genre FROM songs
-        WHERE genre IS NOT NULL AND genre != ''
-        AND (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-        ORDER BY genre ASC
-    """)
-    fun getUniqueGenres(
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): Flow<List<String>>
-
-    @Query("""
-        SELECT EXISTS(
-            SELECT 1 FROM songs
-            WHERE (:applyDirectoryFilter = 0 OR id < 0 OR parent_directory_path IN (:allowedParentDirs))
-            AND (genre IS NULL OR genre = '')
-        )
-    """)
-    fun hasUnknownGenre(
-        allowedParentDirs: List<String>,
-        applyDirectoryFilter: Boolean
-    ): Flow<Boolean>
-
     // --- Combined Queries (Potentially useful for more complex scenarios) ---
     // E.g., Get all album art URIs from songs (could be useful for theme preloading from SSoT)
     @Query("SELECT DISTINCT album_art_uri_string FROM songs WHERE album_art_uri_string IS NOT NULL")
@@ -1934,14 +1751,14 @@ interface MusicDao {
     @Query("UPDATE songs SET album_art_uri_string = :albumArtUri WHERE id = :songId")
     suspend fun updateSongAlbumArt(songId: Long, albumArtUri: String?)
 
-    @Query("UPDATE songs SET lyrics = :lyrics WHERE id = :songId")
-    suspend fun updateLyrics(songId: Long, lyrics: String)
-
     @Query("UPDATE songs SET lyrics = NULL WHERE id = :songId")
-    suspend fun resetLyrics(songId: Long)
+    suspend fun clearLegacySongLyrics(songId: Long)
+
+    @Query("SELECT lyrics FROM songs WHERE id = :songId")
+    suspend fun getLegacySongLyrics(songId: Long): String?
 
     @Query("UPDATE songs SET lyrics = NULL")
-    suspend fun resetAllLyrics()
+    suspend fun clearAllLegacySongLyrics()
 
     @Query("SELECT " + SONG_LIST_PROJECTION + " FROM songs")
     suspend fun getAllSongsList(): List<SongEntity>

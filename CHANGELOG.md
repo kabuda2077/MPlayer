@@ -122,7 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Implemented 10-band Equalizer and effects suite (feat: @theovilardo)
-- Added M3U playlist import/export support (feat/fix: @lostf1sh, @theovilardo)
 - Integrated Deezer API for artist images (feat: @lostf1sh)
 - Added Gemini AI model selection, system prompt settings, and AI playlist entry point (feat: @lostf1sh, @theovilardo)
 - Added sync offset support for lyrics and multi-strategy remote search (feat/fix: @lostf1sh, @theovilardo)

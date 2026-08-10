@@ -22,7 +22,6 @@
     <string name="library_toast_playing_next">Sırada oynatılacak</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Saate aktarım</string>
     <string name="library_cd_open_settings">Ayarlar</string>
     <string name="library_tab_edit">Düzenle</string>
     <string name="library_cd_reorder_tabs">Sekmeleri yeniden sırala</string>
@@ -43,11 +42,6 @@
     <string name="library_storage_sd_card">SD Kart</string>
     <string name="library_storage_sd_card_unavailable">SD kart şu anda kullanılamıyor.</string>
     <string name="library_sort_section_cloud">Bulut</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram Bulut Kanalları</string>
-    <string name="library_telegram_topics_display_title">Konu Görünümü</string>
-    <string name="library_telegram_topic_mode_channels">Kanallar</string>
-    <string name="library_telegram_topic_mode_topics">Konular</string>
-    <string name="library_telegram_topic_mode_both">Her ikisi</string>
     <string name="library_cloud_sources_heading">Bulut</string>
     <string name="library_cloud_only_label">Sadece Bulut</string>
 
@@ -97,7 +91,6 @@
     <string name="library_empty_songs_offline_title">Yerel şarkı bulunamadı</string>
     <string name="library_empty_songs_offline_subtitle">Başka bir kaynak filtresi deneyin veya cihaz kitaplığını yeniden tarayın.</string>
     <string name="library_empty_songs_online_title">Bulut şarkısı bulunamadı</string>
-    <string name="library_empty_songs_online_subtitle">Telegram veya NetEase şarkılarını senkronize edin ya da yerel kaynağa geçin.</string>
     <string name="library_empty_albums_all_title">Kullanılabilir albüm yok</string>
     <string name="library_empty_albums_all_subtitle">Kitaplığınızdaki parçalar gruplandığında albümler burada görünecektir.</string>
     <string name="library_empty_albums_offline_title">Yerel albüm bulunamadı</string>
@@ -115,7 +108,6 @@
     <string name="library_empty_liked_offline_title">Beğenilen yerel şarkı yok</string>
     <string name="library_empty_liked_offline_subtitle">Kaynak filtresini değiştirin veya cihazınızdaki şarkıları beğenin.</string>
     <string name="library_empty_liked_online_title">Beğenilen bulut şarkısı yok</string>
-    <string name="library_empty_liked_online_subtitle">Bu görünümde görmek için Telegram veya NetEase parçalarını beğenin.</string>
     <string name="library_empty_folders_title">Klasör bulunamadı</string>
     <string name="library_empty_folders_subtitle">Müzik içeren dahili depolama klasörleri burada görünecektir.</string>
     <string name="library_empty_playlists_title">Henüz çalma listesi yok</string>
@@ -142,14 +134,8 @@
     <string name="song_info_cd_add_to_playlist">Çalma listesine ekle</string>
     <string name="song_info_action_delete">Sil</string>
     <string name="song_info_action_delete_all">Tümünü sil</string>
-    <string name="song_info_checking_watch">Saat kontrol ediliyor</string>
     <string name="song_info_transferring_percent">Aktarılıyor %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Saate aktarılıyor</string>
     <string name="song_info_transfer_in_progress">Aktarım devam ediyor</string>
-    <string name="song_info_send_to_watch">Saate gönder</string>
-    <string name="song_info_watch_unavailable">Saat kullanılamıyor</string>
-    <string name="song_info_cd_send_to_watch">Şarkıyı saate gönder</string>
-    <string name="song_info_cd_watch_unavailable">Saat kullanılamıyor</string>
     <string name="song_info_set_sound_as_short">Şu şekilde ayarla:</string>
     <string name="song_info_set_sound_as_long">Ses olarak ayarla</string>
     <string name="song_info_cd_set_sound_as">Bu şarkıyı sistem sesi olarak nasıl kullanacağınızı seçin</string>
@@ -262,29 +248,6 @@
     <string name="artist_picker_primary_label">Ana sanatçı</string>
     <string name="artist_picker_shortcut_label">Sanatçı sayfası</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Aktarımı iptal et</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Telefondan saate müzik aktarımlarının canlı ilerlemesini gösterir</string>
-    <string name="watch_transfer_channel_name">Saat aktarımları</string>
-    <string name="watch_transfer_dialog_title">Saate Gönderiliyor</string>
-    <string name="watch_transfer_status_cancelled">İptal Edildi</string>
-    <string name="watch_transfer_status_cancelled_service">Aktarım iptal edildi</string>
-    <string name="watch_transfer_status_complete_service">Aktarım tamamlandı</string>
-    <string name="watch_transfer_status_completed">Tamamlandı</string>
-    <string name="watch_transfer_status_failed">Başarısız oldu</string>
-    <string name="watch_transfer_status_failed_service">Aktarım başarısız oldu</string>
-    <string name="watch_transfer_status_multiple_active">Birden çok aktif aktarım</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Hazırlanıyor</string>
-    <string name="watch_transfer_status_preparing_service">Saat aktarımı hazırlanıyor</string>
-    <string name="watch_transfer_status_preparing_transfer">Aktarım hazırlanıyor…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Saate %1$d şarkı gönderiliyor</string>
-    <string name="watch_transfer_status_sending_to_watch">Saate gönderiliyor</string>
-    <string name="watch_transfer_status_starting">Aktarım başlatılıyor…</string>
-    <string name="watch_transfer_status_starting_short">Başlatılıyor</string>
-    <string name="watch_transfer_status_transferring">Aktarılıyor</string>
-    <string name="watch_transfer_summary_n">%1$d aktarım</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">Şarkıyı düzenle</string>
@@ -492,18 +455,11 @@
     <string name="playlist_view_model_none_to_share">Paylaşılacak çalma listesi yok</string>
     <string name="playlist_view_model_share_chooser_title">Çalma listelerini paylaş</string>
     <string name="playlist_view_model_share_failed">Paylaşım başarısız oldu: %1$s</string>
-    <string name="playlist_view_model_none_to_export">Dışa aktarılacak çalma listesi yok</string>
-    <string name="playlist_view_model_export_failed">Dışa aktarma başarısız oldu: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Müzik/PixelPlayer Aktarımları</string>
     <string name="playlist_view_model_ai_gemini_key_required">Lütfen Ayarlar\'da Gemini API anahtarınızı yapılandırın.</string>
     <string name="playlist_view_model_restored_toast">Çalma listesi geri yüklendi</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">%d çalma listesi paylaşılıyor</item>
         <item quantity="other">%d çalma listesi paylaşılıyor</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">%1$d çalma listesi %2$s konumuna dışa aktarıldı</item>
-        <item quantity="other">%1$d çalma listesi %2$s konumuna dışa aktarıldı</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

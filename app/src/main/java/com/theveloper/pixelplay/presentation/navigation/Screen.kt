@@ -10,6 +10,10 @@ sealed class Screen(val route: String) {
     object Library : Screen("library")
     object OnlineLibrary : Screen("online_library")
     object LocalLibrary : Screen("local_library")
+    object OnlineCollection : Screen("online_collection/{kind}/{platform}/{id}?title={title}") {
+        fun createRoute(kind: String, platform: String, id: String, title: String): String =
+            "online_collection/$kind/$platform/$id?title=${android.net.Uri.encode(title)}"
+    }
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
     object AudioSourcePlugins : Screen("audio_source_plugins")
@@ -53,7 +57,5 @@ sealed class Screen(val route: String) {
     object DeviceCapabilities : Screen("device_capabilities")
     object NeteaseDashboard : Screen("netease_dashboard")
     object QqMusicDashboard : Screen("qqmusic_dashboard")
-    object NavidromeDashboard : Screen("navidrome_dashboard")
-    object JellyfinDashboard : Screen("jellyfin_dashboard")
 
 }

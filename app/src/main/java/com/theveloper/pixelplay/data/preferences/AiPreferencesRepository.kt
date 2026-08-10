@@ -30,6 +30,21 @@ class AiPreferencesRepository @Inject constructor(
         val DEFAULT_GLM_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
         val DEFAULT_OPENAI_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
         val DEFAULT_OPENROUTER_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
+
+        val SENSITIVE_BACKUP_KEY_NAMES: Set<String> = buildSet {
+            add("ai_provider")
+            add("safe_token_limit")
+            AiProvider.entries.forEach { provider ->
+                val prefix = provider.name.lowercase()
+                add("${prefix}_api_key")
+                add("${prefix}_model")
+                add("${prefix}_system_prompt")
+            }
+        }
+
+        fun isSensitiveBackupKey(key: String): Boolean {
+            return key in SENSITIVE_BACKUP_KEY_NAMES
+        }
     }
 
     private object Keys {

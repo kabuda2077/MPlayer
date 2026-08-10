@@ -4,66 +4,21 @@
     <string name="player_cd_collapse">收起播放器</string>
     <string name="player_now_playing">正在播放</string>
     <string name="player_cd_cloud_stream">云端串流</string>
-    <string name="player_cd_cast">投屏</string>
     <string name="player_cd_bluetooth">蓝牙</string>
     <string name="player_cd_local_playback">本地播放</string>
     <string name="player_connecting">正在连接…</string>
     <string name="player_cd_open_queue">打开队列</string>  
+    <string name="audio_output_title">音频输出</string>
+    <string name="audio_output_this_phone">本机</string>
+    <string name="audio_output_local_playback">本机播放</string>
+    <string name="audio_output_bluetooth_audio">蓝牙音频</string>
+    <string name="audio_output_bluetooth_devices">蓝牙设备</string>
+    <string name="audio_output_refresh">刷新</string>
+    <string name="audio_output_allow_bluetooth">允许访问蓝牙</string>
+    <string name="audio_output_connected">已连接</string>
+    <string name="audio_output_bluetooth_settings">蓝牙设置</string>
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">准备连接</string>
-    <string name="cast_perm_body">允许 PixelPlayer 查看您附近的设备和当前 Wi-Fi，以便我们保持您的投屏、蓝牙音频和扬声器同步。</string>
-    <string name="cast_perm_nearby_title">附近设备</string>
-    <string name="cast_perm_nearby_desc">需要此权限来读取和控制您连接的蓝牙音频设备。</string>
-    <string name="cast_perm_location_title">用于 Wi-Fi 的位置信息</string>
-    <string name="cast_perm_location_desc">Android 需要位置信息才能共享您当前所连接的 Wi-Fi 网络 (SSID)，以便我们找到兼容的投屏设备。</string>
-    <string name="cast_allow_access">允许访问</string>
-    <string name="cast_perm_footer">我们仅将这些权限用于设备互连——投屏、控制附近扬声器以及保持音频同步。</string>
-    <string name="cast_title_connect">连接设备</string>
-    <string name="cast_scanning_nearby">正在扫描附近</string>
-    <string name="cast_subtitle_session">投屏会话</string>
-    <string name="cast_connecting">正在连接</string>
-    <string name="cast_connected">已连接</string>
-    <string name="cast_this_phone">本机</string>
-    <string name="cast_bluetooth_audio">蓝牙音频</string>
-    <string name="cast_local_playback">本地播放</string>
-    <string name="cast_playing">正在播放</string>
-    <string name="cast_paused">已暂停</string>
-    <string name="cast_volume_device">设备音量</string>
-    <string name="cast_volume_phone">手机音量</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">电量</string>
-    <string name="cast_cd_volume_level">音量</string>
-    <string name="cast_disconnect">断开连接</string>
-    <string name="cast_connectivity">连接性</string>
-    <string name="cast_turn_on_wifi_bt">开启 Wi-Fi 或蓝牙</string>
-    <string name="cast_cd_refresh_connections">刷新连接</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">关</string>
-    <string name="cast_wifi_on">开</string>
-    <string name="cast_wifi_connected">已连接</string>
-    <string name="cast_bluetooth">蓝牙</string>
-    <string name="cast_bt_off">关</string>
-    <string name="cast_bt_on">开</string>
-    <string name="cast_bt_connected">已连接</string>
-    <string name="cast_nearby_devices">附近设备</string>
-    <string name="cast_cd_refresh_devices">刷新设备</string>
-    <string name="cast_status_connected">已连接</string>
-    <string name="cast_status_connecting">正在连接</string>
-    <string name="cast_status_available_connect">可连接</string>
-    <string name="cast_status_available">可用</string>
-    <string name="cast_connecting_ellipsis">正在连接...</string>
-    <string name="cast_searching">正在搜索设备…</string>
-    <string name="cast_searching_hint">请确保您的电视或扬声器已开启，并连接到同一 Wi-Fi 网络。</string>
-    <string name="cast_tab_controls">控制</string>
-    <string name="cast_tab_devices">设备</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">投屏媒体服务器</string>
-    <string name="cast_server_notification_title">正在投屏至设备</string>
-    <string name="cast_server_notification_text">正在向投屏设备提供媒体</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">投屏时暂不支持对此音频格式进行进度调节，这可能会导致投屏会话崩溃。</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">睡眠定时器</string>
@@ -129,7 +84,7 @@
     <!-- LyricsSheet -->
     <string name="lyrics_title">歌词</string>
     <string name="lyrics_loading">正在加载歌词…</string>
-    <string name="lyrics_mode_synced">同步滚动</string>
+    <string name="lyrics_mode_synced">歌词同步滚动</string>
     <string name="lyrics_mode_static">静态</string>
     <string name="lyrics_options">歌词选项</string>
     <string name="lyrics_offset_minus_half">−.5</string>

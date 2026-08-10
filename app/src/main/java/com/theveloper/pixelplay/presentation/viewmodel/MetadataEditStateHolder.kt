@@ -14,7 +14,10 @@ import com.theveloper.pixelplay.data.media.MetadataEditError
 import com.theveloper.pixelplay.data.media.SongMetadataEditor
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.LibrarySong
+import com.theveloper.pixelplay.data.model.PlaybackItem
 import com.theveloper.pixelplay.data.repository.MusicRepository
+import com.theveloper.pixelplay.data.service.player.PlaybackRequestCoordinator
 import com.theveloper.pixelplay.utils.FileDeletionUtils
 import com.theveloper.pixelplay.utils.LyricsUtils
 import com.theveloper.pixelplay.utils.MediaItemBuilder
@@ -92,6 +95,7 @@ class MetadataEditStateHolder @Inject constructor(
     private val imageCacheManager: ImageCacheManager,
     private val themeStateHolder: ThemeStateHolder,
     private val playbackStateHolder: PlaybackStateHolder,
+    private val playbackRequestCoordinator: PlaybackRequestCoordinator,
     private val libraryStateHolder: LibraryStateHolder,
     private val multiSelectionStateHolder: MultiSelectionStateHolder,
     private val albumArtThemeDao: AlbumArtThemeDao,
@@ -220,10 +224,11 @@ class MetadataEditStateHolder @Inject constructor(
             }
             
             // Update Repository (Lyrics)
+            val persistedSong = song.copy(id = resolvedSongId.toString(), libraryId = resolvedSongId)
             if (normalizedLyrics != null) {
-                musicRepository.updateLyrics(resolvedSongId, normalizedLyrics)
+                musicRepository.updateLyrics(persistedSong, normalizedLyrics)
             } else {
-                musicRepository.resetLyrics(resolvedSongId)
+                musicRepository.resetLyrics(persistedSong)
             }
 
             val updatedSong = song.copy(
@@ -243,7 +248,7 @@ class MetadataEditStateHolder @Inject constructor(
             // and assign it a NEW album ID, resulting in a NEW albumArtUri.
             // Using the 'updatedSong' copy above might retain a STALE albumArtUri.
             val freshSongFromRepo = try {
-                musicRepository.getSong(song.id).first() ?: updatedSong
+                musicRepository.getSong(resolvedSongId.toString()).first() ?: updatedSong
             } catch (e: Exception) {
                 updatedSong
             }
@@ -312,7 +317,7 @@ class MetadataEditStateHolder @Inject constructor(
     }
 
     private fun resolveSongIdForMetadataEdit(song: Song): Long? {
-        song.id.toLongOrNull()?.let { return it }
+        song.libraryId?.let { return it }
 
         val uriCandidates = buildList {
             if (song.contentUriString.isNotBlank()) add(song.contentUriString)
@@ -351,7 +356,7 @@ class MetadataEditStateHolder @Inject constructor(
             Log.e("PlayerViewModel", "METADATA_EDIT_VM: Starting editSongMetadata via Holder")
 
             // On Android 11+, request MediaStore write permission for local songs
-            val songId = song.id.toLongOrNull()
+            val songId = resolveSongIdForMetadataEdit(song)
             if (songId != null && songId > 0 && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val intentSender = MediaStorePermissionHelper.createWriteRequestForSong(context, songId)
                 if (intentSender != null) {
@@ -401,7 +406,7 @@ class MetadataEditStateHolder @Inject constructor(
             // Check if we need MediaStore permission (Android 11+)
             val localSongsNeedingPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 songs.mapNotNull { song ->
-                    song.id.toLongOrNull()?.takeIf { it > 0 }?.let { song to it }
+                    resolveSongIdForMetadataEdit(song)?.takeIf { it > 0 }?.let { song to it }
                 }
             } else {
                 emptyList()
@@ -456,7 +461,7 @@ class MetadataEditStateHolder @Inject constructor(
             // On Android 11+, request write permission for all local songs upfront
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val uris = songs.mapNotNull { song ->
-                    song.id.toLongOrNull()?.takeIf { it > 0 }?.let { id ->
+                    resolveSongIdForMetadataEdit(song)?.takeIf { it > 0 }?.let { id ->
                         MediaStorePermissionHelper.getMediaStoreUri(context, id)
                     }
                 }
@@ -649,12 +654,11 @@ class MetadataEditStateHolder @Inject constructor(
             libraryStateHolder.updateSong(updatedSong)
 
             if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
-                playbackStateHolder.updateStablePlayerState {
-                    it.copy(
-                        currentSong = updatedSong,
-                        lyrics = result.parsedLyrics
-                    )
-                }
+                playbackStateHolder.updateCurrentSongMetadata(
+                    updatedSong = updatedSong,
+                    lyrics = result.parsedLyrics,
+                    replaceLyrics = true
+                )
 
                 // Update the player's current MediaItem to refresh notification artwork
                 // This is efficient: only replaces metadata, not the media stream
@@ -662,11 +666,14 @@ class MetadataEditStateHolder @Inject constructor(
                 if (controller != null) {
                     val currentIndex = controller.currentMediaItemIndex
                     if (currentIndex >= 0 && currentIndex < controller.mediaItemCount) {
-                        val currentPosition = controller.currentPosition
-                        val newMediaItem = MediaItemBuilder.build(updatedSong)
-                        controller.replaceMediaItem(currentIndex, newMediaItem)
-                        // Restore position since replaceMediaItem may reset it
-                        controller.seekTo(currentIndex, currentPosition)
+                        val newMediaItem = MediaItemBuilder.build(
+                            PlaybackItem.fromLibrary(LibrarySong.require(updatedSong))
+                        )
+                        playbackRequestCoordinator.replaceMediaItemPreservingPosition(
+                            controller,
+                            currentIndex,
+                            newMediaItem
+                        )
                     }
                 }
             }
@@ -759,22 +766,25 @@ class MetadataEditStateHolder @Inject constructor(
 
                 // If this is the current playing song, update it
                 if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
-                    playbackStateHolder.updateStablePlayerState {
-                        it.copy(
-                            currentSong = updatedSong,
-                            lyrics = result.parsedLyrics
-                        )
-                    }
+                    playbackStateHolder.updateCurrentSongMetadata(
+                        updatedSong = updatedSong,
+                        lyrics = result.parsedLyrics,
+                        replaceLyrics = true
+                    )
 
                     // Update MediaItem for notification
                     val controller = playbackStateHolder.mediaController
                     if (controller != null) {
                         val currentIndex = controller.currentMediaItemIndex
                         if (currentIndex >= 0 && currentIndex < controller.mediaItemCount) {
-                            val currentPosition = controller.currentPosition
-                            val newMediaItem = MediaItemBuilder.build(updatedSong)
-                            controller.replaceMediaItem(currentIndex, newMediaItem)
-                            controller.seekTo(currentIndex, currentPosition)
+                            val newMediaItem = MediaItemBuilder.build(
+                                PlaybackItem.fromLibrary(LibrarySong.require(updatedSong))
+                            )
+                            playbackRequestCoordinator.replaceMediaItemPreservingPosition(
+                                controller,
+                                currentIndex,
+                                newMediaItem
+                            )
                         }
                     }
                 }
@@ -832,11 +842,12 @@ class MetadataEditStateHolder @Inject constructor(
         var failCount = 0
 
         songs.forEach { song ->
+            val libraryId = resolveSongIdForMetadataEdit(song)
             val sourceSong = if (song.lyrics != null) {
                 song
             } else {
                 withContext(Dispatchers.IO) {
-                    musicRepository.getSong(song.id).first()
+                    libraryId?.let { musicRepository.getSong(it.toString()).first() }
                 } ?: song
             }
 
@@ -862,12 +873,18 @@ class MetadataEditStateHolder @Inject constructor(
                 libraryStateHolder.updateSong(updatedSong)
 
                 if (playbackStateHolder.stablePlayerState.value.currentSong?.id == song.id) {
-                    playbackStateHolder.updateStablePlayerState { it.copy(currentSong = updatedSong) }
+                    playbackStateHolder.updateCurrentSongMetadata(updatedSong)
                     val controller = playbackStateHolder.mediaController
                     if (controller != null) {
                         val idx = controller.currentMediaItemIndex
                         if (idx != C.INDEX_UNSET) {
-                            controller.replaceMediaItem(idx, MediaItemBuilder.build(updatedSong))
+                            playbackRequestCoordinator.replaceMediaItemPreservingPosition(
+                                controller,
+                                idx,
+                                MediaItemBuilder.build(
+                                    PlaybackItem.fromLibrary(LibrarySong.require(updatedSong))
+                                )
+                            )
                         }
                     }
                 }

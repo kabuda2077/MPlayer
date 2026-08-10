@@ -352,9 +352,10 @@ class MultiSelectionStateHolder @Inject constructor(
             val favIds = callbacks.favoriteSongIds().toMutableSet()
             var changedCount = 0
             songs.forEach { song ->
-                if (favIds.contains(song.id) != makeFavorite) {
-                    musicRepository.setFavoriteStatus(song.id, makeFavorite)
-                    if (makeFavorite) favIds.add(song.id) else favIds.remove(song.id)
+                val favoriteId = song.libraryId?.toString() ?: return@forEach
+                if (favIds.contains(favoriteId) != makeFavorite) {
+                    musicRepository.setFavoriteStatus(favoriteId, makeFavorite)
+                    if (makeFavorite) favIds.add(favoriteId) else favIds.remove(favoriteId)
                     changedCount++
                 }
             }

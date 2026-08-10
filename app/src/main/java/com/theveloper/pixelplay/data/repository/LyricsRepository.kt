@@ -1,8 +1,8 @@
 package com.theveloper.pixelplay.data.repository
 
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
 
 interface LyricsRepository {
     /**
@@ -11,17 +11,16 @@ interface LyricsRepository {
     suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>?
 
     /**
-     * Get lyrics for a song with source preference support.
+     * Get lyrics for a song using the fixed source strategy.
      * 
      * @param song The song to get lyrics for
-     * @param sourcePreference The preferred order of sources to try (API, Embedded, Local)
      * @param forceRefresh If true, bypasses in-memory cache
      * @return Lyrics object or null if not found
      */
     suspend fun getLyrics(
         song: Song,
-        sourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        traceContext: PlaybackTraceContext? = null
     ): Lyrics?
     
     /**
@@ -42,12 +41,12 @@ interface LyricsRepository {
     /**
      * Update lyrics for a song in the database.
      */
-    suspend fun updateLyrics(songId: Long, lyricsContent: String)
+    suspend fun updateLyrics(song: Song, lyricsContent: String)
     
     /**
      * Reset lyrics for a song (remove from database and cache).
      */
-    suspend fun resetLyrics(songId: Long)
+    suspend fun resetLyrics(song: Song)
     
     /**
      * Reset all lyrics (clear database and cache).

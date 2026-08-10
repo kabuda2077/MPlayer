@@ -72,8 +72,6 @@ fun ExternalPlayerOverlay(
 ) {
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val playbackPosition by playerViewModel.currentPlaybackPosition.collectAsStateWithLifecycle()
-    val remotePosition by playerViewModel.remotePosition.collectAsStateWithLifecycle()
-    val isRemotePlaybackActive by playerViewModel.isRemotePlaybackActive.collectAsStateWithLifecycle()
     val navBarCornerRadiusRaw by playerViewModel.navBarCornerRadius.collectAsStateWithLifecycle()
     val navBarCornerRadius = sanitizeNavBarCornerRadius(navBarCornerRadiusRaw)
     val currentSong = stablePlayerState.currentSong
@@ -159,8 +157,7 @@ fun ExternalPlayerOverlay(
                     }
                 } else {
                     val totalDuration = stablePlayerState.totalDuration.coerceAtLeast(0L)
-                    val rawPosition = if (isRemotePlaybackActive) remotePosition else playbackPosition
-                    val position = rawPosition.coerceIn(0L, totalDuration)
+                    val position = playbackPosition.coerceIn(0L, totalDuration)
                     val progressFraction = if (totalDuration > 0) position.toFloat() / totalDuration else 0f
                     val colorScheme = MaterialTheme.colorScheme
                     val skipContainer = colorScheme.secondaryFixedDim

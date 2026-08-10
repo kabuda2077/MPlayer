@@ -22,6 +22,7 @@ import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -98,6 +99,8 @@ class PluginRuntime @Inject constructor(
             _state.update { it.copy(initializing = false, initialized = false, errorMessage = message) }
             destroyContext(clearState = false)
             throw PluginResolveException.InitFailed(message)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val message = e.message ?: "音源插件初始化失败"
             addLog("error", message)
@@ -157,6 +160,8 @@ class PluginRuntime @Inject constructor(
         } catch (e: TimeoutCancellationException) {
             pendingPluginRequests.remove(requestKey)
             throw PluginResolveException.RequestTimeout()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: PluginResolveException) {
             throw e
         } catch (e: Exception) {

@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">Få tilgang til dem fra repositoriets GitHub Actions workflow-artefakter hvis tilgjengelig.</string>
     <string name="beta_sheet_nightly_report_title">Rapportering av nightly-problemer</string>
     <string name="beta_sheet_nightly_report_body">Når du rapporterer et problem fra en nightly-bygg, nevn alltid at det skjedde på en nightly-bygg, ikke på den offisielle utgivelsen. Inkluder byggdato, workflow-kjøringsnavn eller -nummer, eller commit-SHA hvis mulig. Sjekk også om samme problem oppstår på den siste offisielle utgivelsen.</string>
-    <string name="beta05_title">Beta 0.5.0 oppgradering</string>
-    <string name="beta05_clean_install_title">Ren installasjon anbefales</string>
-    <string name="beta05_clean_install_body">Hvis du kommer fra beta 0.5.0, kan denne oppdateringen trenge friske bibliotekdata.</string>
-    <string name="beta05_if_wrong_meta_title">Hvis metadata ser feil ut</string>
-    <string name="beta05_if_wrong_meta_body">Feil sanginfo, feil artister eller album betyr vanligvis at en ren installasjon er løsningen.</string>
-    <string name="beta05_dont_show">Ikke vis igjen</string>
-    <string name="beta05_got_it">Skjønner</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">Beklager, noe gikk galt</string>

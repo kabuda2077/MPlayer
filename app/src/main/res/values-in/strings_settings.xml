@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Kemampuan Perangkat</string>
     <string name="settings_category_device_capabilities_subtitle">Spek audio, codec, dan info dekoder</string>
     <string name="settings_category_accounts_title">Akun</string>
-    <string name="settings_category_accounts_subtitle">Kelola Telegram, Google Drive, NetEase, dan layanan lainnya</string>
     <string name="settings_category_about_title">Tentang</string>
     <string name="settings_category_about_subtitle">Info aplikasi, versi, dan kredit</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">Pindai otomatis file .lrc</string>
     <string name="settings_auto_scan_lrc_subtitle">Secara otomatis memindai dan menetapkan file .lrc di folder yang sama selama sinkronisasi pustaka.</string>
     <string name="settings_lyrics_management_section">Manajemen Lirik</string>
-    <string name="settings_lyrics_source_priority_title">Prioritas Sumber Lirik</string>
-    <string name="settings_lyrics_source_priority_subtitle">Pilih sumber mana yang akan dicoba terlebih dahulu saat mengambil lirik.</string>
-    <string name="settings_lyrics_embedded_first">Tertanam Terlebih Dahulu</string>
-    <string name="settings_lyrics_local_first">Lokal (.lrc) Terlebih Dahulu</string>
     <string name="settings_reset_imported_lyrics_title">Reset Lirik yang Diimpor</string>
     <string name="settings_reset_imported_lyrics_subtitle">Hapus semua lirik yang diimpor dari database.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Reset lirik yang diimpor?</string>
@@ -261,9 +256,6 @@
     <string name="settings_gain_mode_subtitle">Trek: normalkan setiap lagu. Album: normalkan per album.</string>
     <string name="settings_gain_mode_track">Trek</string>
     <string name="settings_gain_mode_album">Album</string>
-    <string name="settings_cast_section">Cast</string>
-    <string name="settings_cast_autoplay_title">Putar otomatis saat cast terhubung/terputus</string>
-    <string name="settings_cast_autoplay_subtitle">Mulai memutar segera setelah beralih koneksi cast.</string>
     <string name="settings_headphones_section">Headphone</string>
     <string name="settings_headphones_resume_title">Lanjutkan saat headphone terhubung kembali</string>
     <string name="settings_headphones_resume_subtitle">Jika pemutaran dijeda karena headphone dilepas, lanjutkan secara otomatis saat terhubung kembali.</string>
@@ -601,7 +593,6 @@
     <string name="accounts_no_linked_subtitle">Hubungkan penyedia untuk mengelolanya dari layar ini.</string>
     <string name="accounts_connect_service">Hubungkan %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (Segera hadir)</string>
-    <string name="accounts_google_drive_soon">Google Drive akan segera hadir.</string>
     <string name="accounts_unable_open_screen">Tidak dapat membuka layar ini sekarang.</string>
 
     <!-- About category -->
@@ -621,7 +612,6 @@
     <string name="about_contributors_section_subtitle">Daftar kontributor langsung dari GitHub.</string>
     <string name="about_contributions_format">%1$d kontrib.</string>
     <string name="about_cd_open_github_profile">Buka profil GitHub</string>
-    <string name="about_cd_open_telegram">Buka Telegram</string>
     <string name="about_cd_contributor_avatar">Avatar %1$s</string>
     <string name="about_cd_contributor_icon">Ikon %1$s</string>
 </resources>

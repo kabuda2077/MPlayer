@@ -643,14 +643,15 @@ private fun buildArtistGroupedItems(
         .sortedWith(artistGroupComparator(sortOption))
 
     return buildList {
-        groups.forEach { (artist, artistSongs) ->
+        groups.forEachIndexed { artistIndex, (artist, artistSongs) ->
+            val artistKey = artist.uniqueGroupKey("artist", artistIndex)
             val albums = artistSongs
                 .groupBy { it.album.ifBlank { "Unknown Album" } }
                 .toSortedMap(compareBy<String> { it.lowercase() })
             val totalSongs = artistSongs.size
             add(
                 GroupedSongListItem.Header(
-                    key = "artist_header_${artist.stableGroupKey()}",
+                    key = "${artistKey}_header",
                     title = artist,
                     subtitle = null,
                     artUri = artistArtworkByName[artist.artistLookupKey()],
@@ -658,13 +659,14 @@ private fun buildArtistGroupedItems(
                 )
             )
             albums.entries.forEachIndexed { albumIndex, (album, albumSongs) ->
+                val albumKey = album.uniqueGroupKey("${artistKey}_album", albumIndex)
                 if (albumIndex > 0) {
-                    add(GroupedSongListItem.Divider("artist_${artist.stableGroupKey()}_divider_$albumIndex"))
+                    add(GroupedSongListItem.Divider("${artistKey}_divider_$albumIndex"))
                 }
                 val sortedAlbumSongs = albumSongs.sortedByTrackOrder()
                 add(
                     GroupedSongListItem.AlbumHeader(
-                        key = "artist_${artist.stableGroupKey()}_album_${album.stableGroupKey()}",
+                        key = "${albumKey}_header",
                         title = album,
                         artUri = sortedAlbumSongs.firstNotNullOfOrNull { it.albumArtUriString },
                         songCount = sortedAlbumSongs.size,
@@ -674,7 +676,7 @@ private fun buildArtistGroupedItems(
                 )
                 add(
                     GroupedSongListItem.Spacer(
-                        key = "artist_${artist.stableGroupKey()}_${album.stableGroupKey()}_header_spacer",
+                        key = "${albumKey}_header_spacer",
                         height = 10.dp,
                         useSurfaceBackground = true
                     )
@@ -682,7 +684,7 @@ private fun buildArtistGroupedItems(
                 sortedAlbumSongs.forEachIndexed { songIndex, song ->
                     add(
                         GroupedSongListItem.SongRow(
-                            key = "artist_${artist.stableGroupKey()}_${album.stableGroupKey()}_${song.id}",
+                            key = "${albumKey}_song_${song.id}",
                             song = song,
                             isFirstInAlbum = songIndex == 0,
                             isLastInAlbum = songIndex == sortedAlbumSongs.lastIndex,
@@ -692,7 +694,7 @@ private fun buildArtistGroupedItems(
                     )
                 }
             }
-            add(GroupedSongListItem.Spacer(key = "artist_${artist.stableGroupKey()}_section_spacer", height = 16.dp))
+            add(GroupedSongListItem.Spacer(key = "${artistKey}_section_spacer", height = 16.dp))
         }
     }
 }
@@ -707,11 +709,12 @@ private fun buildAlbumGroupedItems(
         .sortedWith(albumGroupComparator(sortOption))
 
     return buildList {
-        groups.forEach { (album, albumSongs) ->
+        groups.forEachIndexed { albumIndex, (album, albumSongs) ->
+            val albumKey = album.uniqueGroupKey("album", albumIndex)
             val sortedAlbumSongs = albumSongs.sortedByTrackOrder()
             add(
                 GroupedSongListItem.AlbumHeader(
-                    key = "album_${album.stableGroupKey()}_header",
+                    key = "${albumKey}_header",
                     title = album,
                     artUri = sortedAlbumSongs.firstNotNullOfOrNull { it.albumArtUriString },
                     songCount = sortedAlbumSongs.size,
@@ -721,7 +724,7 @@ private fun buildAlbumGroupedItems(
             )
             add(
                 GroupedSongListItem.Spacer(
-                    key = "album_${album.stableGroupKey()}_header_spacer",
+                    key = "${albumKey}_header_spacer",
                     height = 10.dp,
                     useSurfaceBackground = true
                 )
@@ -729,7 +732,7 @@ private fun buildAlbumGroupedItems(
             sortedAlbumSongs.forEachIndexed { songIndex, song ->
                 add(
                     GroupedSongListItem.SongRow(
-                        key = "album_${album.stableGroupKey()}_${song.id}",
+                        key = "${albumKey}_song_${song.id}",
                         song = song,
                         isFirstInAlbum = songIndex == 0,
                         isLastInAlbum = songIndex == sortedAlbumSongs.lastIndex,
@@ -738,7 +741,7 @@ private fun buildAlbumGroupedItems(
                     )
                 )
             }
-            add(GroupedSongListItem.Spacer(key = "album_${album.stableGroupKey()}_section_spacer", height = 16.dp))
+            add(GroupedSongListItem.Spacer(key = "${albumKey}_section_spacer", height = 16.dp))
         }
     }
 }
@@ -825,6 +828,9 @@ private fun String.stableGroupKey(): String =
         .replace(Regex("[^a-z0-9_\\-]+"), "_")
         .trim('_')
         .ifBlank { "unknown" }
+
+private fun String.uniqueGroupKey(prefix: String, index: Int): String =
+    "${prefix}_${index}_${stableGroupKey()}"
 
 private fun String.artistLookupKey(): String =
     trim().lowercase()

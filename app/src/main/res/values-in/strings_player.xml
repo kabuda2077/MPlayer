@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Tutup pemutar</string>
     <string name="player_now_playing">Sedang Diputar</string>
     <string name="player_cd_cloud_stream">Aliran cloud</string>
-    <string name="player_cd_cast">Transmisikan</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Pemutaran lokal</string>
     <string name="player_connecting">Menghubungkan…</string>
     <string name="player_cd_open_queue">Buka Antrean</string>    
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Bersiap untuk menghubungkan</string>
-    <string name="cast_perm_body">Izinkan PixelPlayer untuk melihat perangkat terdekat dan Wi‑Fi Anda saat ini sehingga kami dapat menjaga transmisi, audio Bluetooth, dan speaker Anda tetap sinkron.</string>
-    <string name="cast_perm_nearby_title">Perangkat terdekat</string>
-    <string name="cast_perm_nearby_desc">Diperlukan untuk membaca dan mengontrol perangkat audio Bluetooth Anda yang terhubung.</string>
-    <string name="cast_perm_location_title">Lokasi untuk Wi‑Fi</string>
-    <string name="cast_perm_location_desc">Android memerlukan Lokasi untuk membagikan jaringan Wi‑Fi (SSID) tempat Anda berada sehingga kami dapat menemukan perangkat transmisi yang kompatibel.</string>
-    <string name="cast_allow_access">Izinkan akses</string>
-    <string name="cast_perm_footer">Kami hanya menggunakan izin ini untuk interkonektivitas perangkat — mentransmisikan, mengontrol speaker terdekat, dan menjaga audio tetap sinkron.</string>
-    <string name="cast_title_connect">Hubungkan perangkat</string>
-    <string name="cast_scanning_nearby">Memindai sekitar</string>
-    <string name="cast_subtitle_session">Sesi transmisi</string>
-    <string name="cast_connecting">Menghubungkan</string>
-    <string name="cast_connected">Terhubung</string>
-    <string name="cast_this_phone">Ponsel ini</string>
-    <string name="cast_bluetooth_audio">Audio Bluetooth</string>
-    <string name="cast_local_playback">Pemutaran lokal</string>
-    <string name="cast_playing">Memutar</string>
-    <string name="cast_paused">Dijeda</string>
-    <string name="cast_volume_device">Volume perangkat</string>
-    <string name="cast_volume_phone">Volume ponsel</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Tingkat baterai</string>
-    <string name="cast_cd_volume_level">Tingkat volume</string>
-    <string name="cast_disconnect">Putuskan koneksi</string>
-    <string name="cast_connectivity">Konektivitas</string>
-    <string name="cast_turn_on_wifi_bt">Aktifkan Wi-Fi atau Bluetooth</string>
-    <string name="cast_cd_refresh_connections">Segarkan koneksi</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">Nonaktif</string>
-    <string name="cast_wifi_on">Aktif</string>
-    <string name="cast_wifi_connected">Terhubung</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Nonaktif</string>
-    <string name="cast_bt_on">Aktif</string>
-    <string name="cast_bt_connected">Terhubung</string>
-    <string name="cast_nearby_devices">Perangkat terdekat</string>
-    <string name="cast_cd_refresh_devices">Segarkan perangkat</string>
-    <string name="cast_status_connected">Terhubung</string>
-    <string name="cast_status_connecting">Menghubungkan</string>
-    <string name="cast_status_available_connect">Tersedia untuk terhubung</string>
-    <string name="cast_status_available">Tersedia</string>
-    <string name="cast_connecting_ellipsis">Menghubungkan...</string>
-    <string name="cast_searching">Mencari perangkat…</string>
-    <string name="cast_searching_hint">Pastikan TV atau speaker Anda aktif dan berada di jaringan Wi‑Fi yang sama.</string>
-    <string name="cast_tab_controls">Kontrol</string>
-    <string name="cast_tab_devices">Perangkat</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Cast media server</string>
-    <string name="cast_server_notification_title">Mentransmisikan ke perangkat</string>
-    <string name="cast_server_notification_text">Menyajikan media ke perangkat Cast</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Pencarian tidak tersedia sementara untuk format audio ini di Cast karena dapat merusak sesi Cast.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Sleep timer</string>

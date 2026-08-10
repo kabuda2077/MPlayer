@@ -4,66 +4,12 @@
     <string name="player_cd_collapse">Minimer spiller</string>
     <string name="player_now_playing">Spilles nå</string>
     <string name="player_cd_cloud_stream">Skystrøm</string>
-    <string name="player_cd_cast">Cast</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Lokal avspilling</string>
     <string name="player_connecting">Kobler til…</string>
     <string name="player_cd_open_queue">Åpne kø</string>    
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Gjør deg klar til å koble til</string>
-    <string name="cast_perm_body">Tillat PixelPlayer å se enheter i nærheten og gjeldende Wi-Fi slik at vi kan holde cast, Bluetooth og høyttalere synkronisert.</string>
-    <string name="cast_perm_nearby_title">Enheter i nærheten</string>
-    <string name="cast_perm_nearby_desc">Trengs for å styre Bluetooth-lydenheter.</string>
-    <string name="cast_perm_location_title">Posisjon for Wi-Fi</string>
-    <string name="cast_perm_location_desc">Android krever posisjon for å dele Wi-Fi-navnet slik at vi kan finne cast-enheter.</string>
-    <string name="cast_allow_access">Gi tilgang</string>
-    <string name="cast_perm_footer">Vi bruker kun disse tillatelsene for tilkobling mellom enheter.</string>
-    <string name="cast_title_connect">Koble til enhet</string>
-    <string name="cast_scanning_nearby">Skanner i nærheten</string>
-    <string name="cast_subtitle_session">Casting-sesjon</string>
-    <string name="cast_connecting">Kobler til</string>
-    <string name="cast_connected">Tilkoblet</string>
-    <string name="cast_this_phone">Denne telefonen</string>
-    <string name="cast_bluetooth_audio">Bluetooth-lyd</string>
-    <string name="cast_local_playback">Lokal avspilling</string>
-    <string name="cast_playing">Spiller av</string>
-    <string name="cast_paused">Pauset</string>
-    <string name="cast_volume_device">Enhetsvolum</string>
-    <string name="cast_volume_phone">Telefonvolum</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Batterinivå</string>
-    <string name="cast_cd_volume_level">Volumnivå</string>
-    <string name="cast_disconnect">Koble fra</string>
-    <string name="cast_connectivity">Tilkobling</string>
-    <string name="cast_turn_on_wifi_bt">Slå på Wi-Fi eller Bluetooth</string>
-    <string name="cast_cd_refresh_connections">Oppdater tilkoblinger</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">Av</string>
-    <string name="cast_wifi_on">På</string>
-    <string name="cast_wifi_connected">Tilkoblet</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Av</string>
-    <string name="cast_bt_on">På</string>
-    <string name="cast_bt_connected">Tilkoblet</string>
-    <string name="cast_nearby_devices">Enheter i nærheten</string>
-    <string name="cast_cd_refresh_devices">Oppdater enheter</string>
-    <string name="cast_status_connected">Tilkoblet</string>
-    <string name="cast_status_connecting">Kobler til</string>
-    <string name="cast_status_available_connect">Tilgjengelig for tilkobling</string>
-    <string name="cast_status_available">Tilgjengelig</string>
-    <string name="cast_connecting_ellipsis">Kobler til...</string>
-    <string name="cast_searching">Søker etter enheter…</string>
-    <string name="cast_searching_hint">Sørg for at TV-en eller høyttaleren er på og på samme nettverk.</string>
-    <string name="cast_tab_controls">Kontroller</string>
-    <string name="cast_tab_devices">Enheter</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Cast medieserver</string>
-    <string name="cast_server_notification_title">Caster til enhet</string>
-    <string name="cast_server_notification_text">Serverer media til Cast-enhet</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Sporing er midlertidig utilgjengelig for dette lydformatet på Cast fordi det kan krasje Cast-sesjonen.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Sleep timer</string>

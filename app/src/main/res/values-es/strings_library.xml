@@ -22,7 +22,6 @@
     <string name="library_toast_playing_next">Se reproducirá a continuación</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Transferencia al reloj</string>
     <string name="library_cd_open_settings">Ajustes</string>
     <string name="library_tab_edit">Editar</string>
     <string name="library_cd_reorder_tabs">Reorder pestañas</string>
@@ -43,11 +42,6 @@
     <string name="library_storage_sd_card">Tarjeta SD</string>
     <string name="library_storage_sd_card_unavailable">La tarjeta SD no está disponible ahora.</string>
     <string name="library_sort_section_cloud">Nube</string>
-    <string name="library_sort_toggle_telegram_channels">Canales en la nube de Telegram</string>
-    <string name="library_telegram_topics_display_title">Mostrar temas</string>
-    <string name="library_telegram_topic_mode_channels">Canales</string>
-    <string name="library_telegram_topic_mode_topics">Temas</string>
-    <string name="library_telegram_topic_mode_both">Ambos</string>
     <string name="library_cloud_sources_heading">Nube</string>
     <string name="library_cloud_only_label">Solo nube</string>
 
@@ -97,7 +91,6 @@
     <string name="library_empty_songs_offline_title">No se encontraron canciones locales</string>
     <string name="library_empty_songs_offline_subtitle">Prueba con otro filtro de origen o vuelve a escanear tu biblioteca local.</string>
     <string name="library_empty_songs_online_title">No se encontraron canciones en la nube</string>
-    <string name="library_empty_songs_online_subtitle">Sincroniza canciones de Telegram o NetEase, o cambia a origen local.</string>
     <string name="library_empty_albums_all_title">No hay álbumes disponibles</string>
     <string name="library_empty_albums_all_subtitle">Los álbumes aparecerán aquí en cuanto tu biblioteca tenga canciones agrupadas.</string>
     <string name="library_empty_albums_offline_title">No se encontraron álbumes locales</string>
@@ -115,7 +108,6 @@
     <string name="library_empty_liked_offline_title">No hay canciones favoritas locales</string>
     <string name="library_empty_liked_offline_subtitle">Cambia el filtro de origen o marca canciones favoritas en tu dispositivo.</string>
     <string name="library_empty_liked_online_title">No hay canciones favoritas en la nube</string>
-    <string name="library_empty_liked_online_subtitle">Marca canciones de Telegram o NetEase como favoritas para verlas en esta vista.</string>
     <string name="library_empty_folders_title">No se encontraron carpetas</string>
     <string name="library_empty_folders_subtitle">Las carpetas del almacenamiento interno con música aparecerán aquí.</string>
     <string name="library_empty_playlists_title">Aún no hay listas</string>
@@ -142,14 +134,8 @@
     <string name="song_info_cd_add_to_playlist">Añadir a la lista de reproducción</string>
     <string name="song_info_action_delete">Eliminar</string>
     <string name="song_info_action_delete_all">Eliminar todo</string>
-    <string name="song_info_checking_watch">Comprobando reloj</string>
     <string name="song_info_transferring_percent">Transfiriendo %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Transfiriendo al reloj</string>
     <string name="song_info_transfer_in_progress">Transferencia en progreso</string>
-    <string name="song_info_send_to_watch">Enviar al reloj</string>
-    <string name="song_info_watch_unavailable">Reloj no disponible</string>
-    <string name="song_info_cd_send_to_watch">Enviar canción al reloj</string>
-    <string name="song_info_cd_watch_unavailable">Reloj no disponible</string>
     <string name="song_info_set_sound_as_short">Establecer como</string>
     <string name="song_info_set_sound_as_long">Establecer como sonido</string>
     <string name="song_info_cd_set_sound_as">Elige cómo usar esta canción como sonido del sistema</string>
@@ -262,29 +248,6 @@
     <string name="artist_picker_primary_label">Artista principal</string>
     <string name="artist_picker_shortcut_label">Página del artista</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Cancelar transferencia</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Muestra el progreso en tiempo real de las transferencias de música del teléfono al reloj</string>
-    <string name="watch_transfer_channel_name">Transferencias al reloj</string>
-    <string name="watch_transfer_dialog_title">Enviando al reloj</string>
-    <string name="watch_transfer_status_cancelled">Cancelado</string>
-    <string name="watch_transfer_status_cancelled_service">Transferencia cancelada</string>
-    <string name="watch_transfer_status_complete_service">Transferencia completada</string>
-    <string name="watch_transfer_status_completed">Completado</string>
-    <string name="watch_transfer_status_failed">Error</string>
-    <string name="watch_transfer_status_failed_service">Transferencia fallida</string>
-    <string name="watch_transfer_status_multiple_active">Múltiples transferencias activas</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Preparando</string>
-    <string name="watch_transfer_status_preparing_service">Preparando transferencia al reloj</string>
-    <string name="watch_transfer_status_preparing_transfer">Preparando transferencia…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Enviando %1$d canciones al reloj</string>
-    <string name="watch_transfer_status_sending_to_watch">Enviando al reloj</string>
-    <string name="watch_transfer_status_starting">Iniciando transferencia…</string>
-    <string name="watch_transfer_status_starting_short">Iniciando</string>
-    <string name="watch_transfer_status_transferring">Transfiriendo</string>
-    <string name="watch_transfer_summary_n">%1$d transferencias</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">Editar canción</string>
@@ -492,18 +455,11 @@
     <string name="playlist_view_model_none_to_share">No hay listas para compartir</string>
     <string name="playlist_view_model_share_chooser_title">Compartir listas</string>
     <string name="playlist_view_model_share_failed">Error al compartir: %1$s</string>
-    <string name="playlist_view_model_none_to_export">No hay listas para exportar</string>
-    <string name="playlist_view_model_export_failed">Error al exportar: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">Por favor configure su clave API de Gemini en Ajustes.</string>
     <string name="playlist_view_model_restored_toast">Lista restaurada</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">Compartiendo %d lista</item>
         <item quantity="other">Compartiendo %d listas</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Exportada %1$d lista a %2$s</item>
-        <item quantity="other">Exportadas %1$d listas a %2$s</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

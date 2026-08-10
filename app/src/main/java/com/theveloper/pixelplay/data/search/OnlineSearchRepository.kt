@@ -53,7 +53,7 @@ class OnlineSearchRepository @Inject constructor(
     private suspend fun searchQq(query: String, limit: Int): List<Song> =
         qqMusicApiService.searchSongs(query, page = 1, pageSize = limit)
             .mapNotNull { item ->
-                val songMid = item.mid.ifBlank { item.id }.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val songMid = item.mid.ifBlank { item.qqSongId }.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 onlineSong(
                     id = "qqmusic_$songMid",
                     title = item.title,

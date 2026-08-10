@@ -1443,7 +1443,7 @@ private fun audioOutputCategoryLabel(category: AudioOutputCategory): String {
         AudioOutputCategory.Bluetooth -> stringResource(R.string.settings_devcaps_output_bluetooth)
         AudioOutputCategory.Usb -> stringResource(R.string.settings_devcaps_output_usb)
         AudioOutputCategory.Wired -> stringResource(R.string.settings_devcaps_output_wired)
-        AudioOutputCategory.Cast -> stringResource(R.string.settings_devcaps_output_digital)
+        AudioOutputCategory.Digital -> stringResource(R.string.settings_devcaps_output_digital)
         AudioOutputCategory.Other -> stringResource(R.string.settings_devcaps_output_other)
     }
 }

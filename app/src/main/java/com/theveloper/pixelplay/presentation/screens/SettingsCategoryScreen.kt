@@ -74,7 +74,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.BlurOff
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
@@ -487,7 +487,7 @@ fun SettingsCategoryScreen(
                                     label = stringResource(R.string.settings_online_audio_cache_limit),
                                     value = onlineAudioCacheLimitDraft,
                                     valueRange = 0f..4096f,
-                                    steps = 63,
+                                    steps = 15, // 0, 256, 512, ... 4096 MB
                                     onValueChange = { onlineAudioCacheLimitDraft = it },
                                     onValueChangeFinished = {
                                         val selectedLimit = onlineAudioCacheLimitDraft.toInt()
@@ -555,9 +555,9 @@ fun SettingsCategoryScreen(
                                 addBottomSpace = false
                             ) {
                                 SwitchSettingItem(
-                                    title = stringResource(R.string.settings_lyrics_enable_qq_title),
-                                    subtitle = stringResource(R.string.settings_lyrics_enable_qq_subtitle),
-                                    checked = uiState.enableQqLyrics,
+                                    title = stringResource(R.string.settings_lyrics_enable_online_title),
+                                    subtitle = stringResource(R.string.settings_lyrics_enable_online_subtitle),
+                                    checked = uiState.enableOnlineLyrics,
                                     onCheckedChange = { settingsViewModel.setOnlineLyricsEnabled(it) },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
@@ -613,9 +613,9 @@ fun SettingsCategoryScreen(
                                 SwitchSettingItem(
                                     title = stringResource(R.string.settings_disable_blur_all_over_title),
                                     subtitle = stringResource(R.string.settings_disable_blur_all_over_subtitle),
-                                    checked = uiState.disableBlurAllOver,
-                                    onCheckedChange = { settingsViewModel.setDisableBlurAllOver(it) },
-                                    leadingIcon = { Icon(Icons.Rounded.BlurOff, null, tint = MaterialTheme.colorScheme.secondary) }
+                                    checked = !uiState.disableBlurAllOver,
+                                    onCheckedChange = { enabled -> settingsViewModel.setDisableBlurAllOver(!enabled) },
+                                    leadingIcon = { Icon(Icons.Rounded.BlurOn, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
                                     title = stringResource(R.string.settings_show_scrollbar_title),
@@ -752,12 +752,11 @@ fun SettingsCategoryScreen(
                         }
                         SettingsCategory.PLAYBACK -> {
                             SettingsSubsection(title = stringResource(R.string.settings_background_playback_section)) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.settings_keep_playing_title),
-                                    description = stringResource(R.string.settings_keep_playing_subtitle),
-                                    options = mapOf("true" to stringResource(R.string.settings_label_on), "false" to stringResource(R.string.settings_label_off)),
-                                    selectedKey = if (uiState.keepPlayingInBackground) "true" else "false",
-                                    onSelectionChanged = { settingsViewModel.setKeepPlayingInBackground(it.toBoolean()) },
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.settings_keep_playing_title),
+                                    subtitle = stringResource(R.string.settings_keep_playing_subtitle),
+                                    checked = uiState.keepPlayingInBackground,
+                                    onCheckedChange = { settingsViewModel.setKeepPlayingInBackground(it) },
                                     leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SettingsItem(
@@ -811,17 +810,6 @@ fun SettingsCategoryScreen(
                                 }
                             }
 
-                            SettingsSubsection(title = stringResource(R.string.settings_cast_section)) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.settings_cast_autoplay_title),
-                                    description = stringResource(R.string.settings_cast_autoplay_subtitle),
-                                    options = mapOf("false" to stringResource(R.string.settings_label_enabled), "true" to stringResource(R.string.settings_label_disabled)),
-                                    selectedKey = if (uiState.disableCastAutoplay) "true" else "false",
-                                    onSelectionChanged = { settingsViewModel.setDisableCastAutoplay(it.toBoolean()) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_cast_24), null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
-                            }
-
                             SettingsSubsection(title = stringResource(R.string.settings_headphones_section)) {
                                 SwitchSettingItem(
                                     title = stringResource(R.string.settings_headphones_resume_title),
@@ -833,12 +821,11 @@ fun SettingsCategoryScreen(
                             }
 
                             SettingsSubsection(title = stringResource(R.string.settings_queue_transitions_section)) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.settings_crossfade_title),
-                                    description = stringResource(R.string.settings_crossfade_subtitle),
-                                    options = mapOf("true" to stringResource(R.string.settings_label_enabled), "false" to stringResource(R.string.settings_label_disabled)),
-                                    selectedKey = if (uiState.isCrossfadeEnabled) "true" else "false",
-                                    onSelectionChanged = { settingsViewModel.setCrossfadeEnabled(it.toBoolean()) },
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.settings_crossfade_title),
+                                    subtitle = stringResource(R.string.settings_crossfade_subtitle),
+                                    checked = uiState.isCrossfadeEnabled,
+                                    onCheckedChange = { settingsViewModel.setCrossfadeEnabled(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_align_justify_space_even_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 if (uiState.isCrossfadeEnabled) {
@@ -1825,7 +1812,7 @@ private fun BackupSectionSelectionDialog(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         FilledIconButton(
-                                            onClick = { onSelectionChanged(BackupSection.entries.toSet()) },
+                                            onClick = { onSelectionChanged(BackupSection.defaultSelection) },
                                             enabled = !inProgress,
                                             colors = IconButtonDefaults.filledIconButtonColors(
                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,

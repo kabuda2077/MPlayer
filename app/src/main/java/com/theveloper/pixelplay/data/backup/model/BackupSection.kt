@@ -33,12 +33,6 @@ enum class BackupSection(
         description = "Lyrics you've saved or imported.",
         iconRes = R.drawable.rounded_lyrics_24
     ),
-    SEARCH_HISTORY(
-        key = "search_history",
-        label = "Search History",
-        description = "Recent search terms in the app.",
-        iconRes = R.drawable.rounded_search_24
-    ),
     TRANSITIONS(
         key = "transitions",
         label = "Transition Rules",
@@ -56,13 +50,6 @@ enum class BackupSection(
         label = "Playback History",
         description = "Timeline-based listening history for stats.",
         iconRes = R.drawable.rounded_schedule_24
-    ),
-    QUICK_FILL(
-        key = "quick_fill",
-        label = "QuickFill Genres",
-        description = "Custom genres and their icons.",
-        iconRes = R.drawable.rounded_instant_mix_24,
-        sinceVersion = 3
     ),
     ARTIST_IMAGES(
         key = "artist_images",
@@ -84,10 +71,26 @@ enum class BackupSection(
         description = "History of AI requests and token consumption.",
         iconRes = R.drawable.rounded_monitoring_24,
         sinceVersion = 4
+    ),
+    AUDIO_SOURCE_PLUGINS(
+        key = "audio_source_plugins",
+        label = "Audio Source Plugins",
+        description = "Installed audio source plugin scripts and enabled state.",
+        iconRes = R.drawable.rounded_audio_file_24,
+        sinceVersion = 4
+    ),
+    SENSITIVE_DATA(
+        key = "sensitive_data",
+        label = "Sensitive Data",
+        description = "NetEase/QQ login cookies and AI provider API settings. Backup files are not encrypted.",
+        iconRes = R.drawable.rounded_key_vertical_24,
+        sinceVersion = 4
     );
 
     companion object {
-        val defaultSelection: Set<BackupSection> = entries.toSet()
+        val defaultSelection: Set<BackupSection> = entries
+            .filterNot { it == SENSITIVE_DATA }
+            .toSet()
 
         fun fromKey(key: String): BackupSection? = entries.find { it.key == key }
     }

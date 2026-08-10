@@ -45,6 +45,8 @@ import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.HomeScreen
 import com.theveloper.pixelplay.presentation.screens.LibraryScreen
+import com.theveloper.pixelplay.presentation.screens.OnlineBrowseScreen
+import com.theveloper.pixelplay.presentation.screens.OnlineCollectionScreen
 import com.theveloper.pixelplay.presentation.screens.MashupScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
@@ -175,7 +177,7 @@ fun AppNavigation(
                 Screen.Library.route,
             ) {
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.OnlineLibrary.route) {
+                    navController.navigate(Screen.LocalLibrary.route) {
                         popUpTo(Screen.Library.route) { inclusive = true }
                         launchSingleTop = true
                     }
@@ -213,10 +215,9 @@ fun AppNavigation(
                 },
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    LibraryScreen(
+                    OnlineBrowseScreen(
                         navController = navController,
-                        routeStorageFilter = StorageFilter.ONLINE,
-                        titleResId = R.string.online_library_screen_title,
+                        paddingValues = paddingValues,
                         playerViewModel = playerViewModel
                     )
                 }
@@ -255,10 +256,23 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
                     LibraryScreen(
                         navController = navController,
-                        routeStorageFilter = StorageFilter.OFFLINE,
+                        routeStorageFilter = null,
                         titleResId = R.string.local_library_screen_title,
                         playerViewModel = playerViewModel
                     )
+                }
+            }
+            composable(
+                route = Screen.OnlineCollection.route,
+                arguments = listOf(
+                    navArgument("kind") { type = NavType.StringType },
+                    navArgument("platform") { type = NavType.StringType },
+                    navArgument("id") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "在线内容" }
+                )
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
+                    OnlineCollectionScreen(navController = navController, playerViewModel = playerViewModel)
                 }
             }
             composable(
@@ -285,12 +299,6 @@ fun AppNavigation(
                         },
                         onOpenQqMusicDashboard = {
                             navController.navigateSafely(Screen.QqMusicDashboard.route)
-                        },
-                        onOpenNavidromeDashboard = {
-                            navController.navigateSafely(Screen.NavidromeDashboard.route)
-                        },
-                        onOpenJellyfinDashboard = {
-                            navController.navigateSafely(Screen.JellyfinDashboard.route)
                         }
                     )
                 }
@@ -531,24 +539,6 @@ fun AppNavigation(
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
                     com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardScreen(
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-            }
-            composable(
-                Screen.NavidromeDashboard.route,
-            ) {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    com.theveloper.pixelplay.presentation.navidrome.dashboard.NavidromeDashboardScreen(
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-            }
-            composable(
-                Screen.JellyfinDashboard.route,
-            ) {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    com.theveloper.pixelplay.presentation.jellyfin.dashboard.JellyfinDashboardScreen(
                         onBack = { navController.popBackStack() }
                     )
                 }

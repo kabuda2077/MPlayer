@@ -76,13 +76,6 @@
     <string name="beta_sheet_nightly_access">가능한 경우 레포지토리의 GitHub Actions 워크플로 아티팩트에서 다운로드할 수 있습니다.</string>
     <string name="beta_sheet_nightly_report_title">나이틀리 문제 보고</string>
     <string name="beta_sheet_nightly_report_body">나이틀리 빌드에서 발생한 문제를 보고할 때는 항상 공식 릴리스가 아닌 나이틀리 빌드에서 발생했음을 언급해 주세요. 가능하면 빌드 날짜, 워크플로 실행 이름 또는 번호, 커밋 SHA를 포함해 주세요. 또한 최신 공식 릴리스에서도 동일한 문제가 발생하는지 확인해 보세요.</string>
-    <string name="beta05_title">Beta 0.5.0 업그레이드</string>
-    <string name="beta05_clean_install_title">클린 설치 권장</string>
-    <string name="beta05_clean_install_body">Beta 0.5.0 버전에서 업데이트하는 경우, 이전의 캐시된 상태 대신 새로운 라이브러리 데이터를 생성해야 할 수 있습니다.</string>
-    <string name="beta05_if_wrong_meta_title">메타데이터나 라이브러리 항목이 잘못 보이는 경우</string>
-    <string name="beta05_if_wrong_meta_body">곡 메타데이터 오류, 아티스트 또는 앨범 불일치, 중복처럼 보이는 항목은 일반적으로 클린 설치로 해결됩니다.</string>
-    <string name="beta05_dont_show">다시 표시하지 않음</string>
-    <string name="beta05_got_it">확인</string>
 
     <!-- Crash report dialog -->
     <string name="crash_report_title">문제가 발생했습니다</string>

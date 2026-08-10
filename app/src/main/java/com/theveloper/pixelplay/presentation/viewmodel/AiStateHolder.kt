@@ -13,6 +13,7 @@ import com.theveloper.pixelplay.data.ai.provider.AiProviderException
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.StorageFilter
+import com.theveloper.pixelplay.utils.MediaSourceClassifier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -249,18 +250,7 @@ class AiStateHolder @Inject constructor(
     }
 
     private fun Song.matchesStorageFilter(filter: StorageFilter): Boolean {
-        val uri = contentUriString.trim().lowercase()
-        val isOnline = uri.startsWith("telegram://") ||
-            uri.startsWith("netease://") ||
-            uri.startsWith("gdrive://") ||
-            uri.startsWith("qqmusic://") ||
-            uri.startsWith("navidrome://") ||
-            uri.startsWith("jellyfin://")
-        return when (filter) {
-            StorageFilter.ALL -> true
-            StorageFilter.ONLINE -> isOnline
-            StorageFilter.OFFLINE -> !isOnline
-        }
+        return MediaSourceClassifier.matchesStorageFilter(contentUriString, filter)
     }
 
     /**

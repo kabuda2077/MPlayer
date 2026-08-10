@@ -8,6 +8,7 @@ import androidx.security.crypto.MasterKey
 import com.theveloper.pixelplay.data.database.AlbumEntity
 import com.theveloper.pixelplay.data.database.ArtistEntity
 import com.theveloper.pixelplay.data.database.MusicDao
+import com.theveloper.pixelplay.data.database.FavoritesDao
 import com.theveloper.pixelplay.data.database.NeteaseDao
 import com.theveloper.pixelplay.data.database.NeteasePlaylistEntity
 import com.theveloper.pixelplay.data.database.NeteaseSongEntity
@@ -19,6 +20,7 @@ import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.repository.OnlineLibraryIds
 import com.theveloper.pixelplay.data.stream.BulkSyncResult
 import com.theveloper.pixelplay.data.stream.CloudMusicUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,13 +48,18 @@ class NeteaseRepository @Inject constructor(
     private val api: NeteaseApiService,
     private val dao: NeteaseDao,
     private val musicDao: MusicDao,
+    private val favoritesDao: FavoritesDao,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
     @ApplicationContext private val context: Context
 ) {
+    data class AuthBackupSnapshot(
+        val cookieJson: String? = null,
+        val userId: Long? = null,
+        val nickname: String? = null,
+        val avatarUrl: String? = null
+    )
+
     private companion object {
-        private const val NETEASE_SONG_ID_OFFSET = 3_000_000_000_000L
-        private const val NETEASE_ALBUM_ID_OFFSET = 4_000_000_000_000L
-        private const val NETEASE_ARTIST_ID_OFFSET = 5_000_000_000_000L
         private const val NETEASE_PARENT_DIRECTORY = "/Cloud/Netease"
         private const val NETEASE_GENRE = "Netease Cloud"
         private const val NETEASE_PLAYLIST_PREFIX = "netease_playlist:"
@@ -108,6 +115,41 @@ class NeteaseRepository @Inject constructor(
 
     val userAvatar: String?
         get() = prefs.getString("netease_avatar", null)
+
+    fun exportAuthBackupSnapshot(): AuthBackupSnapshot? {
+        val cookieJson = prefs.getString("netease_cookies", null)
+        val savedUserId = prefs.getLong("netease_user_id", -1L).takeIf { it > 0L }
+        val nickname = prefs.getString("netease_nickname", null)
+        val avatarUrl = prefs.getString("netease_avatar", null)
+        if (cookieJson.isNullOrBlank() && savedUserId == null && nickname.isNullOrBlank() && avatarUrl.isNullOrBlank()) {
+            return null
+        }
+        return AuthBackupSnapshot(
+            cookieJson = cookieJson,
+            userId = savedUserId,
+            nickname = nickname,
+            avatarUrl = avatarUrl
+        )
+    }
+
+    fun restoreAuthBackupSnapshot(snapshot: AuthBackupSnapshot?) {
+        api.logout()
+        clearLoginState()
+        if (snapshot == null) {
+            _isLoggedInFlow.value = false
+            return
+        }
+
+        prefs.edit().apply {
+            snapshot.cookieJson?.takeIf { it.isNotBlank() }?.let { putString("netease_cookies", it) }
+            snapshot.userId?.takeIf { it > 0L }?.let { putLong("netease_user_id", it) }
+            snapshot.nickname?.takeIf { it.isNotBlank() }?.let { putString("netease_nickname", it) }
+            snapshot.avatarUrl?.takeIf { it.isNotBlank() }?.let { putString("netease_avatar", it) }
+        }.apply()
+
+        initFromSavedCookies()
+        _isLoggedInFlow.value = api.hasLogin()
+    }
 
     // ─── Cookie-Based Authentication ──────────────────────────────────
 
@@ -184,7 +226,9 @@ class NeteaseRepository @Inject constructor(
             deleteAppPlaylistForNeteasePlaylist(playlist.id)
         }
         
-        musicDao.clearAllNeteaseSongs()
+        val protectedIds = protectedUnifiedSongIds("NETEASE")
+        val removableIds = musicDao.getAllNeteaseSongIds().filterNot { it in protectedIds }
+        musicDao.deleteSongsAndRelatedData(removableIds)
         _isLoggedInFlow.value = false
     }
 
@@ -465,8 +509,13 @@ class NeteaseRepository @Inject constructor(
             try {
                 val raw = api.searchSongs(keywords, limit)
                 val root = JSONObject(raw)
+                val code = root.optInt("code", -1)
+                if (code != 200) {
+                    throw IllegalStateException("Netease search failed with code $code")
+                }
                 val result = root.optJSONObject("result")
-                val songs = result?.optJSONArray("songs")
+                    ?: throw IllegalStateException("Netease search response is missing results")
+                val songs = result.optJSONArray("songs")
 
                 if (songs != null) {
                     val songList = mutableListOf<Song>()
@@ -695,9 +744,8 @@ class NeteaseRepository @Inject constructor(
         val existingUnifiedNeteaseIds = musicDao.getAllNeteaseSongIds()
 
         if (neteaseSongs.isEmpty()) {
-            if (existingUnifiedNeteaseIds.isNotEmpty()) {
-                musicDao.clearAllNeteaseSongs()
-            }
+            val protectedIds = protectedUnifiedSongIds("NETEASE")
+            musicDao.deleteSongsAndRelatedData(existingUnifiedNeteaseIds.filterNot { it in protectedIds })
             return
         }
 
@@ -771,8 +819,6 @@ class NeteaseRepository @Inject constructor(
                     mimeType = neteaseSong.mimeType,
                     bitrate = neteaseSong.bitrate,
                     sampleRate = null,
-                    telegramChatId = null,
-                    telegramFileId = null,
                     sourceType = SourceType.NETEASE
                 )
             )
@@ -784,7 +830,9 @@ class NeteaseRepository @Inject constructor(
         }
 
         val currentUnifiedSongIds = songs.map { it.id }.toSet()
-        val deletedUnifiedSongIds = existingUnifiedNeteaseIds.filter { it !in currentUnifiedSongIds }
+        val protectedIds = protectedUnifiedSongIds("NETEASE")
+        val deletedUnifiedSongIds = existingUnifiedNeteaseIds
+            .filter { it !in currentUnifiedSongIds && it !in protectedIds }
 
         musicDao.incrementalSyncMusicData(
             songs = songs,
@@ -799,16 +847,28 @@ class NeteaseRepository @Inject constructor(
         CloudMusicUtils.parseArtistNames(rawArtist)
 
     private fun toUnifiedSongId(neteaseId: Long): Long {
-        return -(NETEASE_SONG_ID_OFFSET + neteaseId.absoluteValue)
+        return OnlineLibraryIds.neteaseSong(neteaseId)
     }
 
     private fun toUnifiedAlbumId(albumId: Long, albumName: String): Long {
         val normalized = if (albumId > 0L) albumId.absoluteValue else albumName.lowercase().hashCode().toLong().absoluteValue
-        return -(NETEASE_ALBUM_ID_OFFSET + normalized)
+        return OnlineLibraryIds.neteaseAlbum(normalized, albumName)
     }
 
     private fun toUnifiedArtistId(artistName: String): Long {
-        return -(NETEASE_ARTIST_ID_OFFSET + artistName.lowercase().hashCode().toLong().absoluteValue)
+        return OnlineLibraryIds.neteaseArtist(artistName)
+    }
+
+    /** Favorites and user-owned playlists outlive account synchronization. */
+    private suspend fun protectedUnifiedSongIds(platform: String): Set<Long> {
+        val favoriteIds = favoritesDao.getFavoriteSongIdsOnce().toSet()
+        val userPlaylistIds = playlistPreferencesRepository.getPlaylistsOnce()
+            .asSequence()
+            .filterNot { it.source.equals(platform, ignoreCase = true) }
+            .flatMap { it.songIds.asSequence() }
+            .mapNotNull { it.toLongOrNull() }
+            .toSet()
+        return favoriteIds + userPlaylistIds
     }
 
     // ─── Delete ────────────────────────────────────────────────────────

@@ -80,15 +80,11 @@
     <string name="search_cd_clear_search_query">Borrar búsqueda</string>
     <string name="search_recent_searches">Búsquedas recientes</string>
     <string name="search_action_clear_all">Borrar todo</string>
-    <string name="search_cd_search_history_icon">Historial</string>
-    <string name="search_cd_delete_search_history_item">Eliminar elemento del historial de búsqueda</string>
     <string name="search_cd_no_results">Sin resultados</string>
     <string name="search_no_results_for_query">Sin resultados para \"%1$s\"</string>
     <string name="search_nothing_found">No se encontró nada</string>
     <string name="search_try_different_or_filters">Prueba otro término o revisa los filtros.</string>
     <string name="search_no_results_found">No se encontraron resultados.</string>
-    <string name="browse_by_genre">Explorar por género</string>
-    <string name="no_genres_available">No hay géneros disponibles.</string>
 
     <!-- ArtistDetailScreen -->
     <string name="artist_cd_play_title">Reproducir %1$s</string>
@@ -198,30 +194,6 @@
     <string name="playlist_creation_rule_forgotten_sub">Favoritos que no has reproducido en un tiempo.</string>
     <string name="playlist_creation_rule_new_gems_title">Nuevas joyas</string>
     <string name="playlist_creation_rule_new_gems_sub">Añadidas recientemente con pocas reproducciones.</string>
-
-    <!-- GenreDetailScreen -->
-    <string name="genre_quick_fill">Rellenar género rápido</string>
-    <string name="genre_sort_title">Ordenar y reproducir</string>
-    <string name="genre_sort_action_shuffle">Aleatorio</string>
-    <string name="genre_sort_by_title">Ordenar por</string>
-    <string name="genre_sort_artist_option">Artista</string>
-    <string name="genre_sort_album_option">Álbum</string>
-    <string name="genre_sort_title_option">Título</string>
-    <string name="genre_cd_generic_artist">Artista genérico</string>
-    <string name="genre_shuffle_label">Aleatorio de %1$s</string>
-
-    <!-- QuickFillScreen -->
-    <string name="quick_fill_select_songs">Seleccionar canciones</string>
-    <string name="quick_fill_choose_genre">Elegir género</string>
-    <string name="quick_fill_search_songs_placeholder">Buscar canciones</string>
-    <string name="quick_fill_new_genre">Nuevo género</string>
-    <string name="quick_fill_cd_add_custom_genre">Añadir personalizado</string>
-    <string name="quick_fill_add_custom_genre_title">Añadir género personalizado</string>
-    <string name="quick_fill_genre_name_placeholder">Nombre del género</string>
-    <string name="quick_fill_select_icon">Seleccionar icono</string>
-    <string name="quick_fill_select_genre_label_format">Género: %1$s</string>
-    <string name="quik_fill_select_a_genre_label">Selecciona un género</string>
-    <string name="quick_fill_action_title">Relleno rápido</string>
 
     <!-- MashupScreen -->
     <string name="mashup_title">Espacio DJ</string>

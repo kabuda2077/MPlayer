@@ -24,7 +24,6 @@
     <string name="library_toast_playing_next">下一首播放</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">手表传输</string>
     <string name="library_cd_open_settings">设置</string>
     <string name="library_tab_edit">编辑</string>
     <string name="library_cd_reorder_tabs">重新排序选项卡</string>
@@ -48,11 +47,6 @@
     <string name="library_storage_sd_card">SD 卡</string>
     <string name="library_storage_sd_card_unavailable">SD 卡目前不可用。</string>
     <string name="library_sort_section_cloud">云端</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram 云端频道</string>
-    <string name="library_telegram_topics_display_title">话题显示 (Topics)</string>
-    <string name="library_telegram_topic_mode_channels">频道</string>
-    <string name="library_telegram_topic_mode_topics">话题</string>
-    <string name="library_telegram_topic_mode_both">全部</string>
     <string name="library_cloud_sources_heading">云端</string>
     <string name="library_cloud_only_label">仅云端</string>
 
@@ -74,8 +68,8 @@
     <string name="library_action_new">新建</string>
     <string name="library_cd_create_new_playlist">创建新播放列表</string>
     <string name="library_cd_locate_current_song">定位当前歌曲</string>
-    <string name="library_storage_filter_all_songs">所有歌曲</string>
-    <string name="library_storage_filter_online">云端</string>
+    <string name="library_storage_filter_all_songs">全部</string>
+    <string name="library_storage_filter_online">在线</string>
     <string name="library_storage_filter_offline">本地</string>
     <string name="library_cd_sort_options">排序选项</string>
 
@@ -105,7 +99,7 @@
     <string name="library_empty_songs_offline_title">未找到本地歌曲</string>
     <string name="library_empty_songs_offline_subtitle">尝试其他数据源过滤或重新扫描您的设备媒体库。</string>
     <string name="library_empty_songs_online_title">未找到云端歌曲</string>
-    <string name="library_empty_songs_online_subtitle">同步 Telegram 或网易云音乐歌曲，或切换到本地源。</string>
+    <string name="library_empty_songs_online_subtitle">同步网易云音乐或 QQ 音乐歌曲，或切换到本地源。</string>
     <string name="library_empty_albums_all_title">暂无专辑</string>
     <string name="library_empty_albums_all_subtitle">一旦您的媒体库对曲目进行分组，专辑就会显示在这里。</string>
     <string name="library_empty_albums_offline_title">未找到本地专辑</string>
@@ -123,7 +117,7 @@
     <string name="library_empty_liked_offline_title">无本地收藏歌曲</string>
     <string name="library_empty_liked_offline_subtitle">切换数据源过滤或收藏您设备中的歌曲。</string>
     <string name="library_empty_liked_online_title">无云端收藏歌曲</string>
-    <string name="library_empty_liked_online_subtitle">收藏 Telegram 或网易云音乐的曲目，即可在此视图中看到它们。</string>
+    <string name="library_empty_liked_online_subtitle">收藏网易云音乐或 QQ 音乐的曲目，即可在此视图中看到它们。</string>
     <string name="library_empty_folders_title">未找到文件夹</string>
     <string name="library_empty_folders_subtitle">包含音乐的内部存储文件夹将显示在这里。</string>
     <string name="library_empty_playlists_title">暂无播放列表</string>
@@ -150,14 +144,8 @@
     <string name="song_info_cd_add_to_playlist">添加到播放列表</string>
     <string name="song_info_action_delete">删除</string>
     <string name="song_info_action_delete_all">全部删除</string>
-    <string name="song_info_checking_watch">正在检查手表</string>
     <string name="song_info_transferring_percent">正在传输 %1$d%%</string>
-    <string name="song_info_transferring_to_watch">正在传至手表</string>
     <string name="song_info_transfer_in_progress">传输进行中</string>
-    <string name="song_info_send_to_watch">发送至手表</string>
-    <string name="song_info_watch_unavailable">手表不可用</string>
-    <string name="song_info_cd_send_to_watch">将歌曲发送至手表</string>
-    <string name="song_info_cd_watch_unavailable">手表不可用</string>
     <string name="song_info_set_sound_as_short">设为</string>
     <string name="song_info_set_sound_as_long">设为声音</string>
     <string name="song_info_cd_set_sound_as">选择如何将此歌曲用作系统声音</string>
@@ -270,29 +258,6 @@
     <string name="artist_picker_primary_label">主要艺术家</string>
     <string name="artist_picker_shortcut_label">艺术家主页</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">取消传输</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">显示手机到手表音乐传输的实时进度</string>
-    <string name="watch_transfer_channel_name">手表传输</string>
-    <string name="watch_transfer_dialog_title">正在发送至手表</string>
-    <string name="watch_transfer_status_cancelled">已取消</string>
-    <string name="watch_transfer_status_cancelled_service">传输已取消</string>
-    <string name="watch_transfer_status_complete_service">传输完成</string>
-    <string name="watch_transfer_status_completed">已完成</string>
-    <string name="watch_transfer_status_failed">失败</string>
-    <string name="watch_transfer_status_failed_service">传输失败</string>
-    <string name="watch_transfer_status_multiple_active">有多个活动中的传输</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">正在准备</string>
-    <string name="watch_transfer_status_preparing_service">正在准备手表传输</string>
-    <string name="watch_transfer_status_preparing_transfer">正在准备传输…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">正在将 %1$d 首歌曲发送至手表</string>
-    <string name="watch_transfer_status_sending_to_watch">正在发送至手表</string>
-    <string name="watch_transfer_status_starting">正在开始传输…</string>
-    <string name="watch_transfer_status_starting_short">正在开始</string>
-    <string name="watch_transfer_status_transferring">正在传输</string>
-    <string name="watch_transfer_summary_n">%1$d 个传输任务</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">编辑歌曲</string>
@@ -500,18 +465,11 @@
     <string name="playlist_view_model_none_to_share">没有可分享的播放列表</string>
     <string name="playlist_view_model_share_chooser_title">分享播放列表</string>
     <string name="playlist_view_model_share_failed">分享失败：%1$s</string>
-    <string name="playlist_view_model_none_to_export">没有可导出的播放列表</string>
-    <string name="playlist_view_model_export_failed">导出失败：%1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">请在设置中配置您的 Gemini API 密钥。</string>
     <string name="playlist_view_model_restored_toast">播放列表已恢复</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">正在分享 %d 个播放列表</item>
         <item quantity="other">正在分享 %d 个播放列表</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">已导出 %1$d 个播放列表到 %2$s</item>
-        <item quantity="other">已导出 %1$d 个播放列表到 %2$s</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

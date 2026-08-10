@@ -33,7 +33,6 @@ class PlaylistDismissUndoStateHolder @Inject constructor(
         updateUiState: (((PlayerUiState) -> PlayerUiState) -> Unit),
         disconnectRemoteIfNeeded: suspend () -> Unit,
         clearPlayback: () -> Unit,
-        clearStablePlaybackState: () -> Unit,
         setCurrentPosition: (Long) -> Unit,
         setSheetVisible: (Boolean) -> Unit
     ) {
@@ -52,7 +51,6 @@ class PlaylistDismissUndoStateHolder @Inject constructor(
 
             disconnectRemoteIfNeeded()
             clearPlayback()
-            clearStablePlaybackState()
 
             updateUiState {
                 it.copy(

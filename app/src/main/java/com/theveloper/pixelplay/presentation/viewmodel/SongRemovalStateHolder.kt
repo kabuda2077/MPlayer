@@ -103,9 +103,11 @@ class SongRemovalStateHolder @Inject constructor(
     }
 
     suspend fun removeSongFromLibrary(song: Song) {
-        libraryStateHolder.removeSong(song.id)
-        musicRepository.deleteById(song.id.toLong())
-        playlistPreferencesRepository.removeSongFromAllPlaylists(song.id)
+        val libraryId = song.libraryId ?: return
+        val persistedId = libraryId.toString()
+        libraryStateHolder.removeSong(persistedId)
+        musicRepository.deleteById(libraryId)
+        playlistPreferencesRepository.removeSongFromAllPlaylists(persistedId)
     }
 
     // region Device-deletion cluster (moved from PlayerViewModel)
@@ -139,7 +141,7 @@ class SongRemovalStateHolder @Inject constructor(
                         MediaStorePermissionHelper
                             .resolveDeleteRequestUri(
                                 context = activity,
-                                songId = song.id.toLongOrNull(),
+                                    songId = song.libraryId,
                                 contentUriString = song.contentUriString,
                                 filePath = song.path,
                             )?.let { uri -> song to uri }
@@ -276,7 +278,7 @@ class SongRemovalStateHolder @Inject constructor(
                         MediaStorePermissionHelper
                             .resolveDeleteRequestUri(
                                 context = activity,
-                                songId = song.id.toLongOrNull(),
+                                    songId = song.libraryId,
                                 contentUriString = song.contentUriString,
                                 filePath = song.path,
                             )?.let { uri ->

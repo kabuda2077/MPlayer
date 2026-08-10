@@ -5,14 +5,12 @@ import androidx.paging.PagingData
 import com.theveloper.pixelplay.data.model.Album
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SearchFilterType
-import com.theveloper.pixelplay.data.model.SearchHistoryItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.utils.PlaybackTraceContext
 import kotlinx.coroutines.flow.Flow
-import com.theveloper.pixelplay.data.database.TelegramChannelEntity
 
 interface MusicRepository {
     /**
@@ -246,19 +244,6 @@ interface MusicRepository {
         storageFilter: com.theveloper.pixelplay.data.model.StorageFilter
     ): Flow<List<SearchResultItem>>
 
-    // Search History
-    suspend fun addSearchHistoryItem(query: String)
-    suspend fun getRecentSearchHistory(limit: Int): List<SearchHistoryItem>
-    suspend fun deleteSearchHistoryItemByQuery(query: String)
-    suspend fun clearSearchHistory()
-
-    /**
-     * Obtiene la lista de canciones para un género específico (placeholder implementation).
-     * @param genreId El ID del género (e.g., "pop", "rock").
-     * @return Flow que emite una lista de objetos Song (simulada para este género).
-     */
-    fun getMusicByGenre(genreId: String): Flow<List<Song>> // Changed to Flow
-
     /**
      * Cambia el estado de favorito de una canción.
      * @param songId El ID de la canción.
@@ -293,16 +278,10 @@ interface MusicRepository {
     suspend fun getArtistIdByName(name: String): Long?
     fun getArtistsForSong(songId: Long): Flow<List<Artist>>
 
-    /**
-     * Obtiene la lista de géneros, ya sea mockeados o leídos de los metadatos.
-     * @return Flow que emite una lista de objetos Genre.
-     */
-    fun getGenres(): Flow<List<com.theveloper.pixelplay.data.model.Genre>>
-
     suspend fun getLyrics(
         song: Song,
-        sourcePreference: LyricsSourcePreference = LyricsSourcePreference.EMBEDDED_FIRST,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        traceContext: PlaybackTraceContext? = null
     ): Lyrics?
 
     suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>?
@@ -323,9 +302,9 @@ interface MusicRepository {
      */
     suspend fun searchRemoteLyricsByQuery(title: String, artist: String? = null): Result<Pair<String, List<LyricsSearchResult>>>
 
-    suspend fun updateLyrics(songId: Long, lyrics: String)
+    suspend fun updateLyrics(song: Song, lyrics: String)
 
-    suspend fun resetLyrics(songId: Long)
+    suspend fun resetLyrics(song: Song)
 
     suspend fun resetAllLyrics()
 
@@ -334,23 +313,6 @@ interface MusicRepository {
     ): Flow<List<com.theveloper.pixelplay.data.model.MusicFolder>>
 
     suspend fun deleteById(id: Long)
-    suspend fun saveTelegramSongs(songs: List<Song>)
-
-    suspend fun replaceTelegramSongsForChannel(chatId: Long, songs: List<Song>)
-
-    suspend fun clearTelegramData()
-
-    suspend fun saveTelegramChannel(channel: TelegramChannelEntity)
-    fun getAllTelegramChannels(): Flow<List<TelegramChannelEntity>>
-    suspend fun deleteTelegramChannel(chatId: Long)
-    suspend fun saveTelegramTopics(chatId: Long, topics: List<com.theveloper.pixelplay.data.database.TelegramTopicEntity>)
-    /** Replaces the full topic list for a channel, deleting any topics that no longer exist. */
-    suspend fun replaceTopicsForChannel(chatId: Long, freshTopics: List<com.theveloper.pixelplay.data.database.TelegramTopicEntity>)
-    suspend fun getTopicsForChannel(chatId: Long): List<com.theveloper.pixelplay.data.database.TelegramTopicEntity>
-    fun getAllTelegramTopics(): Flow<List<com.theveloper.pixelplay.data.database.TelegramTopicEntity>>
-    suspend fun replaceTelegramSongsForTopic(chatId: Long, threadId: Long, topicName: String, songs: List<Song>)
-
-    val telegramRepository: com.theveloper.pixelplay.data.telegram.TelegramRepository
 
     suspend fun getSongIdsSorted(
         sortOption: com.theveloper.pixelplay.data.model.SortOption,
@@ -369,12 +331,4 @@ interface MusicRepository {
      */
     suspend fun getSongIdByContentUri(contentUri: String): Long?
 
-    /**
-     * Enqueues an incremental SyncWorker run with [androidx.work.ExistingWorkPolicy.KEEP].
-     * Use from finally blocks of Telegram ingestion flows to guarantee the unified-table
-     * sync happens even when an exception bypasses the normal end-of-flow
-     * [saveTelegramChannel] call. KEEP avoids cancelling a full/rebuild that may be
-     * in progress under the same unique work name.
-     */
-    fun requestTelegramUnifiedSync()
 }

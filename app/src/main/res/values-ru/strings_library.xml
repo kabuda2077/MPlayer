@@ -22,7 +22,6 @@
     <string name="library_toast_playing_next">Будет воспроизведено следующим</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Просмотр передачи</string>
     <string name="library_cd_open_settings">Настройки</string>
     <string name="library_tab_edit">Изменить</string>
     <string name="library_cd_reorder_tabs">Изменить порядок вкладок</string>
@@ -43,11 +42,6 @@
     <string name="library_storage_sd_card">SD-карта</string>
     <string name="library_storage_sd_card_unavailable">SD-карта сейчас недоступна.</string>
     <string name="library_sort_section_cloud">Облако</string>
-    <string name="library_sort_toggle_telegram_channels">Облачные каналы Telegram</string>
-    <string name="library_telegram_topics_display_title">Отображение тем</string>
-    <string name="library_telegram_topic_mode_channels">Каналы</string>
-    <string name="library_telegram_topic_mode_topics">Темы</string>
-    <string name="library_telegram_topic_mode_both">Оба варианта</string>
     <string name="library_cloud_sources_heading">Облако</string>
     <string name="library_cloud_only_label">Только облако</string>
 
@@ -97,7 +91,6 @@
     <string name="library_empty_songs_offline_title">Локальные треки не найдены</string>
     <string name="library_empty_songs_offline_subtitle">Попробуйте другой фильтр источников или повторно просканируйте библиотеку устройства.</string>
     <string name="library_empty_songs_online_title">Облачные треки не найдены</string>
-    <string name="library_empty_songs_online_subtitle">Синхронизируйте Telegram или NetEase либо переключитесь на локальный источник.</string>
     <string name="library_empty_albums_all_title">Нет доступных альбомов</string>
     <string name="library_empty_albums_all_subtitle">Альбомы появятся здесь после группировки треков в библиотеке.</string>
     <string name="library_empty_albums_offline_title">Локальные альбомы не найдены</string>
@@ -115,7 +108,6 @@
     <string name="library_empty_liked_offline_title">Нет избранных локальных треков</string>
     <string name="library_empty_liked_offline_subtitle">Смените фильтр источника или добавьте в избранное треки с устройства.</string>
     <string name="library_empty_liked_online_title">Нет избранных облачных треков</string>
-    <string name="library_empty_liked_online_subtitle">Добавьте в избранное треки из Telegram или NetEase, чтобы увидеть их здесь.</string>
     <string name="library_empty_folders_title">Папки не найдены</string>
     <string name="library_empty_folders_subtitle">Здесь будут отображаться папки с музыкой из внутреннего хранилища.</string>
     <string name="library_empty_playlists_title">Пока нет плейлистов</string>
@@ -142,14 +134,8 @@
     <string name="song_info_cd_add_to_playlist">Добавить в плейлист</string>
     <string name="song_info_action_delete">Удалить</string>
     <string name="song_info_action_delete_all">Удалить всё</string>
-    <string name="song_info_checking_watch">Проверка часов</string>
     <string name="song_info_transferring_percent">Передача %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Передача на часы</string>
     <string name="song_info_transfer_in_progress">Передача выполняется</string>
-    <string name="song_info_send_to_watch">Отправить на часы</string>
-    <string name="song_info_watch_unavailable">Часы недоступны</string>
-    <string name="song_info_cd_send_to_watch">Отправить трек на часы</string>
-    <string name="song_info_cd_watch_unavailable">Часы недоступны</string>
     <string name="song_info_set_sound_as_short">Установить как</string>
     <string name="song_info_set_sound_as_long">Установить как звук</string>
     <string name="song_info_cd_set_sound_as">Выберите, как использовать этот трек в качестве системного звука</string>
@@ -262,29 +248,6 @@
     <string name="artist_picker_primary_label">Основной исполнитель</string>
     <string name="artist_picker_shortcut_label">Страница исполнителя</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Отменить передачу</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Показывает прогресс передачи музыки с телефона на часы в реальном времени</string>
-    <string name="watch_transfer_channel_name">Передача на часы</string>
-    <string name="watch_transfer_dialog_title">Отправка на часы</string>
-    <string name="watch_transfer_status_cancelled">Отменено</string>
-    <string name="watch_transfer_status_cancelled_service">Передача отменена</string>
-    <string name="watch_transfer_status_complete_service">Передача завершена</string>
-    <string name="watch_transfer_status_completed">Завершено</string>
-    <string name="watch_transfer_status_failed">Ошибка</string>
-    <string name="watch_transfer_status_failed_service">Ошибка передачи</string>
-    <string name="watch_transfer_status_multiple_active">Несколько активных передач</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Подготовка</string>
-    <string name="watch_transfer_status_preparing_service">Подготовка передачи на часы</string>
-    <string name="watch_transfer_status_preparing_transfer">Подготовка передачи…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Отправка %1$d треков на часы</string>
-    <string name="watch_transfer_status_sending_to_watch">Отправка на часы</string>
-    <string name="watch_transfer_status_starting">Запуск передачи…</string>
-    <string name="watch_transfer_status_starting_short">Запуск</string>
-    <string name="watch_transfer_status_transferring">Передача</string>
-    <string name="watch_transfer_summary_n">%1$d передач</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">Редактировать трек</string>
@@ -492,18 +455,11 @@
     <string name="playlist_view_model_none_to_share">Нет плейлистов для отправки</string>
     <string name="playlist_view_model_share_chooser_title">Поделиться плейлистами</string>
     <string name="playlist_view_model_share_failed">Ошибка отправки: %1$s</string>
-    <string name="playlist_view_model_none_to_export">Нет плейлистов для экспорта</string>
-    <string name="playlist_view_model_export_failed">Ошибка экспорта: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">Пожалуйста, настройте ключ API Gemini в настройках.</string>
     <string name="playlist_view_model_restored_toast">Плейлист восстановлен</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">Отправка %d плейлиста</item>
         <item quantity="other">Отправка %d плейлистов</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Экспортирован %1$d плейлист в %2$s</item>
-        <item quantity="other">Экспортировано %1$d плейлистов в %2$s</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

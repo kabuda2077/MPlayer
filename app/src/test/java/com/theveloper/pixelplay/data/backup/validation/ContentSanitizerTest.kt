@@ -66,7 +66,6 @@ class ContentSanitizerTest {
         assertTrue(sanitizer.isValidModuleKey("playlists"))
         assertTrue(sanitizer.isValidModuleKey("global_settings"))
         assertTrue(sanitizer.isValidModuleKey("favorites"))
-        assertTrue(sanitizer.isValidModuleKey("quick_fill"))
         assertTrue(sanitizer.isValidModuleKey("artist_images"))
         assertTrue(sanitizer.isValidModuleKey("equalizer"))
     }

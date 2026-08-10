@@ -25,11 +25,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.presentation.jellyfin.auth.JellyfinLoginActivity
-import com.theveloper.pixelplay.presentation.navidrome.auth.NavidromeLoginActivity
 import com.theveloper.pixelplay.presentation.netease.auth.NeteaseLoginActivity
 import com.theveloper.pixelplay.presentation.qqmusic.auth.QqMusicLoginActivity
-import com.theveloper.pixelplay.presentation.telegram.auth.TelegramLoginActivity
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 
 /**
@@ -45,10 +42,6 @@ fun StreamingProviderSheet(
     onNavigateToNeteaseDashboard: () -> Unit = {},
     isQqMusicLoggedIn: Boolean = false,
     onNavigateToQqMusicDashboard: () -> Unit = {},
-    isNavidromeLoggedIn: Boolean = false,
-    onNavigateToNavidromeDashboard: () -> Unit = {},
-    isJellyfinLoggedIn: Boolean = false,
-    onNavigateToJellyfinDashboard: () -> Unit = {},
     sheetState: SheetState = rememberBottomSheetState(
         initialValue = SheetValue.Expanded,
     )
@@ -104,62 +97,6 @@ fun StreamingProviderSheet(
                         .clip(providerSegmentContainerShape),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    ProviderRow(
-                        iconPainter = painterResource(R.drawable.telegram),
-                        iconTint = Color(0xFF2AABEE),
-                        title = "Telegram",
-                        subtitle = "Stream from channels & chats",
-                        shape = providerSegmentItemShape,
-                        onClick = {
-                            context.startActivity(Intent(context, TelegramLoginActivity::class.java))
-                            onDismissRequest()
-                        }
-                    )
-
-                    ProviderRow(
-                        iconPainter = painterResource(R.drawable.rounded_drive_export_24),
-                        iconTint = Color(0xFF4285F4),
-                        title = "Google Drive",
-                        subtitle = "Coming soon",
-                        shape = providerSegmentItemShape,
-                        enabled = false,
-                        onClick = { }
-                    )
-
-                    ProviderRow(
-                        iconPainter = painterResource(R.drawable.ic_navidrome_md3),
-                        iconTint = Color(0xFFE8A54B),
-                        title = "Subsonic",
-                        subtitle = if (isNavidromeLoggedIn) "Connected · Navidrome/Airsonic" else "Connect Navidrome & others",
-                        shape = providerSegmentItemShape,
-                        isConnected = isNavidromeLoggedIn,
-                        onClick = {
-                            if (isNavidromeLoggedIn) {
-                                onNavigateToNavidromeDashboard()
-                            } else {
-                                context.startActivity(Intent(context, NavidromeLoginActivity::class.java))
-                            }
-                            onDismissRequest()
-                        }
-                    )
-
-                    ProviderRow(
-                        iconPainter = painterResource(R.drawable.ic_jellyfin),
-                        iconTint = Color(0xFF00A4DC),
-                        title = "Jellyfin",
-                        subtitle = if (isJellyfinLoggedIn) "Connected" else "Connect your Jellyfin server",
-                        shape = providerSegmentItemShape,
-                        isConnected = isJellyfinLoggedIn,
-                        onClick = {
-                            if (isJellyfinLoggedIn) {
-                                onNavigateToJellyfinDashboard()
-                            } else {
-                                context.startActivity(Intent(context, JellyfinLoginActivity::class.java))
-                            }
-                            onDismissRequest()
-                        }
-                    )
-
                     ProviderRow(
                         iconPainter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
                         iconTint = Color(0xFFE85959),

@@ -4,8 +4,9 @@ import android.content.Context
 import com.google.common.truth.Truth.assertThat
 import com.theveloper.pixelplay.data.database.LyricsDao
 import com.theveloper.pixelplay.data.database.LyricsEntity
+import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.model.Lyrics
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
+import com.theveloper.pixelplay.data.model.LyricsDocument
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.SyncedLine
 import com.theveloper.pixelplay.data.model.SyncedWord
@@ -13,10 +14,12 @@ import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.qqmusic.QqLyricsFetcher
 import com.theveloper.pixelplay.utils.LyricsUtils
+import com.google.gson.Gson
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.spyk
 import java.io.File
 import java.nio.file.Files
@@ -43,24 +46,110 @@ class LyricsRepositoryImplTest {
     }
 
     @Test
-    fun getLyrics_returnsSongLyricsBeforeNeedingStorageRead() = runTest {
+    fun getLyrics_importsLegacySongColumnThroughDaoAfterStorageMiss() = runTest {
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
-        val repository = createRepository(lyricsDao = lyricsDao)
+        val musicDao = mockk<MusicDao>(relaxed = true)
+        coEvery { musicDao.getLegacySongLyrics(12L) } returns "[00:01.00]Hello again"
+        val repository = createRepository(lyricsDao = lyricsDao, musicDao = musicDao)
         val song = testSong(
             id = "12",
             title = "Track",
             artist = "Artist",
-            lyrics = "[00:01.00]Hello again",
+            lyrics = "[00:02.00]This in-memory field must not bypass Room migration",
             duration = 180_000L
         )
 
-        val lyrics = repository.getLyrics(song, LyricsSourcePreference.EMBEDDED_FIRST)
+        val lyrics = repository.getLyrics(song)
 
         assertThat(lyrics).isNotNull()
         assertThat(lyrics!!.areFromRemote).isFalse()
         assertThat(lyrics.synced).isNotEmpty()
         assertThat(lyrics.synced!!.first().line).isEqualTo("Hello again")
-        coVerify(exactly = 0) { lyricsDao.getLyrics(any()) }
+        coVerify(exactly = 1) { lyricsDao.getLyrics("library:12") }
+        coVerify(exactly = 1) {
+            lyricsDao.insert(match { it.songId == 12L && it.source == "song_field" })
+        }
+        coVerify(exactly = 1) { musicDao.clearLegacySongLyrics(12L) }
+    }
+
+    @Test
+    fun getLyrics_migratesLegacyJsonForExplicitLibraryIdentityAndDeletesIt() = runTest {
+        val filesDir = Files.createTempDirectory("pixelplay-legacy-json").toFile()
+        val legacyFile = File(filesDir, "lyrics/12.json").apply {
+            parentFile?.mkdirs()
+            writeText("""{"plainLyrics":null,"syncedLyrics":"[00:01.00]Legacy JSON"}""")
+        }
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        val repository = createRepository(
+            lyricsDao = lyricsDao,
+            context = testContext(filesDir)
+        )
+        val song = testSong(
+            id = "12",
+            libraryId = 12L,
+            title = "Track",
+            artist = "Artist",
+            contentUriString = "content://media/external/audio/media/12",
+            duration = 180_000L
+        )
+
+        val lyrics = repository.getLyrics(song)
+
+        assertThat(lyrics?.synced?.firstOrNull()?.line).isEqualTo("Legacy JSON")
+        assertThat(legacyFile.exists()).isFalse()
+        coVerify { lyricsDao.insert(match { it.source == "json_cache" && it.songId == 12L }) }
+    }
+
+    @Test
+    fun getLyrics_doesNotImportAmbiguousLegacyJsonForTransientOnlineSong() = runTest {
+        val filesDir = Files.createTempDirectory("pixelplay-transient-json").toFile()
+        val legacyFile = File(filesDir, "lyrics/12.json").apply {
+            parentFile?.mkdirs()
+            writeText("""{"plainLyrics":null,"syncedLyrics":"[00:01.00]Wrong source"}""")
+        }
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        val repository = createRepository(
+            lyricsDao = lyricsDao,
+            context = testContext(filesDir),
+            enableOnlineLyrics = false
+        )
+        val song = testSong(
+            id = "12",
+            libraryId = null,
+            title = "Online Track",
+            artist = "Artist",
+            contentUriString = "qqmusic://12",
+            duration = 180_000L
+        )
+
+        val lyrics = repository.getLyrics(song)
+
+        assertThat(lyrics).isNull()
+        assertThat(legacyFile.exists()).isTrue()
+        coVerify(exactly = 0) { lyricsDao.insert(match { it.source == "json_cache" }) }
+    }
+
+    @Test
+    fun getLyrics_doesNotUseInMemorySongLyricsAsPersistentCache() = runTest {
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        val repository = createRepository(
+            lyricsDao = lyricsDao,
+            enableOnlineLyrics = false
+        )
+        val song = testSong(
+            id = "12",
+            libraryId = null,
+            title = "Online Track",
+            artist = "Artist",
+            contentUriString = "qqmusic://12",
+            lyrics = "[00:01.00]Stale in-memory lyrics",
+            duration = 180_000L
+        )
+
+        val lyrics = repository.getLyrics(song)
+
+        assertThat(lyrics).isNull()
+        coVerify(exactly = 0) { lyricsDao.insert(match { it.source == "song_field" }) }
     }
 
     @Test
@@ -68,7 +157,8 @@ class LyricsRepositoryImplTest {
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
         val qqLyricsFetcher = createQqLyricsFetcherMock()
         val neteaseRepository = mockk<NeteaseRepository>(relaxed = true)
-        coEvery { lyricsDao.getLyrics(77L) } returns LyricsEntity(
+        coEvery { lyricsDao.getLyrics("uri:netease://77") } returns LyricsEntity(
+            mediaKey = "uri:netease://77",
             songId = 77L,
             content = "[00:01.00]Stored line",
             isSynced = true,
@@ -100,7 +190,7 @@ class LyricsRepositoryImplTest {
         assertThat(lyrics.synced!!.first().line).isEqualTo("Remote line")
         assertThat(lyrics.areFromRemote).isTrue()
         coVerify(exactly = 1) { qqLyricsFetcher.fetch(any()) }
-        coVerify(exactly = 0) { lyricsDao.getLyrics(77L) }
+        coVerify(exactly = 0) { lyricsDao.getLyrics("uri:netease://77") }
         coVerify(exactly = 1) { neteaseRepository.getLyricsPayload(77L) }
     }
 
@@ -108,7 +198,8 @@ class LyricsRepositoryImplTest {
     fun getStoredLyrics_returnsDatabaseLyricsContent() = runTest {
         val rawPayload = "[00:01.00]Hello"
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
-        coEvery { lyricsDao.getLyrics(88L) } returns LyricsEntity(
+        coEvery { lyricsDao.getLyrics("library:88") } returns LyricsEntity(
+            mediaKey = "library:88",
             songId = 88L,
             content = rawPayload,
             isSynced = true,
@@ -132,6 +223,82 @@ class LyricsRepositoryImplTest {
         assertThat(stored.first.areFromRemote).isFalse()
         assertThat(stored.first.synced).isNotEmpty()
         assertThat(stored.first.synced!!.first().line).isEqualTo("Hello")
+        coVerify(exactly = 1) {
+            lyricsDao.insert(match { it.songId == 88L && it.schemaVersion == LyricsDocument.CURRENT_SCHEMA_VERSION })
+        }
+    }
+
+    @Test
+    fun getStoredLyrics_readsStructuredPayloadWithoutLegacyReparse() = runTest {
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        val expected = Lyrics(
+            synced = listOf(
+                SyncedLine(
+                    time = 1_000,
+                    line = "Structured line",
+                    words = listOf(SyncedWord(time = 1_000, word = "Structured")),
+                    translation = "Translated"
+                )
+            ),
+            areFromRemote = true
+        )
+        val document = LyricsDocument(
+            lyrics = expected,
+            rawContent = "structured-raw",
+            sourceTag = "qq_music"
+        )
+        coEvery { lyricsDao.getLyrics("library:188") } returns LyricsEntity(
+            mediaKey = "library:188",
+            songId = 188L,
+            content = "legacy-fallback",
+            isSynced = true,
+            source = "qq_music",
+            schemaVersion = LyricsDocument.CURRENT_SCHEMA_VERSION,
+            payloadJson = Gson().toJson(document),
+            updatedAt = 123L
+        )
+        val repository = createRepository(
+            lyricsDao = lyricsDao,
+            qqLyricsFetcher = createQqLyricsFetcherMock()
+        )
+
+        val stored = repository.getStoredLyrics(
+            testSong(id = "188", title = "Structured", artist = "Singer", duration = 180_000L)
+        )
+
+        assertThat(stored).isNotNull()
+        assertThat(stored!!.second).isEqualTo("structured-raw")
+        assertThat(stored.first.synced!!.first().words).hasSize(1)
+        assertThat(stored.first.synced!!.first().translation).isEqualTo("Translated")
+        coVerify(exactly = 0) { lyricsDao.insert(any()) }
+    }
+
+    @Test
+    fun getStoredLyrics_importsLegacyJsonIntoRoomThenDeletesFile() = runTest {
+        val filesDir = Files.createTempDirectory("pixelplay-legacy-lyrics").toFile()
+        val lyricsDir = File(filesDir, "lyrics").apply { mkdirs() }
+        val legacyFile = File(lyricsDir, "288.json").apply {
+            writeText(
+                """{"plainLyrics":null,"syncedLyrics":"[00:01.00]Imported line", "wordByWordLyrics":null}"""
+            )
+        }
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        coEvery { lyricsDao.getLyrics("library:288") } returns null
+        val repository = createRepository(
+            lyricsDao = lyricsDao,
+            context = testContext(filesDir)
+        )
+
+        val stored = repository.getStoredLyrics(
+            testSong(id = "288", title = "Imported", artist = "Singer", duration = 180_000L)
+        )
+
+        assertThat(stored).isNotNull()
+        assertThat(stored!!.first.synced!!.first().line).isEqualTo("Imported line")
+        assertThat(legacyFile.exists()).isFalse()
+        coVerify(exactly = 1) {
+            lyricsDao.insert(match { it.songId == 288L && it.source == "json_cache" })
+        }
     }
 
     @Test
@@ -145,7 +312,8 @@ class LyricsRepositoryImplTest {
             tlyric = "[00:12.48]官方翻译"
         )
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
-        coEvery { lyricsDao.getLyrics(89L) } returns LyricsEntity(
+        coEvery { lyricsDao.getLyrics("uri:netease://89") } returns LyricsEntity(
+            mediaKey = "uri:netease://89",
             songId = 89L,
             content = rawPayload,
             isSynced = true,
@@ -176,7 +344,7 @@ class LyricsRepositoryImplTest {
     fun fetchFromRemote_usesNeteaseOfficialLyricsWhenTtmlDisabled() = runTest {
         val neteaseRepository = mockk<NeteaseRepository>(relaxed = true)
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
-        coEvery { lyricsDao.getLyrics(123L) } returns null
+        coEvery { lyricsDao.getLyrics("uri:netease://123") } returns null
         coEvery { neteaseRepository.getLyricsPayload(123L) } returns Result.success(
             neteasePayload(
                 lrc = "[00:01.00]Official line\n"
@@ -238,11 +406,11 @@ class LyricsRepositoryImplTest {
     fun fetchFromRemote_doesNotUseQqForLocalSongsWhenOnlineLyricsDisabled() = runTest {
         val qqLyricsFetcher = createQqLyricsFetcherMock()
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
-        coEvery { lyricsDao.getLyrics(201L) } returns null
+        coEvery { lyricsDao.getLyrics("library:201") } returns null
         val repository = createRepository(
             qqLyricsFetcher = qqLyricsFetcher,
             lyricsDao = lyricsDao,
-            enableQqLyrics = false
+            enableOnlineLyrics = false
         )
         val song = testSong(
             id = "201",
@@ -276,11 +444,11 @@ class LyricsRepositoryImplTest {
     }
 
     @Test
-    fun fetchFromRemote_mergesNeteasePrimaryLyricsWithQqWordLevelFallback() = runTest {
+    fun fetchFromRemote_usesNeteaseCandidateWithoutCrossSourceQqWordLevelMerge() = runTest {
         val neteaseRepository = mockk<NeteaseRepository>(relaxed = true)
         val lyricsDao = mockk<LyricsDao>(relaxed = true)
         val qqLyricsFetcher = createQqLyricsFetcherMock()
-        coEvery { lyricsDao.getLyrics(124L) } returns null
+        coEvery { lyricsDao.getLyrics("uri:netease://124") } returns null
         coEvery { neteaseRepository.getLyricsPayload(124L) } returns Result.success(
             neteasePayload(
                 lrc = "[00:01.00]Official line\n",
@@ -344,13 +512,14 @@ class LyricsRepositoryImplTest {
         val firstLine = lyrics.synced.orEmpty().first()
         assertThat(firstLine.line).isEqualTo("Official line")
         assertThat(firstLine.translation).isEqualTo("官方翻译")
-        assertThat(firstLine.words).isNotEmpty()
-        assertThat(firstLine.words.orEmpty().map { it.word }).containsExactly("QQ", "line").inOrder()
+        assertThat(firstLine.words).isNull()
     }
 
     @Test
     fun getLyrics_usesEmbeddedLyricsWithoutAutomaticQqWordLevelFallbackForLocalSongs() = runTest {
         val qqLyricsFetcher = createQqLyricsFetcherMock()
+        val musicDao = mockk<MusicDao>(relaxed = true)
+        coEvery { musicDao.getLegacySongLyrics(301L) } returns "[00:01.00]Embedded line"
         coEvery { qqLyricsFetcher.fetch(any()) } returns QqLyricsFetcher.FetchResult(
             lyrics = Lyrics(
                 synced = listOf(
@@ -380,7 +549,7 @@ class LyricsRepositoryImplTest {
         val repository = spyk(
             createRepository(
                 qqLyricsFetcher = qqLyricsFetcher,
-                localSongsAllowQqLyrics = true
+                musicDao = musicDao
             )
         )
         val song = testSong(
@@ -393,7 +562,7 @@ class LyricsRepositoryImplTest {
             duration = 180_000L
         )
 
-        val result = repository.getLyrics(song, LyricsSourcePreference.EMBEDDED_FIRST)
+        val result = repository.getLyrics(song)
 
         assertThat(result).isNotNull()
         val firstLine = result!!.synced.orEmpty().first()
@@ -442,7 +611,7 @@ class LyricsRepositoryImplTest {
             duration = 180_000L
         )
 
-        val result = repository.getLyrics(song, LyricsSourcePreference.EMBEDDED_FIRST)
+        val result = repository.getLyrics(song)
 
         assertThat(result).isNotNull()
         assertThat(result!!.areFromRemote).isTrue()
@@ -450,6 +619,92 @@ class LyricsRepositoryImplTest {
         assertThat(firstLine.line).isEqualTo("QQ fallback line")
         assertThat(firstLine.words.orEmpty().map { it.word }).containsExactly("QQ", "fallback", "line").inOrder()
         coVerify(exactly = 1) { qqLyricsFetcher.fetch(any()) }
+    }
+
+    @Test
+    fun transientPluginLyrics_surviveRepositoryRecreationUsingSourceAwareKey() = runTest {
+        val sources = listOf(
+            "qq-search" to "qqmusic://mid-1",
+            "kugou-search" to "kugou://hash-1",
+            "kuwo-search" to "kuwo://music-1"
+        )
+
+        for ((id, sourceUri) in sources) {
+            val firstDao = mockk<LyricsDao>(relaxed = true)
+            val persisted = slot<LyricsEntity>()
+            coEvery { firstDao.insert(capture(persisted)) } returns Unit
+            val firstFetcher = createQqLyricsFetcherMock()
+            coEvery { firstFetcher.fetch(any()) } returns QqLyricsFetcher.FetchResult(
+                lyrics = Lyrics(
+                    synced = listOf(SyncedLine(time = 1_000, line = "Persisted remote line")),
+                    plain = listOf("Persisted remote line"),
+                    areFromRemote = true
+                ),
+                rawLyrics = "[00:01.00]Persisted remote line",
+                metadata = QqLyricsFetcher.FetchMetadata(
+                    sourceTag = "qq_lrc",
+                    hasWordLevel = false,
+                    hasTranslation = false,
+                    hasRomanization = false,
+                    matchType = "strict_metadata",
+                    durationDiffMs = 0L,
+                    exactPlatformMatch = sourceUri.startsWith("qqmusic:")
+                )
+            )
+            val song = testSong(
+                id = id,
+                title = "Remote Track",
+                artist = "Remote Artist",
+                contentUriString = sourceUri,
+                duration = 180_000L
+            )
+
+            val firstResult = createRepository(
+                lyricsDao = firstDao,
+                qqLyricsFetcher = firstFetcher,
+                enableOnlineTtmlLyrics = false
+            ).getLyrics(song)
+
+            assertThat(firstResult).isNotNull()
+            assertThat(persisted.captured.mediaKey).isEqualTo("uri:$sourceUri")
+            assertThat(persisted.captured.songId).isNull()
+
+            val secondDao = mockk<LyricsDao>(relaxed = true)
+            coEvery { secondDao.getLyrics("uri:$sourceUri") } returns persisted.captured
+            val secondFetcher = createQqLyricsFetcherMock()
+            val restored = createRepository(
+                lyricsDao = secondDao,
+                qqLyricsFetcher = secondFetcher,
+                enableOnlineTtmlLyrics = false
+            ).getLyrics(song)
+
+            assertThat(restored).isNotNull()
+            assertThat(restored!!.synced.orEmpty().first().line).isEqualTo("Persisted remote line")
+            coVerify(exactly = 0) { secondFetcher.fetch(any()) }
+        }
+    }
+
+    @Test
+    fun manualUpdateAndReset_useTransientSourceIdentity() = runTest {
+        val lyricsDao = mockk<LyricsDao>(relaxed = true)
+        val repository = createRepository(lyricsDao = lyricsDao)
+        val song = testSong(
+            id = "search-result",
+            title = "Remote Track",
+            artist = "Artist",
+            contentUriString = "qqmusic://mid-manual",
+            duration = 180_000L
+        )
+
+        repository.updateLyrics(song, "[00:01.00]Manual line")
+        repository.resetLyrics(song)
+
+        coVerify(exactly = 1) {
+            lyricsDao.insert(match {
+                it.mediaKey == "uri:qqmusic://mid-manual" && it.songId == null && it.source == "manual"
+            })
+        }
+        coVerify(exactly = 1) { lyricsDao.deleteLyrics("uri:qqmusic://mid-manual") }
     }
 
     @Test
@@ -465,14 +720,13 @@ class LyricsRepositoryImplTest {
         qqLyricsFetcher: QqLyricsFetcher = createQqLyricsFetcherMock(),
         neteaseRepository: NeteaseRepository = mockk(relaxed = true),
         enableOnlineTtmlLyrics: Boolean = true,
-        enableQqLyrics: Boolean = true,
-        localSongsAllowQqLyrics: Boolean = true,
-        context: Context = testContext()
+        enableOnlineLyrics: Boolean = true,
+        context: Context = testContext(),
+        musicDao: MusicDao = mockk(relaxed = true)
     ): LyricsRepositoryImpl {
         val userPreferencesRepository = mockk<UserPreferencesRepository>(relaxed = true).also { preferences ->
             every { preferences.enableOnlineTtmlLyricsFlow } returns flowOf(enableOnlineTtmlLyrics)
-            every { preferences.enableQqLyricsFlow } returns flowOf(enableQqLyrics)
-            every { preferences.localSongsAllowQqLyricsFlow } returns flowOf(localSongsAllowQqLyrics)
+            every { preferences.enableOnlineLyricsFlow } returns flowOf(enableOnlineLyrics)
         }
 
         return LyricsRepositoryImpl(
@@ -481,12 +735,17 @@ class LyricsRepositoryImplTest {
             qqLyricsFetcher = qqLyricsFetcher,
             userPreferencesRepository = userPreferencesRepository,
             lyricsDao = lyricsDao,
-            okHttpClient = mockk<OkHttpClient>(relaxed = true)
+            musicDao = musicDao,
+            okHttpClient = mockk<OkHttpClient>(relaxed = true),
+            lyricsCoordinator = LyricsCoordinator()
         )
     }
 
     private fun createQqLyricsFetcherMock(): QqLyricsFetcher {
-        val parser = QqLyricsFetcher(mockk(relaxed = true))
+        val parser = QqLyricsFetcher(
+            qqMusicApiService = mockk(relaxed = true),
+            qqMusicDao = mockk(relaxed = true)
+        )
         return mockk {
             every { parsePersistedRaw(any()) } answers { parser.parsePersistedRaw(firstArg<String>()) }
             coEvery { fetch(any()) } returns null
@@ -503,6 +762,7 @@ class LyricsRepositoryImplTest {
 
     private fun testSong(
         id: String,
+        libraryId: Long? = id.toLongOrNull(),
         title: String,
         artist: String,
         path: String = "",
@@ -513,6 +773,7 @@ class LyricsRepositoryImplTest {
     ): Song {
         return Song(
             id = id,
+            libraryId = libraryId,
             title = title,
             artist = artist,
             artistId = 5L,

@@ -37,7 +37,7 @@ internal fun rememberSheetOverlayState(
     isQueueCollapsing: Boolean,
     queueHiddenOffsetPx: Float,
     screenHeightPx: Float,
-    castSheetOpenFraction: Float,
+    audioOutputSheetOpenFraction: Float,
     queueSheetOffset: Animatable<Float, AnimationVector1D>,
     queuePredictiveBackProgress: Animatable<Float, AnimationVector1D>
 ): SheetOverlayState {
@@ -91,8 +91,8 @@ internal fun rememberSheetOverlayState(
     }
     val queueVisualOpenFraction by queueVisualOpenFractionState
  
-    val bottomSheetOpenFractionState = remember(queueVisualOpenFractionState, castSheetOpenFraction) {
-        derivedStateOf { max(queueVisualOpenFractionState.value, castSheetOpenFraction) }
+    val bottomSheetOpenFractionState = remember(queueVisualOpenFractionState, audioOutputSheetOpenFraction) {
+        derivedStateOf { max(queueVisualOpenFractionState.value, audioOutputSheetOpenFraction) }
     }
     val bottomSheetOpenFraction by bottomSheetOpenFractionState
  

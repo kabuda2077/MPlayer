@@ -3,6 +3,7 @@ package com.theveloper.pixelplay.data.backup.module
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.theveloper.pixelplay.data.backup.model.BackupSection
+import com.theveloper.pixelplay.data.preferences.AiPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.di.BackupGson
@@ -35,14 +36,14 @@ class GlobalSettingsModuleHandler @Inject constructor(
     override suspend fun restore(payload: String) = withContext(Dispatchers.IO) {
         val type = TypeToken.getParameterized(List::class.java, PreferenceBackupEntry::class.java).type
         val entries: List<PreferenceBackupEntry> = gson.fromJson(payload, type)
-        // Clear only the keys this handler owns (exclude playlist, quickfill, equalizer keys)
+            ?: emptyList()
+        val safeEntries = entries.filter { it.key !in EXCLUDED_KEYS }
+        // Clear only the keys this handler owns; dedicated modules keep their own keys.
         userPreferencesRepository.clearPreferencesExceptKeys(
-            PlaylistsModuleHandler.PLAYLIST_KEYS +
-            QuickFillModuleHandler.QUICK_FILL_KEYS +
-            EqualizerModuleHandler.EQUALIZER_KEYS
+            EXCLUDED_KEYS
         )
-        if (entries.isNotEmpty()) {
-            userPreferencesRepository.importPreferencesFromBackup(entries, clearExisting = false)
+        if (safeEntries.isNotEmpty()) {
+            userPreferencesRepository.importPreferencesFromBackup(safeEntries, clearExisting = false)
         }
     }
 
@@ -51,7 +52,7 @@ class GlobalSettingsModuleHandler @Inject constructor(
     companion object {
         /** Keys managed by dedicated module handlers, excluded from global settings. */
         val EXCLUDED_KEYS = PlaylistsModuleHandler.PLAYLIST_KEYS +
-            QuickFillModuleHandler.QUICK_FILL_KEYS +
-            EqualizerModuleHandler.EQUALIZER_KEYS
+            EqualizerModuleHandler.EQUALIZER_KEYS +
+            AiPreferencesRepository.SENSITIVE_BACKUP_KEY_NAMES
     }
 }

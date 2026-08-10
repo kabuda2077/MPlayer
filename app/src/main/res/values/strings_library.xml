@@ -24,7 +24,6 @@
     <string name="library_toast_playing_next">Playing next</string>
 
     <!-- Library Toolbar & Navigation -->
-    <string name="library_cd_watch_transfer">Watch transfer</string>
     <string name="library_cd_open_settings">Settings</string>
     <string name="library_tab_edit">Edit</string>
     <string name="library_cd_reorder_tabs">Reorder tabs</string>
@@ -48,11 +47,6 @@
     <string name="library_storage_sd_card">SD Card</string>
     <string name="library_storage_sd_card_unavailable">SD card is not available right now.</string>
     <string name="library_sort_section_cloud">Cloud</string>
-    <string name="library_sort_toggle_telegram_channels">Telegram Cloud Channels</string>
-    <string name="library_telegram_topics_display_title">Topics Display</string>
-    <string name="library_telegram_topic_mode_channels">Channels</string>
-    <string name="library_telegram_topic_mode_topics">Topics</string>
-    <string name="library_telegram_topic_mode_both">Both</string>
     <string name="library_cloud_sources_heading">Cloud</string>
     <string name="library_cloud_only_label">Cloud Only</string>
 
@@ -74,9 +68,9 @@
     <string name="library_action_new">New</string>
     <string name="library_cd_create_new_playlist">Create new playlist</string>
     <string name="library_cd_locate_current_song">Locate current song</string>
-    <string name="library_storage_filter_all_songs">All songs</string>
-    <string name="library_storage_filter_online">CLOUD</string>
-    <string name="library_storage_filter_offline">LOCAL</string>
+    <string name="library_storage_filter_all_songs">All</string>
+    <string name="library_storage_filter_online">Online</string>
+    <string name="library_storage_filter_offline">Local</string>
     <string name="library_cd_sort_options">Sort options</string>
 
     <!-- Library selection action row -->
@@ -105,7 +99,7 @@
     <string name="library_empty_songs_offline_title">No local songs found</string>
     <string name="library_empty_songs_offline_subtitle">Try another source filter or rescan your device library.</string>
     <string name="library_empty_songs_online_title">No cloud songs found</string>
-    <string name="library_empty_songs_online_subtitle">Sync Telegram or NetEase songs, or switch to local source.</string>
+    <string name="library_empty_songs_online_subtitle">Sync NetEase or QQ Music songs, or switch to local source.</string>
     <string name="library_empty_albums_all_title">No albums available</string>
     <string name="library_empty_albums_all_subtitle">Albums will appear here as soon as your library has grouped tracks.</string>
     <string name="library_empty_albums_offline_title">No local albums found</string>
@@ -123,7 +117,7 @@
     <string name="library_empty_liked_offline_title">No liked local songs</string>
     <string name="library_empty_liked_offline_subtitle">Switch source filter or like songs from your device.</string>
     <string name="library_empty_liked_online_title">No liked cloud songs</string>
-    <string name="library_empty_liked_online_subtitle">Like Telegram or NetEase tracks to see them in this view.</string>
+    <string name="library_empty_liked_online_subtitle">Like NetEase or QQ Music tracks to see them in this view.</string>
     <string name="library_empty_folders_title">No folders found</string>
     <string name="library_empty_folders_subtitle">Internal storage folders with music will appear here.</string>
     <string name="library_empty_playlists_title">No playlists yet</string>
@@ -150,14 +144,8 @@
     <string name="song_info_cd_add_to_playlist">Add to playlist</string>
     <string name="song_info_action_delete">Delete</string>
     <string name="song_info_action_delete_all">Delete all</string>
-    <string name="song_info_checking_watch">Checking watch</string>
     <string name="song_info_transferring_percent">Transferring %1$d%%</string>
-    <string name="song_info_transferring_to_watch">Transferring to watch</string>
     <string name="song_info_transfer_in_progress">Transfer in progress</string>
-    <string name="song_info_send_to_watch">Send to watch</string>
-    <string name="song_info_watch_unavailable">Watch unavailable</string>
-    <string name="song_info_cd_send_to_watch">Send song to watch</string>
-    <string name="song_info_cd_watch_unavailable">Watch unavailable</string>
     <string name="song_info_set_sound_as_short">Set as</string>
     <string name="song_info_set_sound_as_long">Set as sound</string>
     <string name="song_info_cd_set_sound_as">Choose how to use this song as a system sound</string>
@@ -270,29 +258,6 @@
     <string name="artist_picker_primary_label">Primary artist</string>
     <string name="artist_picker_shortcut_label">Artist page</string>
 
-    <!-- Watch Transfer Dialog + Foreground Service -->
-    <string name="watch_transfer_action_cancel">Cancel transfer</string>
-    <string name="watch_transfer_bytes_progress">%1$s / %2$s</string>
-    <string name="watch_transfer_channel_description">Shows live progress for phone-to-watch music transfers</string>
-    <string name="watch_transfer_channel_name">Watch transfers</string>
-    <string name="watch_transfer_dialog_title">Sending to Watch</string>
-    <string name="watch_transfer_status_cancelled">Cancelled</string>
-    <string name="watch_transfer_status_cancelled_service">Transfer cancelled</string>
-    <string name="watch_transfer_status_complete_service">Transfer complete</string>
-    <string name="watch_transfer_status_completed">Completed</string>
-    <string name="watch_transfer_status_failed">Failed</string>
-    <string name="watch_transfer_status_failed_service">Transfer failed</string>
-    <string name="watch_transfer_status_multiple_active">Multiple active transfers</string>
-    <string name="watch_transfer_bullet_step">%1$s • %2$s</string>
-    <string name="watch_transfer_status_preparing">Preparing</string>
-    <string name="watch_transfer_status_preparing_service">Preparing watch transfer</string>
-    <string name="watch_transfer_status_preparing_transfer">Preparing transfer…</string>
-    <string name="watch_transfer_status_sending_n_to_watch">Sending %1$d songs to watch</string>
-    <string name="watch_transfer_status_sending_to_watch">Sending to watch</string>
-    <string name="watch_transfer_status_starting">Starting transfer…</string>
-    <string name="watch_transfer_status_starting_short">Starting</string>
-    <string name="watch_transfer_status_transferring">Transferring</string>
-    <string name="watch_transfer_summary_n">%1$d transfers</string>
 
     <!-- EditSongSheet -->
     <string name="edit_song_toolbar_title">Edit song</string>
@@ -500,18 +465,11 @@
     <string name="playlist_view_model_none_to_share">No playlists to share</string>
     <string name="playlist_view_model_share_chooser_title">Share playlists</string>
     <string name="playlist_view_model_share_failed">Share failed: %1$s</string>
-    <string name="playlist_view_model_none_to_export">No playlists to export</string>
-    <string name="playlist_view_model_export_failed">Export failed: %1$s</string>
-    <string name="playlist_view_model_export_folder_display">Music/PixelPlayer Exports</string>
     <string name="playlist_view_model_ai_gemini_key_required">Please configure your Gemini API key in Settings.</string>
     <string name="playlist_view_model_restored_toast">Playlist restored</string>
     <plurals name="playlist_view_model_sharing_message">
         <item quantity="one">Sharing %d playlist</item>
         <item quantity="other">Sharing %d playlists</item>
-    </plurals>
-    <plurals name="playlist_view_model_exported_message">
-        <item quantity="one">Exported %1$d playlist to %2$s</item>
-        <item quantity="other">Exported %1$d playlists to %2$s</item>
     </plurals>
 
     <!-- AlbumDetailViewModel -->

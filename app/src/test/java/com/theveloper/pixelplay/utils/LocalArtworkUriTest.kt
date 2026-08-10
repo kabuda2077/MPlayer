@@ -43,12 +43,12 @@ class LocalArtworkUriTest {
     @Test
     fun resolveSongArtworkUri_keepsCloudSourceArtworkUntouched() {
         val resolved = LocalArtworkUri.resolveSongArtworkUri(
-            storedUri = "telegram_art://123/456",
+            storedUri = "https://example.com/remote-cover.jpg",
             songId = 42L,
-            contentUriString = "telegram://123/456"
+            contentUriString = "qqmusic://MID123456"
         )
 
-        assertThat(resolved).isEqualTo("telegram_art://123/456")
+        assertThat(resolved).isEqualTo("https://example.com/remote-cover.jpg")
     }
 
     @Test

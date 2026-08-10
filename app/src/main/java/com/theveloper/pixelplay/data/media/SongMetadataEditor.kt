@@ -16,8 +16,7 @@ import com.kyant.taglib.TagLib
 import com.theveloper.pixelplay.data.database.ArtistEntity
 import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.SongArtistCrossRef
-import com.theveloper.pixelplay.data.database.TelegramDao // Added
-import com.theveloper.pixelplay.data.database.TelegramSongEntity // Added
+import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.serializeArtistRefs
 import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -86,7 +85,6 @@ private sealed interface ReplayGainUpdate {
 class SongMetadataEditor(
     private val context: Context,
     private val musicDao: MusicDao,
-    private val telegramDao: TelegramDao, // Added
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
 
@@ -258,6 +256,16 @@ class SongMetadataEditor(
         }
 
         try {
+            val storedSong = musicDao.getSongById(songId).first()
+            if (storedSong != null && storedSong.sourceType != SourceType.LOCAL) {
+                return@withContext SongMetadataEditResult(
+                    success = false,
+                    updatedAlbumArtUri = null,
+                    error = MetadataEditError.UNSUPPORTED_FORMAT,
+                    errorMessage = "Online songs must be downloaded before editing metadata"
+                )
+            }
+
             val trimmedLyrics = newLyrics.trim()
             val trimmedGenre = newGenre.trim()
             val normalizedGenre = trimmedGenre.takeIf { it.isNotBlank() }
@@ -284,14 +292,10 @@ class SongMetadataEditor(
                 )
             }
 
-            val isTelegramSong = songId < 0
-            val filePath = if (isTelegramSong) {
-                musicDao.getSongById(songId).first()?.filePath
-            } else {
-                getFilePathFromMediaStore(songId)
-            }
+            val filePath = storedSong?.filePath?.takeIf { it.isNotBlank() }
+                ?: getFilePathFromMediaStore(songId)
 
-            if (filePath.isNullOrBlank() && !isTelegramSong) {
+            if (filePath.isNullOrBlank()) {
                 Timber.tag(TAG).e("Could not get file path for songId: $songId")
                 return@withContext SongMetadataEditResult(
                     success = false,
@@ -304,7 +308,7 @@ class SongMetadataEditor(
             // Write permission is now handled upstream via MediaStore.createWriteRequest()
             // before this method is called. No File.canWrite() check needed.
 
-            val finalFilePath = filePath ?: ""
+            val finalFilePath = filePath
             val extension = finalFilePath.substringAfterLast('.', "").lowercase(Locale.ROOT)
             val detectedContainer = if (finalFilePath.isNotBlank() && File(finalFilePath).exists()) {
                 detectContainerFormat(finalFilePath)
@@ -415,14 +419,8 @@ class SongMetadataEditor(
             }
 
             val fileUpdateSuccess = if (!fileExists) {
-                if (isTelegramSong) {
-                    Timber.tag(TAG)
-                        .w("METADATA_EDIT: Telegram file not found (streaming?). Skipping file tags, updating DB only.")
-                    true
-                } else {
-                    Timber.tag(TAG).e("METADATA_EDIT: File does not exist: $finalFilePath")
-                    false
-                }
+                Timber.tag(TAG).e("METADATA_EDIT: File does not exist: $finalFilePath")
+                false
             } else {
                 val tempFile = File(
                     context.cacheDir,
@@ -447,7 +445,7 @@ class SongMetadataEditor(
                                 writeBackSuccess = true
                                 Timber.tag(TAG).d("Successfully wrote metadata directly to raw file path")
                             } else {
-                                val uri = if (!isTelegramSong) MediaStorePermissionHelper.getMediaStoreUri(context, songId) else null
+                                val uri = MediaStorePermissionHelper.getMediaStoreUri(context, songId)
                                 if (uri != null) {
                                     context.contentResolver.openFileDescriptor(uri, "rwt")?.use { pfd ->
                                         FileOutputStream(pfd.fileDescriptor).use { output ->
@@ -489,34 +487,18 @@ class SongMetadataEditor(
                 )
             }
 
-            if (isTelegramSong) {
-                val songEntity = musicDao.getSongById(songId).first()
-                if (songEntity?.telegramChatId != null && songEntity.telegramFileId != null) {
-                    val telegramId = "${songEntity.telegramChatId}_${songEntity.telegramFileId}"
-                    val telegramSong = telegramDao.getSongsByIds(listOf(telegramId)).first().firstOrNull()
-                    if (telegramSong != null) {
-                        val updatedTelegramSong = telegramSong.copy(
-                            title = newTitle,
-                            artist = newArtist,
-                        )
-                        telegramDao.insertSongs(listOf(updatedTelegramSong))
-                        Timber.d("Updated TelegramDao for song: $telegramId")
-                    }
-                }
-            } else {
-                val mediaStoreSuccess = updateMediaStoreMetadata(
-                    songId = songId,
-                    title = newTitle,
-                    artist = newArtist,
-                    album = newAlbum,
-                    albumArtist = newAlbumArtist,
-                    genre = trimmedGenre,
-                    trackNumber = newTrackNumber,
-                    discNumber = newDiscNumber
-                )
-                if (!mediaStoreSuccess) {
-                    Timber.w("MediaStore update failed, but file was updated for songId: $songId")
-                }
+            val mediaStoreSuccess = updateMediaStoreMetadata(
+                songId = songId,
+                title = newTitle,
+                artist = newArtist,
+                album = newAlbum,
+                albumArtist = newAlbumArtist,
+                genre = trimmedGenre,
+                trackNumber = newTrackNumber,
+                discNumber = newDiscNumber
+            )
+            if (!mediaStoreSuccess) {
+                Timber.w("MediaStore update failed, but file was updated for songId: $songId")
             }
 
             var storedCoverArtUri: String? = null
@@ -664,8 +646,8 @@ class SongMetadataEditor(
 
     /**
      * Detects the actual audio container by reading the file's magic bytes.
-     * Many files in the wild have wrong extensions (e.g. MP4/M4A served as .mp3 by YouTube rippers
-     * or Telegram). Writing ID3v2 tags to an MP4 container corrupts it irreversibly, so the
+     * Many files in the wild have wrong extensions (for example MP4/M4A content saved as .mp3).
+     * Writing ID3v2 tags to an MP4 container corrupts it irreversibly, so the
      * tag-writing pipeline must route by real content, not by extension.
      */
     private fun detectContainerFormat(filePath: String): DetectedContainer {

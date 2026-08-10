@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Cihaz Yetenekleri</string>
     <string name="settings_category_device_capabilities_subtitle">Ses özellikleri, kodekler ve çözücü bilgileri</string>
     <string name="settings_category_accounts_title">Hesaplar</string>
-    <string name="settings_category_accounts_subtitle">Telegram, Google Drive, NetEase ve diğer hizmetleri yönetin</string>
     <string name="settings_category_about_title">Hakkında</string>
     <string name="settings_category_about_subtitle">Uygulama bilgisi, sürüm ve katkıda bulunanlar</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">.lrc dosyalarını otomatik tara</string>
     <string name="settings_auto_scan_lrc_subtitle">Kitaplık senkronizasyonu sırasında aynı klasördeki .lrc dosyalarını otomatik olarak tara ve ata.</string>
     <string name="settings_lyrics_management_section">Şarkı Sözü Yönetimi</string>
-    <string name="settings_lyrics_source_priority_title">Şarkı Sözü Kaynak Önceliği</string>
-    <string name="settings_lyrics_source_priority_subtitle">Şarkı sözleri alınırken ilk olarak hangi kaynağın deneneceğini seçin.</string>
-    <string name="settings_lyrics_embedded_first">Önce Gömülü Olanlar</string>
-    <string name="settings_lyrics_local_first">Önce Yerel (.lrc) Olanlar</string>
     <string name="settings_reset_imported_lyrics_title">İçe Aktarılan Şarkı Sözlerini Sıfırla</string>
     <string name="settings_reset_imported_lyrics_subtitle">İçe aktarılan tüm şarkı sözlerini veri tabanından kaldırın.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">İçe aktarılan şarkı sözleri sıfırlansın mı?</string>
@@ -265,9 +260,6 @@
     <string name="settings_gain_mode_subtitle">Parça: Her şarkıyı tek tek normalleştirir. Albüm: Albüm bazında normalleştirir.</string>
     <string name="settings_gain_mode_track">Parça</string>
     <string name="settings_gain_mode_album">Albüm</string>
-    <string name="settings_cast_section">Yayınla (Cast)</string>
-    <string name="settings_cast_autoplay_title">Yayın bağlantısı kurulduğunda/kesildiğinde otomatik oynat</string>
-    <string name="settings_cast_autoplay_subtitle">Yayın bağlantıları arasında geçiş yaptıktan hemen sonra oynatmaya başlayın.</string>
     <string name="settings_headphones_section">Kulaklıklar</string>
     <string name="settings_headphones_resume_title">Kulaklık tekrar bağlandığında devam et</string>
     <string name="settings_headphones_resume_subtitle">Kulaklık çıkarıldığı için oynatma duraklatıldıysa, tekrar bağlandığında otomatik olarak devam ettirilir.</string>
@@ -605,7 +597,6 @@
     <string name="accounts_no_linked_subtitle">Bu ekrandan yönetmek için bir sağlayıcı bağlayın.</string>
     <string name="accounts_connect_service">%1$s Bağla</string>
     <string name="accounts_service_coming_soon">%1$s (Yakında)</string>
-    <string name="accounts_google_drive_soon">Google Drive yakında sunulacak.</string>
     <string name="accounts_unable_open_screen">Bu ekran şu anda açılamıyor.</string>
 
     <!-- About category -->
@@ -625,7 +616,6 @@
     <string name="about_contributors_section_subtitle">GitHub\'dan canlı katkıda bulunanlar listesi.</string>
     <string name="about_contributions_format">%1$d katkı</string>
     <string name="about_cd_open_github_profile">GitHub profilini aç</string>
-    <string name="about_cd_open_telegram">Telegram\'ı aç</string>
     <string name="about_cd_contributor_avatar">%1$s avatarı</string>
     <string name="about_cd_contributor_icon">%1$s simgesi</string>
 </resources>

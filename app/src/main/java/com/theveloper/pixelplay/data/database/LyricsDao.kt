@@ -14,11 +14,11 @@ interface LyricsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(lyrics: List<LyricsEntity>)
 
-    @Query("SELECT * FROM lyrics WHERE songId = :songId")
-    suspend fun getLyrics(songId: Long): LyricsEntity?
+    @Query("SELECT * FROM lyrics WHERE mediaKey = :mediaKey")
+    suspend fun getLyrics(mediaKey: String): LyricsEntity?
 
-    @Query("DELETE FROM lyrics WHERE songId = :songId")
-    suspend fun deleteLyrics(songId: Long)
+    @Query("DELETE FROM lyrics WHERE mediaKey = :mediaKey")
+    suspend fun deleteLyrics(mediaKey: String)
 
     @Query("DELETE FROM lyrics")
     suspend fun deleteAll()
@@ -26,8 +26,8 @@ interface LyricsDao {
     @Query("SELECT * FROM lyrics")
     suspend fun getAll(): List<LyricsEntity>
 
-    @Query("SELECT songId FROM lyrics WHERE songId IN (:songIds) AND content != ''")
-    suspend fun getSongIdsWithLyrics(songIds: List<Long>): List<Long>
+    @Query("SELECT mediaKey FROM lyrics WHERE mediaKey IN (:mediaKeys) AND content != ''")
+    suspend fun getMediaKeysWithLyrics(mediaKeys: List<String>): List<String>
 
     @Transaction
     suspend fun replaceAll(lyrics: List<LyricsEntity>) {

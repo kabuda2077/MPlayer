@@ -4,66 +4,21 @@
     <string name="player_cd_collapse">Collapse player</string>
     <string name="player_now_playing">Now Playing</string>
     <string name="player_cd_cloud_stream">Cloud stream</string>
-    <string name="player_cd_cast">Cast</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Local playback</string>
     <string name="player_connecting">Connecting…</string>
     <string name="player_cd_open_queue">Open Queue</string>    
+    <string name="audio_output_title">Audio output</string>
+    <string name="audio_output_this_phone">This phone</string>
+    <string name="audio_output_local_playback">Local playback</string>
+    <string name="audio_output_bluetooth_audio">Bluetooth audio</string>
+    <string name="audio_output_bluetooth_devices">Bluetooth devices</string>
+    <string name="audio_output_refresh">Refresh</string>
+    <string name="audio_output_allow_bluetooth">Allow Bluetooth access</string>
+    <string name="audio_output_connected">Connected</string>
+    <string name="audio_output_bluetooth_settings">Bluetooth settings</string>
 
-    <!-- CastBottomSheet -->
-    <string name="cast_perm_title">Get ready to connect</string>
-    <string name="cast_perm_body">Allow PixelPlayer to see your nearby devices and current Wi‑Fi so we can keep your cast, Bluetooth audio, and speakers in sync.</string>
-    <string name="cast_perm_nearby_title">Nearby devices</string>
-    <string name="cast_perm_nearby_desc">Needed to read and control your connected Bluetooth audio gear.</string>
-    <string name="cast_perm_location_title">Location for Wi‑Fi</string>
-    <string name="cast_perm_location_desc">Android requires Location to share the Wi‑Fi network (SSID) you\'re on so we can find compatible cast devices.</string>
-    <string name="cast_allow_access">Allow access</string>
-    <string name="cast_perm_footer">We only use these permissions for device interconnectivity — casting, controlling nearby speakers, and keeping audio in sync.</string>
-    <string name="cast_title_connect">Connect device</string>
-    <string name="cast_scanning_nearby">Scanning nearby</string>
-    <string name="cast_subtitle_session">Casting session</string>
-    <string name="cast_connecting">Connecting</string>
-    <string name="cast_connected">Connected</string>
-    <string name="cast_this_phone">This phone</string>
-    <string name="cast_bluetooth_audio">Bluetooth audio</string>
-    <string name="cast_local_playback">Local playback</string>
-    <string name="cast_playing">Playing</string>
-    <string name="cast_paused">Paused</string>
-    <string name="cast_volume_device">Device volume</string>
-    <string name="cast_volume_phone">Phone volume</string>
-    <string name="cast_volume_levels">%1$d/%2$d</string>
-    <string name="cast_cd_battery">Battery level</string>
-    <string name="cast_cd_volume_level">Volume level</string>
-    <string name="cast_disconnect">Disconnect</string>
-    <string name="cast_connectivity">Connectivity</string>
-    <string name="cast_turn_on_wifi_bt">Turn on Wi-Fi or Bluetooth</string>
-    <string name="cast_cd_refresh_connections">Refresh connections</string>
-    <string name="cast_wifi">Wi-Fi</string>
-    <string name="cast_wifi_off">Off</string>
-    <string name="cast_wifi_on">On</string>
-    <string name="cast_wifi_connected">Connected</string>
-    <string name="cast_bluetooth">Bluetooth</string>
-    <string name="cast_bt_off">Off</string>
-    <string name="cast_bt_on">On</string>
-    <string name="cast_bt_connected">Connected</string>
-    <string name="cast_nearby_devices">Nearby devices</string>
-    <string name="cast_cd_refresh_devices">Refresh devices</string>
-    <string name="cast_status_connected">Connected</string>
-    <string name="cast_status_connecting">Connecting</string>
-    <string name="cast_status_available_connect">Available to connect</string>
-    <string name="cast_status_available">Available</string>
-    <string name="cast_connecting_ellipsis">Connecting...</string>
-    <string name="cast_searching">Searching for devices…</string>
-    <string name="cast_searching_hint">Make sure your TV or speaker is on and sharing the same Wi‑Fi network.</string>
-    <string name="cast_tab_controls">Controls</string>
-    <string name="cast_tab_devices">Devices</string>
 
-    <!-- Casting & Remote Playback -->
-    <string name="cast_server_channel_name">Cast media server</string>
-    <string name="cast_server_notification_title">Casting to device</string>
-    <string name="cast_server_notification_text">Serving media to Cast device</string>
-    <string name="cast_server_foreground_error">%1$s: %2$s</string>
-    <string name="cast_seek_unavailable_for_format">Seeking is temporarily unavailable for this audio format on Cast because it can crash the Cast session.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer_title">Sleep timer</string>

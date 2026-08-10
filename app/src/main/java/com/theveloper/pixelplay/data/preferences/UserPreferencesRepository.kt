@@ -16,7 +16,6 @@ import androidx.media3.common.Player
 import com.theveloper.pixelplay.data.equalizer.EqualizerPreset
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.FolderSource
-import com.theveloper.pixelplay.data.model.LyricsSourcePreference
 import com.theveloper.pixelplay.data.model.PlaybackQueueSnapshot
 import com.theveloper.pixelplay.data.model.Playlist
 import com.theveloper.pixelplay.data.model.SortOption
@@ -92,8 +91,6 @@ class UserPreferencesRepository @Inject constructor(
 
     private object PreferencesKeys {
         val APP_REBRAND_DIALOG_SHOWN = booleanPreferencesKey("app_rebrand_dialog_shown")
-        val BETA_05_CLEAN_INSTALL_DISCLAIMER_DISMISSED =
-            booleanPreferencesKey("beta_05_clean_install_disclaimer_dismissed")
         val ALLOWED_DIRECTORIES = stringSetPreferencesKey("allowed_directories")
         val BLOCKED_DIRECTORIES = stringSetPreferencesKey("blocked_directories")
         val INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
@@ -116,7 +113,6 @@ class UserPreferencesRepository @Inject constructor(
         // UI state
         val LAST_LIBRARY_TAB_INDEX = intPreferencesKey("last_library_tab_index")
         val LAST_STORAGE_FILTER = stringPreferencesKey("last_storage_filter")
-        val MOCK_GENRES_ENABLED = booleanPreferencesKey("mock_genres_enabled")
         val LAST_DAILY_MIX_UPDATE = longPreferencesKey("last_daily_mix_update")
         val DAILY_MIX_SONG_IDS = stringPreferencesKey("daily_mix_song_ids")
         val YOUR_MIX_SONG_IDS = stringPreferencesKey("your_mix_song_ids")
@@ -132,9 +128,7 @@ class UserPreferencesRepository @Inject constructor(
         val LIBRARY_TABS_ORDER = stringPreferencesKey("library_tabs_order")
         val IS_FOLDER_FILTER_ACTIVE = booleanPreferencesKey("is_folder_filter_active")
         val IS_FOLDERS_PLAYLIST_VIEW = booleanPreferencesKey("is_folders_playlist_view")
-        val SHOW_TELEGRAM_CLOUD_PLAYLISTS = booleanPreferencesKey("show_telegram_cloud_playlists")
         val HIDE_LOCAL_MEDIA = booleanPreferencesKey("hide_local_media")
-        val TELEGRAM_TOPIC_DISPLAY_MODE = stringPreferencesKey("telegram_topic_display_mode")
         val FOLDERS_SOURCE = stringPreferencesKey("folders_source")
         val FOLDER_BACK_GESTURE_NAVIGATION = booleanPreferencesKey("folder_back_gesture_navigation")
         val USE_SMOOTH_CORNERS = booleanPreferencesKey("use_smooth_corners")
@@ -142,12 +136,9 @@ class UserPreferencesRepository @Inject constructor(
         val IS_CROSSFADE_ENABLED = booleanPreferencesKey("is_crossfade_enabled")
         val HI_FI_MODE_ENABLED = booleanPreferencesKey("hi_fi_mode_enabled")
         val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
-        val CUSTOM_GENRES = stringSetPreferencesKey("custom_genres")
-        val CUSTOM_GENRE_ICONS = stringPreferencesKey("custom_genre_icons")
         val REPEAT_MODE = intPreferencesKey("repeat_mode")
         val IS_SHUFFLE_ON = booleanPreferencesKey("is_shuffle_on")
         val PERSISTENT_SHUFFLE_ENABLED = booleanPreferencesKey("persistent_shuffle_enabled")
-        val DISABLE_CAST_AUTOPLAY = booleanPreferencesKey("disable_cast_autoplay")
         val RESUME_ON_HEADSET_RECONNECT = booleanPreferencesKey("resume_on_headset_reconnect")
         val SHOW_QUEUE_HISTORY = booleanPreferencesKey("show_queue_history")
         val PLAYBACK_QUEUE_SNAPSHOT = stringPreferencesKey("playback_queue_snapshot_v1")
@@ -208,11 +199,9 @@ class UserPreferencesRepository @Inject constructor(
 
         // Lyrics
         val LYRICS_SYNC_OFFSETS = stringPreferencesKey("lyrics_sync_offsets_json")
-        val LYRICS_SOURCE_PREFERENCE = stringPreferencesKey("lyrics_source_preference")
         val AUTO_SCAN_LRC_FILES = booleanPreferencesKey("auto_scan_lrc_files")
         val ENABLE_ONLINE_TTML_LYRICS = booleanPreferencesKey("enable_online_ttml_lyrics")
-        val ENABLE_QQ_LYRICS = booleanPreferencesKey("enable_qq_lyrics")
-        val LOCAL_SONGS_ALLOW_QQ_LYRICS = booleanPreferencesKey("local_songs_allow_qq_lyrics")
+        val ENABLE_ONLINE_LYRICS = booleanPreferencesKey("enable_online_lyrics")
         val SHOW_LYRICS_ROMANIZATION = booleanPreferencesKey("show_lyrics_romanization")
 
         // Developer options
@@ -290,13 +279,6 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[PreferencesKeys.APP_REBRAND_DIALOG_SHOWN] = wasShown }
     }
 
-    val beta05CleanInstallDisclaimerDismissedFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.BETA_05_CLEAN_INSTALL_DISCLAIMER_DISMISSED] ?: false }
-
-    suspend fun setBeta05CleanInstallDisclaimerDismissed(dismissed: Boolean) {
-        dataStore.edit { it[PreferencesKeys.BETA_05_CLEAN_INSTALL_DISCLAIMER_DISMISSED] = dismissed }
-    }
-
     val backupInfoDismissedFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.BACKUP_INFO_DISMISSED] ?: false }
 
@@ -360,13 +342,6 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setKeepPlayingInBackground(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.KEEP_PLAYING_IN_BACKGROUND] = enabled }
-    }
-
-    val disableCastAutoplayFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.DISABLE_CAST_AUTOPLAY] ?: false }
-
-    suspend fun setDisableCastAutoplay(disabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.DISABLE_CAST_AUTOPLAY] = disabled }
     }
 
     val resumeOnHeadsetReconnectFlow: Flow<Boolean> =
@@ -892,13 +867,6 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.LAST_STORAGE_FILTER] = filter.name }
     }
 
-    val mockGenresEnabledFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.MOCK_GENRES_ENABLED] ?: false }
-
-    suspend fun setMockGenresEnabled(enabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.MOCK_GENRES_ENABLED] = enabled }
-    }
-
     val libraryTabsOrderFlow: Flow<String?> =
         pref { it[PreferencesKeys.LIBRARY_TABS_ORDER] }
 
@@ -939,25 +907,11 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.IS_FOLDERS_PLAYLIST_VIEW] = isPlaylistView }
     }
 
-    val showTelegramCloudPlaylistsFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.SHOW_TELEGRAM_CLOUD_PLAYLISTS] ?: true }
-
-    suspend fun setShowTelegramCloudPlaylists(show: Boolean) {
-        dataStore.edit { it[PreferencesKeys.SHOW_TELEGRAM_CLOUD_PLAYLISTS] = show }
-    }
-
     val hideLocalMediaFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.HIDE_LOCAL_MEDIA] ?: false }.distinctUntilChanged()
 
     suspend fun setHideLocalMedia(hide: Boolean) {
         dataStore.edit { it[PreferencesKeys.HIDE_LOCAL_MEDIA] = hide }
-    }
-
-    val telegramTopicDisplayModeFlow: Flow<TelegramTopicDisplayMode> =
-        pref { TelegramTopicDisplayMode.fromStorageKey(it[PreferencesKeys.TELEGRAM_TOPIC_DISPLAY_MODE]) }
-
-    suspend fun setTelegramTopicDisplayMode(mode: TelegramTopicDisplayMode) {
-        dataStore.edit { it[PreferencesKeys.TELEGRAM_TOPIC_DISPLAY_MODE] = mode.storageKey }
     }
 
     val foldersSourceFlow: Flow<FolderSource> =
@@ -1100,13 +1054,6 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         }
     }
 
-    val lyricsSourcePreferenceFlow: Flow<LyricsSourcePreference> =
-        pref { LyricsSourcePreference.fromName(it[PreferencesKeys.LYRICS_SOURCE_PREFERENCE]) }
-
-    suspend fun setLyricsSourcePreference(preference: LyricsSourcePreference) {
-        dataStore.edit { it[PreferencesKeys.LYRICS_SOURCE_PREFERENCE] = preference.name }
-    }
-
     val autoScanLrcFilesFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.AUTO_SCAN_LRC_FILES] ?: false }
 
@@ -1121,18 +1068,11 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
         dataStore.edit { it[PreferencesKeys.ENABLE_ONLINE_TTML_LYRICS] = enabled }
     }
 
-    val enableQqLyricsFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.ENABLE_QQ_LYRICS] ?: true }
+    val enableOnlineLyricsFlow: Flow<Boolean> =
+        pref { it[PreferencesKeys.ENABLE_ONLINE_LYRICS] ?: true }
 
-    suspend fun setEnableQqLyrics(enabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.ENABLE_QQ_LYRICS] = enabled }
-    }
-
-    val localSongsAllowQqLyricsFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] ?: true }
-
-    suspend fun setLocalSongsAllowQqLyrics(enabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.LOCAL_SONGS_ALLOW_QQ_LYRICS] = enabled }
+    suspend fun setEnableOnlineLyrics(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.ENABLE_ONLINE_LYRICS] = enabled }
     }
 
     val showLyricsRomanizationFlow: Flow<Boolean> =
@@ -1143,7 +1083,7 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
     }
 
     val useAnimatedLyricsFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.USE_ANIMATED_LYRICS] ?: false }
+        pref { it[PreferencesKeys.USE_ANIMATED_LYRICS] ?: true }
 
     suspend fun setUseAnimatedLyrics(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.USE_ANIMATED_LYRICS] = enabled }
@@ -1161,28 +1101,6 @@ suspend fun markDirectoryRulesVersionApplied(version: Int) {
 
     suspend fun setAnimatedLyricsBlurStrength(strength: Float) {
         dataStore.edit { it[PreferencesKeys.ANIMATED_LYRICS_BLUR_STRENGTH] = strength }
-    }
-
-    // ─── Custom genres ────────────────────────────────────────────────────────
-
-    val customGenresFlow: Flow<Set<String>> =
-        pref { it[PreferencesKeys.CUSTOM_GENRES] ?: emptySet() }
-
-    val customGenreIconsFlow: Flow<Map<String, Int>> =
-        pref { decodeJsonPref(it, PreferencesKeys.CUSTOM_GENRE_ICONS, emptyMap()) }
-
-    suspend fun addCustomGenre(genre: String, iconResId: Int? = null) {
-        dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.CUSTOM_GENRES] ?: emptySet()
-            preferences[PreferencesKeys.CUSTOM_GENRES] = current + genre
-
-            if (iconResId != null) {
-                val icons = decodeJsonPref(preferences, PreferencesKeys.CUSTOM_GENRE_ICONS, emptyMap<String, Int>())
-                    .toMutableMap()
-                icons[genre] = iconResId
-                preferences[PreferencesKeys.CUSTOM_GENRE_ICONS] = json.encodeToString(icons)
-            }
-        }
     }
 
     val disableBlurAllOverFlow: Flow<Boolean> = dataStore.data

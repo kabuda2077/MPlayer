@@ -63,10 +63,6 @@
 
 -keepattributes Signature, InnerClasses, EnclosingMethod, AnnotationDefault, *Annotation*
 
-# Cast framework classes loaded via manifest/reflective entry points.
--keep class com.theveloper.pixelplay.data.service.cast.CastOptionsProvider { *; }
--keep class * implements com.google.android.gms.cast.framework.OptionsProvider
-
 # Gson generic type capture for backup/restore in release builds.
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
@@ -80,27 +76,8 @@
 -keep class com.theveloper.pixelplay.data.database.SearchHistoryEntity { *; }
 -keep class com.theveloper.pixelplay.data.database.TransitionRuleEntity { *; }
 
-# Netty channel classes are instantiated reflectively and require public no-arg constructors.
-# Without these, release builds can fail with:
-# "IllegalArgumentException: Class NioServerSocketChannel does not have a public non-arg constructor"
--keep class io.netty.channel.socket.nio.NioServerSocketChannel { public <init>(); }
--keep class io.netty.channel.socket.nio.NioSocketChannel { public <init>(); }
--keep class io.netty.channel.epoll.EpollServerSocketChannel { public <init>(); }
--keep class io.netty.channel.epoll.EpollSocketChannel { public <init>(); }
--keep class io.netty.channel.kqueue.KQueueServerSocketChannel { public <init>(); }
--keep class io.netty.channel.kqueue.KQueueSocketChannel { public <init>(); }
-
-# Ktor server engine classes (CIO and internals) — prevent R8 from stripping
-# service-loaded or reflectively-accessed engine wiring.
--keep class io.ktor.server.engine.** { *; }
--keep class io.ktor.server.cio.** { *; }
-
 # Please add these rules to your existing keep rules in order to suppress warnings.
 # This is generated automatically by the Android Gradle plugin.
-
-# [NUEVO] Reglas para solucionar el error de Ktor y R8
--dontwarn java.lang.management.**
--dontwarn reactor.blockhound.**
 
 -dontwarn java.awt.Graphics2D
 -dontwarn java.awt.Image
@@ -156,23 +133,7 @@
 -dontwarn org.eclipse.jetty.npn.NextProtoNego$ServerProvider
 -dontwarn org.eclipse.jetty.npn.NextProtoNego
 
-# TDLib (Telegram Database Library) rules
--keep class org.drinkless.tdlib.** { *; }
--keep interface org.drinkless.tdlib.** { *; }
-
-# Ktor & Netty Rules (Crucial for StreamProxy)
--keep class org.slf4j.** { *; }
-
-# Ktor Specific
--dontwarn io.ktor.**
 -dontwarn kotlinx.coroutines.**
--dontwarn io.netty.**
-
-# Ensure internal server can start
--keep class com.theveloper.pixelplay.data.telegram.TelegramStreamProxy { *; }
-
-# Keep Kotlin reflection if needed by Ktor/Serialization in Release
--keep class kotlin.reflect.** { *; }
 
 # Kuromoji
 -keep class com.atilika.kuromoji.** { *; }

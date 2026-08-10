@@ -24,8 +24,6 @@ import com.theveloper.pixelplay.data.database.QqMusicDao
 import com.theveloper.pixelplay.data.database.SongArtistCrossRef
 import com.theveloper.pixelplay.data.database.SongEntity
 import com.theveloper.pixelplay.data.database.SourceType
-import com.theveloper.pixelplay.data.database.TelegramDao // Added
-import com.theveloper.pixelplay.data.database.resolveAlbumArtUri
 import com.theveloper.pixelplay.data.database.serializeArtistRefs
 import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics
@@ -34,7 +32,6 @@ import com.theveloper.pixelplay.data.download.DownloadEntity
 import com.theveloper.pixelplay.data.download.DownloadStatus
 import com.theveloper.pixelplay.data.download.DownloadStorageMode
 import com.theveloper.pixelplay.data.model.ArtistRef
-import com.theveloper.pixelplay.data.navidrome.NavidromeRepository
 import com.theveloper.pixelplay.data.media.AudioMetadataReader
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
@@ -80,11 +77,9 @@ constructor(
         private val musicDao: MusicDao,
         private val userPreferencesRepository: UserPreferencesRepository,
         private val lyricsRepository: LyricsRepository,
-        private val telegramDao: TelegramDao,
         private val neteaseDao: NeteaseDao,
         private val qqMusicDao: QqMusicDao,
-        private val downloadDao: DownloadDao,
-        private val navidromeRepository: NavidromeRepository
+        private val downloadDao: DownloadDao
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val contentResolver: ContentResolver = appContext.contentResolver
@@ -436,17 +431,8 @@ constructor(
                     val allSongIds = musicDao.getAllSongIds().toSet()
                     AlbumArtCacheManager.cleanOrphanedCacheFiles(applicationContext, allSongIds)
 
-                    // Sync cloud songs into the unified songs table.
-                    // OPT #7: Guard each source to avoid opening Room transactions when
-                    // the user hasn't configured that cloud provider.
-                    val hasTelegramChannels = telegramDao.getAllChannels().first().isNotEmpty()
-                    // For Navidrome, we only do network sync if SYNC_THRESHOLD_MS (24h) threshold has passed.
-                    val navidromeNeedsNetworkSync = navidromeRepository.isLoggedIn && 
-                        (System.currentTimeMillis() - navidromeRepository.lastFullSyncTime >= NavidromeRepository.SYNC_THRESHOLD_MS)
-                    
-                    val needsActiveCloudSync = hasTelegramChannels ||
-                        hasCachedCloudLibrarySongs() ||
-                        navidromeNeedsNetworkSync
+                    // Sync retained account-backed libraries into the unified songs table.
+                    val needsActiveCloudSync = hasCachedCloudLibrarySongs()
 
                     if (needsActiveCloudSync) {
                         setProgress(
@@ -456,19 +442,7 @@ constructor(
                         )
                     }
 
-                    if (hasTelegramChannels) {
-                        syncTelegramData()
-                    } else {
-                        Log.d(TAG, "Skipping Telegram sync — no channels configured.")
-                    }
-
                     syncCachedCloudLibraries()
-
-                    if (navidromeRepository.isLoggedIn) {
-                        syncNavidromeData()
-                    } else {
-                        Log.d(TAG, "Skipping Navidrome sync — not logged in.")
-                    }
 
                     // Recalculate total
                     val finalTotalSongs = musicDao.getSongCount().first()
@@ -1421,221 +1395,6 @@ constructor(
         }
     }
     
-    // Logic to sync Telegram songs into main DB with Unified Library Support
-    private suspend fun syncTelegramData() {
-        Log.i(TAG, "Syncing Telegram songs to main database (Unified Mode)...")
-        try {
-            val telegramSongs = telegramDao.getAllTelegramSongs().first()
-            val channels = telegramDao.getAllChannels().first().associateBy { it.chatId }
-            val existingUnifiedTelegramIds = musicDao.getAllTelegramSongIds()
-            
-            if (telegramSongs.isEmpty()) { 
-                if (existingUnifiedTelegramIds.isNotEmpty()) {
-                    musicDao.clearAllTelegramSongs()
-                }
-                Log.d(TAG, "No Telegram songs to sync.")
-                return 
-            }
-
-            // 1. Pre-load Local Data for Merging
-            val existingArtists = musicDao.getAllArtistsListRaw().associate { it.name.trim().lowercase() to it.id }
-            val existingAlbums = musicDao.getAllAlbumsList(emptyList(), false, 0).associate { "${it.title.trim().lowercase()}_${it.artistName.trim().lowercase()}" to it.id }
-            val existingArtistImageUrls = musicDao.getAllArtistsListRaw().associate { it.id to it.imageUrl }
-            val nextArtistId = AtomicLong((musicDao.getMaxArtistId() ?: 0L) + 1)
-            val delimiters = userPreferencesRepository.artistDelimitersFlow.first()
-            val wordDelims = userPreferencesRepository.artistWordDelimitersFlow.first()
-
-            val songsToInsert = mutableListOf<SongEntity>()
-            val artistsToInsert = mutableMapOf<Long, ArtistEntity>() // Map to dedup by ID
-            val albumsToInsert = mutableMapOf<Long, AlbumEntity>()   // Map to dedup by ID
-            val crossRefsToInsert = mutableListOf<SongArtistCrossRef>()
-            
-            telegramSongs.forEach { tSong ->
-                val channelName = channels[tSong.chatId]?.title ?: "Telegram Stream"
-                // Synthetic negative ID for Song to check existence, but we want to merge metadata
-                // We use negative IDs for songs to definitively identify them as Telegram-sourced in the DB
-                // This prevents collision with MediaStore numeric IDs.
-                val songId = -(tSong.id.hashCode().toLong().absoluteValue)
-                val finalSongId = if (songId == 0L) -1L else songId
-                
-                // 2. Metadata Refinement (ID3 for Downloaded Files)
-                var realTitle = tSong.title
-                var realArtistName = tSong.artist
-                var realAlbumName = channelName
-                var realDateAdded = tSong.dateAdded
-                var realYear = 0
-                var realTrackNumber = 0
-                var realDiscNumber: Int? = null
-                var realAlbumArtist = "Telegram"
-                var realGenre: String? = null
-                var realLyrics: String? = null
-                var realDuration = tSong.duration
-                var realBitrate: Int? = null
-                var realSampleRate: Int? = null
-                var resolvedAlbumArtUri = tSong.resolveAlbumArtUri()
-                
-                val file = java.io.File(tSong.filePath)
-                if (tSong.filePath.isNotEmpty() && file.exists()) {
-                     try {
-                        AudioMetadataReader.read(file, readArtwork = false)?.let { meta ->
-                            if (!meta.title.isNullOrBlank()) realTitle = meta.title
-                            if (!meta.artist.isNullOrBlank()) realArtistName = meta.artist
-                            if (!meta.album.isNullOrBlank()) realAlbumName = meta.album
-                            if (!meta.albumArtist.isNullOrBlank()) {
-                                realAlbumArtist = meta.albumArtist
-                            } else if (!realArtistName.isBlank()) {
-                                realAlbumArtist = realArtistName
-                            }
-                            if (!meta.genre.isNullOrBlank()) realGenre = meta.genre
-                            if (!meta.lyrics.isNullOrBlank()) realLyrics = meta.lyrics
-                            if (meta.trackNumber != null) realTrackNumber = meta.trackNumber
-                            if (meta.discNumber != null) realDiscNumber = meta.discNumber
-                            if (meta.year != null) realYear = meta.year
-                            if (meta.durationMs != null && meta.durationMs > 0L) realDuration = meta.durationMs
-                            if (meta.bitrate != null && meta.bitrate > 0) realBitrate = meta.bitrate
-                            if (meta.sampleRate != null && meta.sampleRate > 0) realSampleRate = meta.sampleRate
-                        }
-                        resolvedAlbumArtUri = tSong.resolveAlbumArtUri()
-                    } catch (e: Exception) {
-                        // Ignore read errors, fall back to TdApi metadata
-                    }
-                }
-                
-                // 3. Multi-Artist Processing
-                val rawArtistName = if (realArtistName.isBlank()) "Unknown Artist" else realArtistName
-                val splitArtists = rawArtistName.splitArtistsByDelimiters(delimiters, wordDelims)
-                
-                // Process Primary Artist (First in list)
-                val primaryArtistName = splitArtists.firstOrNull()?.trim() ?: "Unknown Artist"
-                
-                var primaryArtistId = -1L
-                
-                splitArtists.forEachIndexed { index, individualArtistName ->
-                    val cleanName = individualArtistName.trim()
-                    val lowerName = cleanName.lowercase()
-                    
-                    // Check if artist exists locally (Merge logic)
-                    val existingId = existingArtists[lowerName]
-                    
-                    val finalArtistId = if (existingId != null) {
-                        existingId // Use Positive MediaStore ID
-                    } else {
-                        // Generate consistent negative ID for Telegram-only artist
-                        val synthId = -(cleanName.hashCode().toLong().absoluteValue)
-                        if (synthId == 0L) -1L else synthId
-                    }
-
-                    if (index == 0) primaryArtistId = finalArtistId
-
-                    // Add to Artist Insert Map
-                    if (!artistsToInsert.containsKey(finalArtistId)) {
-                        artistsToInsert[finalArtistId] = ArtistEntity(
-                            id = finalArtistId,
-                            name = cleanName,
-                            trackCount = 0, // Will be recalculated by Room or logic
-                            imageUrl = existingArtistImageUrls[finalArtistId] // Keep existing image if merging
-                        )
-                    }
-
-                    // Add Cross Ref
-                    crossRefsToInsert.add(SongArtistCrossRef(
-                        songId = finalSongId,
-                        artistId = finalArtistId,
-                        isPrimary = (index == 0)
-                    ))
-                }
-
-                // 4. Album Logic
-                // Try to match existing album by Name + Album Artist
-                val albumKey = "${realAlbumName.trim().lowercase()}_${realAlbumArtist.trim().lowercase()}"
-                val existingAlbumId = existingAlbums[albumKey]
-                
-                val finalAlbumId = if (existingAlbumId != null) {
-                    existingAlbumId // Merge with local album
-                } else {
-                    // Synthetic negative ID
-                    val synthId = -(realAlbumName.hashCode().toLong().absoluteValue)
-                    if (synthId == 0L) -1L else synthId
-                }
-                
-                if (!albumsToInsert.containsKey(finalAlbumId)) {
-                     albumsToInsert[finalAlbumId] = AlbumEntity(
-                        id = finalAlbumId,
-                        title = realAlbumName,
-                        artistName = realAlbumArtist, 
-                        artistId = primaryArtistId, // Link to primary song artist (or album artist if we resolved it properly)
-                        songCount = 0,
-                        dateAdded = realDateAdded,
-                        year = realYear,
-                        albumArtUriString = resolvedAlbumArtUri
-                    )
-                }
-
-                // 5. Build Final Song Entity
-                // Build artists JSON from the split artists and their resolved IDs
-                val telegramArtistRefs = splitArtists.mapIndexed { idx, name ->
-                    val cleanName = name.trim()
-                    val lowerName = cleanName.lowercase()
-                    val artId = existingArtists[lowerName]
-                        ?: artistsToInsert.values.find { it.name.equals(cleanName, ignoreCase = true) }?.id
-                        ?: 0L
-                    ArtistRef(id = artId, name = cleanName, isPrimary = idx == 0)
-                }.filter { it.name.isNotEmpty() }
-
-                val songEntity = SongEntity(
-                    id = finalSongId,
-                    title = realTitle,
-                    artistName = rawArtistName, // Store full string for display
-                    artistId = primaryArtistId,
-                    albumName = realAlbumName,
-                    albumId = finalAlbumId,
-                    albumArtist = realAlbumArtist,
-                    duration = realDuration,
-                    contentUriString = "telegram://${tSong.chatId}/${tSong.messageId}",
-                    albumArtUriString = resolvedAlbumArtUri,
-                    filePath = tSong.filePath,
-                    parentDirectoryPath = File(tSong.filePath).parent ?: "/Telegram/$channelName",
-                    dateAdded = tSong.dateAdded,
-                    genre = realGenre,
-                    trackNumber = realTrackNumber,
-                    discNumber = realDiscNumber,
-                    year = realYear,
-                    isFavorite = false,
-                    lyrics = realLyrics,
-                    mimeType = tSong.mimeType,
-                    bitrate = realBitrate,
-                    sampleRate = realSampleRate,
-                    telegramChatId = tSong.chatId,
-                    telegramFileId = tSong.fileId,
-                    artistsJson = serializeArtistRefs(telegramArtistRefs),
-                    sourceType = SourceType.TELEGRAM
-                )
-                songsToInsert.add(songEntity)
-            }
-            
-            // Calculate song counts for the albums we are inserting
-            val albumCounts = songsToInsert.groupingBy { it.albumId }.eachCount()
-
-            val finalAlbums = albumsToInsert.values.map { album ->
-                album.copy(songCount = albumCounts[album.id] ?: 0)
-            }
-            val syncedTelegramSongIds = songsToInsert.map { it.id }.toHashSet()
-            val deletedUnifiedSongIds = existingUnifiedTelegramIds.filterNot { it in syncedTelegramSongIds }
-
-            // Upsert into MusicDao
-            musicDao.incrementalSyncMusicData(
-                songs = songsToInsert,
-                albums = finalAlbums,
-                artists = artistsToInsert.values.toList(),
-                crossRefs = crossRefsToInsert,
-                deletedSongIds = deletedUnifiedSongIds
-            )
-            Log.i(TAG, "Synced ${songsToInsert.size} Telegram songs with Unified Metadata.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync Telegram data", e)
-        }
-    }
-
     private suspend fun hasCachedCloudLibrarySongs(): Boolean {
         return neteaseDao.getNeteaseCount() > 0 ||
             qqMusicDao.getAllQqMusicSongsList().isNotEmpty()
@@ -1739,8 +1498,6 @@ constructor(
                         mimeType = nSong.mimeType,
                         bitrate = nSong.bitrate,
                         sampleRate = null,
-                        telegramChatId = null,
-                        telegramFileId = null,
                         artistsJson = serializeArtistRefs(neteaseArtistRefs),
                         sourceType = SourceType.NETEASE
                     )
@@ -1852,8 +1609,6 @@ constructor(
                         mimeType = qqSong.mimeType,
                         bitrate = qqSong.bitrate,
                         sampleRate = null,
-                        telegramChatId = null,
-                        telegramFileId = null,
                         sourceType = SourceType.QQMUSIC
                     )
                 )
@@ -1933,36 +1688,4 @@ constructor(
         return -(QQ_MUSIC_ARTIST_ID_OFFSET + artistName.lowercase().hashCode().toLong().absoluteValue)
     }
 
-    private suspend fun syncNavidromeData() {
-        if (!navidromeRepository.isLoggedIn) return
-
-        val lastSync = navidromeRepository.lastFullSyncTime
-        val currentTime = System.currentTimeMillis()
-
-        // Only auto-sync Navidrome during main library sync if it's been more than SYNC_THRESHOLD_MS (24h)
-        if (currentTime - lastSync < NavidromeRepository.SYNC_THRESHOLD_MS) {
-            Log.d(TAG, "Skipping Navidrome sync during main library sync - last sync was recent.")
-            // Still sync unified library from local cache to be safe
-            navidromeRepository.syncUnifiedLibrarySongsFromNavidrome()
-            return
-        }
-
-        Log.i(TAG, "Syncing Navidrome data from server...")
-        try {
-            // Fetch playlists and songs from the Navidrome server, then sync to unified library
-            val result = navidromeRepository.syncAllPlaylistsAndSongs()
-            result.fold(
-                onSuccess = { summary ->
-                    Log.i(TAG, "Navidrome sync complete: ${summary.playlistCount} playlists, ${summary.syncedSongCount} songs synced (${summary.failedPlaylistCount} failed)")
-                },
-                onFailure = { e ->
-                    Log.w(TAG, "Navidrome server sync failed, falling back to local cache sync", e)
-                    // Fallback: at least sync what we already have cached
-                    navidromeRepository.syncUnifiedLibrarySongsFromNavidrome()
-                }
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync Navidrome data", e)
-        }
-    }
 }

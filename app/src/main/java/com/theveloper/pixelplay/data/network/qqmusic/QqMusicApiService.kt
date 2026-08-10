@@ -29,7 +29,8 @@ class QqMusicApiService @Inject constructor(
 ) {
 
     data class SearchSongResult(
-        val id: String,
+        /** QQ Music's numeric song identifier used by the lyric API, not a Room library id. */
+        val qqSongId: String,
         val mid: String,
         val title: String,
         val artist: String,
@@ -260,7 +261,7 @@ class QqMusicApiService @Inject constructor(
                     .ifBlank { albumObject?.optString("pmid").orEmpty() }
                 add(
                     SearchSongResult(
-                        id = song.opt("id")?.toString().orEmpty(),
+                        qqSongId = song.opt("id")?.toString().orEmpty(),
                         mid = song.optString("mid"),
                         title = song.optString("title"),
                         artist = artist.ifBlank { "Unknown Artist" },
@@ -273,6 +274,91 @@ class QqMusicApiService @Inject constructor(
                 )
             }
         }
+    }
+
+    // ─── Recommendations ─────────────────────────────────────────────
+
+    suspend fun getRecommendHomeFeed(
+        page: Int = 1,
+        direction: Int = 0,
+        shelfCount: Int = 0,
+        exposedShelfIds: List<String> = emptyList()
+    ): String = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf(
+                    "ct" to 11,
+                    "cv" to "1003006",
+                    "v" to "1003006",
+                    "os_ver" to "15",
+                    "phonetype" to "24122RKC7C",
+                    "tmeAppID" to "qqmusiclight",
+                    "nettype" to "NETWORK_WIFI",
+                    "udid" to "0"
+                ),
+                "request" to mapOf(
+                    "module" to "music.recommend.RecommendFeed",
+                    "method" to "get_recommend_feed",
+                    "param" to mapOf(
+                        "direction" to direction,
+                        "page" to page,
+                        "s_num" to shelfCount,
+                        "v_cache" to exposedShelfIds
+                    )
+                )
+            )
+        )
+        makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+    }
+
+    suspend fun getRecommendSonglists(from: Int = 0, size: Int = 20): String = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf("ct" to 11, "cv" to "1003006"),
+                "request" to mapOf(
+                    "module" to "music.playlist.PlaylistSquare",
+                    "method" to "GetRecommendFeed",
+                    "param" to mapOf("From" to from, "Size" to size)
+                )
+            )
+        )
+        makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+    }
+
+    suspend fun getRecommendNewSongs(type: Int = 5): String = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf("ct" to 11, "cv" to "1003006"),
+                "request" to mapOf(
+                    "module" to "newsong.NewSongServer",
+                    "method" to "get_new_song_info",
+                    "param" to mapOf("type" to type)
+                )
+            )
+        )
+        makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+    }
+
+    suspend fun getTopListDetail(topId: Int, offset: Int = 0, count: Int = 100): String = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf("ct" to 11, "cv" to "1003006"),
+                "request" to mapOf(
+                    // This is the current mobile Toplist module. The older
+                    // ToplistInfoServer route can return an envelope without
+                    // songInfoList, which made the chart page look empty.
+                    "module" to "music.musicToplist.Toplist",
+                    "method" to "GetDetail",
+                    "param" to mapOf(
+                        "topId" to topId,
+                        "offset" to offset,
+                        "num" to count,
+                        "withTags" to true
+                    )
+                )
+            )
+        )
+        makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
     }
 
     suspend fun getLyricPayload(

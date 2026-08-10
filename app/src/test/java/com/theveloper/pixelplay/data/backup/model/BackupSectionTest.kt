@@ -26,13 +26,14 @@ class BackupSectionTest {
         assertEquals(BackupSection.GLOBAL_SETTINGS, BackupSection.fromKey("global_settings"))
         assertEquals(BackupSection.FAVORITES, BackupSection.fromKey("favorites"))
         assertEquals(BackupSection.LYRICS, BackupSection.fromKey("lyrics"))
-        assertEquals(BackupSection.SEARCH_HISTORY, BackupSection.fromKey("search_history"))
         assertEquals(BackupSection.TRANSITIONS, BackupSection.fromKey("transitions"))
         assertEquals(BackupSection.ENGAGEMENT_STATS, BackupSection.fromKey("engagement_stats"))
         assertEquals(BackupSection.PLAYBACK_HISTORY, BackupSection.fromKey("playback_history"))
-        assertEquals(BackupSection.QUICK_FILL, BackupSection.fromKey("quick_fill"))
         assertEquals(BackupSection.ARTIST_IMAGES, BackupSection.fromKey("artist_images"))
         assertEquals(BackupSection.EQUALIZER, BackupSection.fromKey("equalizer"))
+        assertEquals(BackupSection.AI_USAGE_LOGS, BackupSection.fromKey("ai_usage_logs"))
+        assertEquals(BackupSection.AUDIO_SOURCE_PLUGINS, BackupSection.fromKey("audio_source_plugins"))
+        assertEquals(BackupSection.SENSITIVE_DATA, BackupSection.fromKey("sensitive_data"))
     }
 
     @Test
@@ -42,20 +43,29 @@ class BackupSectionTest {
     }
 
     @Test
-    fun `defaultSelection contains all sections`() {
-        assertEquals(BackupSection.entries.toSet(), BackupSection.defaultSelection)
+    fun `defaultSelection excludes sensitive data`() {
+        assertEquals(
+            BackupSection.entries.filterNot { it == BackupSection.SENSITIVE_DATA }.toSet(),
+            BackupSection.defaultSelection
+        )
     }
 
     @Test
-    fun `there are exactly 11 backup sections`() {
-        assertEquals(11, BackupSection.entries.size)
+    fun `there are exactly 12 backup sections`() {
+        assertEquals(12, BackupSection.entries.size)
     }
 
     @Test
     fun `new sections have sinceVersion 3`() {
-        assertEquals(3, BackupSection.QUICK_FILL.sinceVersion)
         assertEquals(3, BackupSection.ARTIST_IMAGES.sinceVersion)
         assertEquals(3, BackupSection.EQUALIZER.sinceVersion)
+    }
+
+    @Test
+    fun `backup additions have sinceVersion 4`() {
+        assertEquals(4, BackupSection.AI_USAGE_LOGS.sinceVersion)
+        assertEquals(4, BackupSection.AUDIO_SOURCE_PLUGINS.sinceVersion)
+        assertEquals(4, BackupSection.SENSITIVE_DATA.sinceVersion)
     }
 
     @Test
@@ -65,7 +75,6 @@ class BackupSectionTest {
             BackupSection.GLOBAL_SETTINGS,
             BackupSection.FAVORITES,
             BackupSection.LYRICS,
-            BackupSection.SEARCH_HISTORY,
             BackupSection.TRANSITIONS,
             BackupSection.ENGAGEMENT_STATS,
             BackupSection.PLAYBACK_HISTORY

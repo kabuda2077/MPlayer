@@ -80,15 +80,11 @@
     <string name="search_cd_clear_search_query">Очистить поиск</string>
     <string name="search_recent_searches">Недавние запросы</string>
     <string name="search_action_clear_all">Очистить всё</string>
-    <string name="search_cd_search_history_icon">История</string>
-    <string name="search_cd_delete_search_history_item">Удалить элемент истории поиска</string>
     <string name="search_cd_no_results">Нет результатов</string>
     <string name="search_no_results_for_query">Нет результатов для «%1$s»</string>
     <string name="search_nothing_found">Ничего не найдено</string>
     <string name="search_try_different_or_filters">Попробуйте другой запрос или проверьте фильтры.</string>
     <string name="search_no_results_found">Результаты не найдены.</string>
-    <string name="browse_by_genre">Обзор по жанрам</string>
-    <string name="no_genres_available">Жанры недоступны.</string>
 
     <!-- ArtistDetailScreen -->
     <string name="artist_cd_play_title">Воспроизвести %1$s</string>
@@ -198,30 +194,6 @@
     <string name="playlist_creation_rule_forgotten_sub">Любимые треки, которые вы давно не включали.</string>
     <string name="playlist_creation_rule_new_gems_title">Новые находки</string>
     <string name="playlist_creation_rule_new_gems_sub">Недавно добавленные треки с небольшим числом прослушиваний.</string>
-
-    <!-- GenreDetailScreen -->
-    <string name="genre_quick_fill">Быстро заполнить жанр</string>
-    <string name="genre_sort_title">Сортировка и воспроизведение</string>
-    <string name="genre_sort_action_shuffle">Перемешать</string>
-    <string name="genre_sort_by_title">Сортировать по</string>
-    <string name="genre_sort_artist_option">Исполнитель</string>
-    <string name="genre_sort_album_option">Альбом</string>
-    <string name="genre_sort_title_option">Название</string>
-    <string name="genre_cd_generic_artist">Неизвестный исполнитель</string>
-    <string name="genre_shuffle_label">Перемешать %1$s</string>
-
-    <!-- QuickFillScreen -->
-    <string name="quick_fill_select_songs">Выбрать песни</string>
-    <string name="quick_fill_choose_genre">Выбрать жанр</string>
-    <string name="quick_fill_search_songs_placeholder">Поиск песен</string>
-    <string name="quick_fill_new_genre">Новый жанр</string>
-    <string name="quick_fill_cd_add_custom_genre">Добавить свой</string>
-    <string name="quick_fill_add_custom_genre_title">Добавить свой жанр</string>
-    <string name="quick_fill_genre_name_placeholder">Название жанра</string>
-    <string name="quick_fill_select_icon">Выбрать иконку</string>
-    <string name="quick_fill_select_genre_label_format">Жанр: %1$s</string>
-    <string name="quik_fill_select_a_genre_label">Выберите жанр</string>
-    <string name="quick_fill_action_title">Быстрое заполнение</string>
 
     <!-- MashupScreen -->
     <string name="mashup_title">DJ Space</string>

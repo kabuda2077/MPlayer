@@ -5,8 +5,6 @@ import android.os.Trace
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import androidx.compose.ui.graphics.toArgb
 import android.util.Log
 import com.theveloper.pixelplay.data.model.Album
 import com.theveloper.pixelplay.data.model.Artist
@@ -33,11 +31,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val ENABLE_FOLDERS_STORAGE_FILTER = false
-private data class GenreSeed(
-    val id: String,
-    val name: String
-)
-
 /**
  * Manages the data state of the music library: Songs, Albums, Artists, Folders.
  * Handles loading from Repository and applying SortOptions.
@@ -161,42 +154,6 @@ class LibraryStateHolder @Inject constructor(
     val favoriteSongCountFlow: kotlinx.coroutines.flow.Flow<Int> = effectiveStorageFilter
         .flatMapLatest { filter -> musicRepository.getFavoriteSongCountFlow(filter) }
         .flowOn(Dispatchers.IO)
-
-    val genres: kotlinx.coroutines.flow.Flow<ImmutableList<com.theveloper.pixelplay.data.model.Genre>> =
-        musicRepository.getGenres()
-        .map { genres ->
-            genres.map { genre ->
-                GenreSeed(
-                    id = genre.id,
-                    name = genre.name
-                )
-            }
-        }
-        // First distinctUntilChanged: skip the theme-color map entirely when the
-        // set of genre seeds hasn't changed (e.g. Room re-emitting after an
-        // unrelated songs table write).
-        .distinctUntilChanged()
-        .map { seeds ->
-            seeds.map { seed ->
-                val lightThemeColor = com.theveloper.pixelplay.ui.theme.GenreThemeUtils.getGenreThemeColor(seed.id, isDark = false)
-                val darkThemeColor = com.theveloper.pixelplay.ui.theme.GenreThemeUtils.getGenreThemeColor(seed.id, isDark = true)
-
-                com.theveloper.pixelplay.data.model.Genre(
-                    id = seed.id,
-                    name = seed.name,
-                    lightColorHex = lightThemeColor.container.toHexString(),
-                    onLightColorHex = lightThemeColor.onContainer.toHexString(),
-                    darkColorHex = darkThemeColor.container.toHexString(),
-                    onDarkColorHex = darkThemeColor.onContainer.toHexString()
-                )
-            }
-                .toImmutableList()
-        }
-        // Second distinctUntilChanged: suppress downstream recomposition when the
-        // fully-resolved Genre list is structurally identical (theme colors unchanged).
-        .distinctUntilChanged()
-        .flowOn(Dispatchers.Default)
-
 
     // Internal state
     private var scope: CoroutineScope? = null
@@ -626,8 +583,4 @@ class LibraryStateHolder @Inject constructor(
         if (!needsReloadAfterTrim || scope == null) return
         startObservingLibraryData()
     }
-}
-
-private fun androidx.compose.ui.graphics.Color.toHexString(): String {
-    return String.format("#%08X", this.toArgb())
 }

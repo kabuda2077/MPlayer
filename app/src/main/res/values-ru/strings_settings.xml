@@ -20,7 +20,6 @@
     <string name="settings_category_device_capabilities_title">Возможности устройства</string>
     <string name="settings_category_device_capabilities_subtitle">Характеристики аудио, кодеки и декодеры</string>
     <string name="settings_category_accounts_title">Аккаунты</string>
-    <string name="settings_category_accounts_subtitle">Управление Telegram, Google Drive, NetEase и другими сервисами</string>
     <string name="settings_category_about_title">О приложении</string>
     <string name="settings_category_about_subtitle">Информация, версия и благодарности</string>
 
@@ -60,10 +59,6 @@
     <string name="settings_auto_scan_lrc_title">Автосканирование .lrc-файлов</string>
     <string name="settings_auto_scan_lrc_subtitle">Автоматически искать и привязывать .lrc-файлы из той же папки во время синхронизации.</string>
     <string name="settings_lyrics_management_section">Управление текстами песен</string>
-    <string name="settings_lyrics_source_priority_title">Приоритет источников текстов</string>
-    <string name="settings_lyrics_source_priority_subtitle">Выберите источник, который будет использоваться первым.</string>
-    <string name="settings_lyrics_embedded_first">Сначала встроенные</string>
-    <string name="settings_lyrics_local_first">Сначала локальные (.lrc)</string>
     <string name="settings_reset_imported_lyrics_title">Сбросить импортированные тексты</string>
     <string name="settings_reset_imported_lyrics_subtitle">Удалить все импортированные тексты из базы данных.</string>
     <string name="settings_dialog_reset_imported_lyrics_title">Сбросить импортированные тексты?</string>
@@ -265,9 +260,6 @@
     <string name="settings_gain_mode_subtitle">Трек: нормализовать каждый трек. Альбом: нормализовать весь альбом.</string>
     <string name="settings_gain_mode_track">Трек</string>
     <string name="settings_gain_mode_album">Альбом</string>
-    <string name="settings_cast_section">Трансляция</string>
-    <string name="settings_cast_autoplay_title">Автовоспроизведение при подключении/отключении трансляции</string>
-    <string name="settings_cast_autoplay_subtitle">Начинать воспроизведение сразу после переключения устройства трансляции.</string>
     <string name="settings_headphones_section">Наушники</string>
     <string name="settings_headphones_resume_title">Возобновлять при повторном подключении наушников</string>
     <string name="settings_headphones_resume_subtitle">Если воспроизведение было приостановлено после отключения наушников, автоматически возобновлять его при повторном подключении.</string>
@@ -605,7 +597,6 @@
     <string name="accounts_no_linked_subtitle">Подключите сервис, чтобы управлять им с этого экрана.</string>
     <string name="accounts_connect_service">Подключить %1$s</string>
     <string name="accounts_service_coming_soon">%1$s (скоро)</string>
-    <string name="accounts_google_drive_soon">Поддержка Google Drive скоро появится.</string>
     <string name="accounts_unable_open_screen">Сейчас невозможно открыть этот экран.</string>
 
     <!-- About category -->
@@ -625,7 +616,6 @@
     <string name="about_contributors_section_subtitle">Актуальный список участников с GitHub.</string>
     <string name="about_contributions_format">%1$d вклад.</string>
     <string name="about_cd_open_github_profile">Открыть профиль GitHub</string>
-    <string name="about_cd_open_telegram">Открыть Telegram</string>
     <string name="about_cd_contributor_avatar">Аватар %1$s</string>
     <string name="about_cd_contributor_icon">Значок %1$s</string>
 </resources>

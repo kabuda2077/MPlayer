@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -54,6 +53,8 @@ import androidx.navigation.NavHostController
 import com.theveloper.pixelplay.BottomNavItem
 import com.theveloper.pixelplay.presentation.navigation.Screen
 import com.theveloper.pixelplay.presentation.navigation.navigateToTopLevelSafely
+import com.theveloper.pixelplay.ui.theme.AppShadows
+import com.theveloper.pixelplay.ui.theme.appShadow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -61,9 +62,9 @@ import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
 
-internal val FloatingNavBarContentHeight = 68.dp
-internal val FloatingNavBarCompactContentHeight = 58.dp
-internal val FloatingNavBarBottomSpacing = 12.dp
+internal val FloatingNavBarContentHeight = 66.dp
+internal val FloatingNavBarCompactContentHeight = 56.dp
+internal val FloatingNavBarBottomSpacing = 16.dp
 private val FloatingNavBarInset = 4.dp
 private val FloatingNavBarScreenMargin = 14.dp
 
@@ -110,7 +111,7 @@ fun FloatingGlassNavigationBar(
         )
         val barShape = CircleShape
         val surfaceColor = MaterialTheme.colorScheme.surface
-        val containerColor = surfaceColor.copy(alpha = if (blurEnabled) 0.42f else 0.9f)
+        val containerColor = surfaceColor.copy(alpha = if (blurEnabled) 0.66f else 0.94f)
         val indicatorColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (blurEnabled) 0.72f else 0.9f)
         val density = LocalDensity.current
         val blurRadiusPx = remember(density) { with(density) { 22.dp.toPx() } }
@@ -119,7 +120,7 @@ fun FloatingGlassNavigationBar(
             modifier = Modifier
                 .width(barWidth)
                 .height(barHeight)
-                .shadow(4.dp, barShape, clip = false)
+                .appShadow(AppShadows.BottomFloating, barShape, clip = false)
                 .clip(barShape)
                 .then(
                     if (blurEnabled) {

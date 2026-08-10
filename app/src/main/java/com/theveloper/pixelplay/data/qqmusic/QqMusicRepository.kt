@@ -9,6 +9,7 @@ import android.util.Base64
 import com.theveloper.pixelplay.data.database.AlbumEntity
 import com.theveloper.pixelplay.data.database.ArtistEntity
 import com.theveloper.pixelplay.data.database.MusicDao
+import com.theveloper.pixelplay.data.database.FavoritesDao
 import com.theveloper.pixelplay.data.database.QqMusicDao
 import com.theveloper.pixelplay.data.database.QqMusicPlaylistEntity
 import com.theveloper.pixelplay.data.database.QqMusicSongEntity
@@ -18,6 +19,7 @@ import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.toSong
 import com.theveloper.pixelplay.data.network.qqmusic.QqMusicApiService
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
+import com.theveloper.pixelplay.data.repository.OnlineLibraryIds
 import com.theveloper.pixelplay.data.stream.BulkSyncResult
 import com.theveloper.pixelplay.data.stream.CloudMusicUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,14 +47,17 @@ class QqMusicRepository @Inject constructor(
     private val api: QqMusicApiService,
     private val dao: QqMusicDao,
     private val musicDao: MusicDao,
+    private val favoritesDao: FavoritesDao,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
     @ApplicationContext private val context: Context
 ) {
+    data class AuthBackupSnapshot(
+        val cookieJson: String? = null,
+        val nickname: String? = null,
+        val avatarUrl: String? = null
+    )
 
     private companion object {
-        private const val QQ_MUSIC_SONG_ID_OFFSET = 6_000_000_000_000L
-        private const val QQ_MUSIC_ALBUM_ID_OFFSET = 7_000_000_000_000L
-        private const val QQ_MUSIC_ARTIST_ID_OFFSET = 8_000_000_000_000L
         private const val QQ_MUSIC_PARENT_DIRECTORY = "/Cloud/QQMusic"
         private const val QQ_MUSIC_GENRE = "QQ Music"
         private const val QQ_MUSIC_PLAYLIST_PREFIX = "qqmusic_playlist:"
@@ -106,6 +111,38 @@ class QqMusicRepository @Inject constructor(
 
     val userAvatarUrl: String?
         get() = prefs.getString("qqmusic_avatar_url", null)
+
+    fun exportAuthBackupSnapshot(): AuthBackupSnapshot? {
+        val cookieJson = prefs.getString("qqmusic_cookies", null)
+        val nickname = prefs.getString("qqmusic_nickname", null)
+        val avatarUrl = prefs.getString("qqmusic_avatar_url", null)
+        if (cookieJson.isNullOrBlank() && nickname.isNullOrBlank() && avatarUrl.isNullOrBlank()) {
+            return null
+        }
+        return AuthBackupSnapshot(
+            cookieJson = cookieJson,
+            nickname = nickname,
+            avatarUrl = avatarUrl
+        )
+    }
+
+    fun restoreAuthBackupSnapshot(snapshot: AuthBackupSnapshot?) {
+        api.logout()
+        prefs.edit().clear().apply()
+        if (snapshot == null) {
+            _isLoggedInFlow.value = false
+            return
+        }
+
+        prefs.edit().apply {
+            snapshot.cookieJson?.takeIf { it.isNotBlank() }?.let { putString("qqmusic_cookies", it) }
+            snapshot.nickname?.takeIf { it.isNotBlank() }?.let { putString("qqmusic_nickname", it) }
+            snapshot.avatarUrl?.takeIf { it.isNotBlank() }?.let { putString("qqmusic_avatar_url", it) }
+        }.apply()
+
+        initFromSavedCookies()
+        _isLoggedInFlow.value = api.hasLogin()
+    }
 
     fun getPlaylists(): Flow<List<QqMusicPlaylistEntity>> = dao.getAllPlaylists()
 
@@ -262,7 +299,9 @@ class QqMusicRepository @Inject constructor(
             deleteAppPlaylistForQqMusicPlaylist(playlist.id)
         }
         
-        musicDao.clearAllQqMusicSongs()
+        val protectedIds = protectedUnifiedSongIds("QQMUSIC")
+        val removableIds = musicDao.getAllQqMusicSongIds().filterNot { it in protectedIds }
+        musicDao.deleteSongsAndRelatedData(removableIds)
         _isLoggedInFlow.value = false
     }
 
@@ -582,6 +621,7 @@ class QqMusicRepository @Inject constructor(
         return QqMusicSongEntity(
             id = "${playlistId}_$mid",
             songMid = mid,
+            songId = extractNumericSongId(track),
             playlistId = playlistId,
             title = title,
             artist = artist,
@@ -595,6 +635,24 @@ class QqMusicRepository @Inject constructor(
             bitrate = null,
             dateAdded = System.currentTimeMillis()
         )
+    }
+
+    private fun extractNumericSongId(track: JSONObject): Long? {
+        val directKeys = listOf("songid", "songID", "id")
+        directKeys.forEach { key ->
+            track.optLong(key, 0L).takeIf { it > 0L }?.let { return it }
+            track.optString(key).toLongOrNull()?.takeIf { it > 0L }?.let { return it }
+        }
+
+        val nestedSong = track.optJSONObject("song")
+        if (nestedSong != null) {
+            directKeys.forEach { key ->
+                nestedSong.optLong(key, 0L).takeIf { it > 0L }?.let { return it }
+                nestedSong.optString(key).toLongOrNull()?.takeIf { it > 0L }?.let { return it }
+            }
+        }
+
+        return null
     }
 
     /**
@@ -628,9 +686,8 @@ class QqMusicRepository @Inject constructor(
         val existingUnifiedIds = musicDao.getAllQqMusicSongIds()
 
         if (qqMusicSongs.isEmpty()) {
-            if (existingUnifiedIds.isNotEmpty()) {
-                musicDao.clearAllQqMusicSongs()
-            }
+            val protectedIds = protectedUnifiedSongIds("QQMUSIC")
+            musicDao.deleteSongsAndRelatedData(existingUnifiedIds.filterNot { it in protectedIds })
             return
         }
 
@@ -704,8 +761,6 @@ class QqMusicRepository @Inject constructor(
                     mimeType = qqSong.mimeType,
                     bitrate = qqSong.bitrate,
                     sampleRate = null,
-                    telegramChatId = null,
-                    telegramFileId = null,
                     sourceType = SourceType.QQMUSIC
                 )
             )
@@ -717,7 +772,9 @@ class QqMusicRepository @Inject constructor(
         }
 
         val currentUnifiedIds = songs.map { it.id }.toSet()
-        val deletedUnifiedIds = existingUnifiedIds.filter { it !in currentUnifiedIds }
+        val protectedIds = protectedUnifiedSongIds("QQMUSIC")
+        val deletedUnifiedIds = existingUnifiedIds
+            .filter { it !in currentUnifiedIds && it !in protectedIds }
 
         musicDao.incrementalSyncMusicData(
             songs = songs,
@@ -732,18 +789,29 @@ class QqMusicRepository @Inject constructor(
         CloudMusicUtils.parseArtistNames(rawArtist)
 
     private fun toUnifiedSongId(mid: String): Long {
-        val hash = mid.hashCode().toLong().absoluteValue
-        return -(QQ_MUSIC_SONG_ID_OFFSET + hash)
+        return OnlineLibraryIds.qqSong(mid)
     }
 
     private fun toUnifiedAlbumId(albumMid: String, albumName: String): Long {
         val normalized = if (albumMid.isNotBlank()) albumMid.hashCode().toLong().absoluteValue 
                          else albumName.lowercase().hashCode().toLong().absoluteValue
-        return -(QQ_MUSIC_ALBUM_ID_OFFSET + normalized)
+        return OnlineLibraryIds.qqAlbum(albumMid, albumName)
     }
 
     private fun toUnifiedArtistId(artistName: String): Long {
-        return -(QQ_MUSIC_ARTIST_ID_OFFSET + artistName.lowercase().hashCode().toLong().absoluteValue)
+        return OnlineLibraryIds.qqArtist(artistName)
+    }
+
+    /** Favorites and user-owned playlists outlive account synchronization. */
+    private suspend fun protectedUnifiedSongIds(platform: String): Set<Long> {
+        val favoriteIds = favoritesDao.getFavoriteSongIdsOnce().toSet()
+        val userPlaylistIds = playlistPreferencesRepository.getPlaylistsOnce()
+            .asSequence()
+            .filterNot { it.source.equals(platform, ignoreCase = true) }
+            .flatMap { it.songIds.asSequence() }
+            .mapNotNull { it.toLongOrNull() }
+            .toSet()
+        return favoriteIds + userPlaylistIds
     }
 
     // ─── App Playlist Management ────────────────────────────────────────

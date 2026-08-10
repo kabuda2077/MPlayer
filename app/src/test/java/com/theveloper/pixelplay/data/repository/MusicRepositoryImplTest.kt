@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.data.repository
 
 import android.content.Context
 import com.theveloper.pixelplay.data.database.MusicDao
-import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.database.SongEntity // Necesario para datos de prueba
 import com.theveloper.pixelplay.data.database.AlbumEntity
 import com.theveloper.pixelplay.data.database.ArtistEntity
@@ -10,8 +9,6 @@ import com.theveloper.pixelplay.data.model.Song // Para verificar el mapeo
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.database.FavoritesDao
-import com.theveloper.pixelplay.data.database.TelegramDao
-import dagger.Lazy
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,8 +19,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 // import com.google.common.truth.Truth.assertThat
 
@@ -33,16 +28,10 @@ class MusicRepositoryImplTest {
 
     private lateinit var musicRepository: MusicRepositoryImpl
     private val mockMusicDao: MusicDao = mockk()
-    private val mockSearchHistoryDao: SearchHistoryDao = mockk(relaxed = true) // relaxed para evitar mockear todos los métodos de historial
     private val mockContext: Context = mockk(relaxed = true) // relaxed para getAllUniqueAudioDirectories si no se testea a fondo aquí
     private val mockUserPreferencesRepository: UserPreferencesRepository = mockk()
     private val mockPlaylistPreferencesRepository: PlaylistPreferencesRepository = mockk(relaxed = true)
     private val mockLyricsRepository: LyricsRepository = mockk(relaxed = true)
-    private val mockTelegramDao: TelegramDao = mockk(relaxed = true)
-    private val mockTelegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager = mockk(relaxed = true)
-    private val mockTelegramRepository: com.theveloper.pixelplay.data.telegram.TelegramRepository = mockk(relaxed = true)
-    private val mockTelegramCacheManagerProvider: Lazy<com.theveloper.pixelplay.data.telegram.TelegramCacheManager> = mockk()
-    private val mockTelegramRepositoryProvider: Lazy<com.theveloper.pixelplay.data.telegram.TelegramRepository> = mockk()
     private val mockSongRepository: SongRepository = mockk(relaxed = true)
     private val mockFavoritesDao: FavoritesDao = mockk(relaxed = true)
     private val mockArtistImageRepository: ArtistImageRepository = mockk(relaxed = true)
@@ -55,7 +44,6 @@ class MusicRepositoryImplTest {
         // Mockear los flows de preferencias por defecto, pueden ser sobrescritos por test
         coEvery { mockUserPreferencesRepository.allowedDirectoriesFlow } returns flowOf(emptySet())
         coEvery { mockUserPreferencesRepository.blockedDirectoriesFlow } returns flowOf(setOf("/dummy"))
-        every { mockUserPreferencesRepository.mockGenresEnabledFlow } returns flowOf(false)
         coEvery { mockUserPreferencesRepository.initialSetupDoneFlow } returns flowOf(true)
         coEvery { mockUserPreferencesRepository.isFolderFilterActiveFlow } returns flowOf(false)
         // Populate artists
@@ -66,9 +54,6 @@ class MusicRepositoryImplTest {
         every { mockMusicDao.getAllArtistsRaw() } returns flowOf(dummyArtists)
         coEvery { mockMusicDao.getDistinctParentDirectories() } returns listOf("/music/folder1", "/music/folder2")
         every { mockMusicDao.getDistinctParentDirectoriesFlow() } returns flowOf(listOf("/music/folder1", "/music/folder2"))
-        every { mockTelegramCacheManagerProvider.get() } returns mockTelegramCacheManager
-        every { mockTelegramRepositoryProvider.get() } returns mockTelegramRepository
-
         every { mockMusicDao.getAllSongArtistCrossRefs() } returns flowOf(emptyList())
         every { mockMusicDao.getAllSongs(any(), any()) } answers {
             println("getAllSongs called with: ${args[0]}, ${args[1]}")
@@ -105,12 +90,8 @@ class MusicRepositoryImplTest {
             context = mockContext,
             userPreferencesRepository = mockUserPreferencesRepository,
             playlistPreferencesRepository = mockPlaylistPreferencesRepository,
-            searchHistoryDao = mockSearchHistoryDao,
             musicDao = mockMusicDao,
             lyricsRepository = mockLyricsRepository,
-            telegramDao = mockTelegramDao,
-            telegramCacheManagerProvider = mockTelegramCacheManagerProvider,
-            telegramRepositoryProvider = mockTelegramRepositoryProvider,
             songRepository = mockSongRepository,
 
             favoritesDao = mockFavoritesDao,
@@ -252,125 +233,10 @@ class MusicRepositoryImplTest {
         assertEquals(2, result.first().songCount)
     }
 
-    @Test
-    fun `getGenres deduplicates normalized genre ids`() = runTest(testDispatcher) {
-        every {
-            mockMusicDao.getUniqueGenres(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(listOf("Rock", " Rock ", "rock"))
-        every {
-            mockMusicDao.hasUnknownGenre(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(false)
-
-        val result = musicRepository.getGenres().first()
-
-        assertEquals(1, result.size)
-        assertEquals("rock", result.first().id)
-        assertEquals("Rock", result.first().name)
-    }
-
-    @Test
-    fun `getGenres does not append unknown when already present`() = runTest(testDispatcher) {
-        every {
-            mockMusicDao.getUniqueGenres(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(listOf("Unknown", " unknown "))
-        every {
-            mockMusicDao.hasUnknownGenre(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(true)
-
-        val result = musicRepository.getGenres().first()
-
-        assertEquals(1, result.size)
-        assertEquals(1, result.count { it.id == "unknown" })
-        assertEquals("Unknown", result.first().name)
-    }
-
-    @Test
-    fun `getGenres appends unknown only when needed`() = runTest(testDispatcher) {
-        every {
-            mockMusicDao.getUniqueGenres(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(listOf("Rock"))
-        every {
-            mockMusicDao.hasUnknownGenre(
-                any<List<String>>(),
-                any<Boolean>()
-            )
-        } returns flowOf(true)
-
-        val result = musicRepository.getGenres().first()
-
-        assertEquals(2, result.size)
-        assertTrue(result.any { it.id == "rock" })
-        assertEquals(1, result.count { it.id == "unknown" })
-    }
-
-    @Test
-    fun `getMusicByGenre includes compact comma separated genre matches`() = runTest(testDispatcher) {
-        val matchingSong = createSongEntity(
-            id = 1L,
-            title = "Song A",
-            artistName = "Artist 1",
-            genre = "Rock,Pop",
-            filePath = "/music/songA.mp3",
-            parentDirectoryPath = "/music"
-        )
-        every {
-            mockMusicDao.getSongsByGenreContaining(
-                eq("Pop"),
-                eq("Pop,%"),
-                eq("%, Pop"),
-                eq("%,Pop"),
-                eq("%, Pop,%"),
-                eq("%,Pop,%"),
-                any(),
-                eq(true)
-            )
-        } returns flowOf(listOf(matchingSong))
-
-        val result = musicRepository.getMusicByGenre("Pop").first()
-
-        assertEquals(1, result.size)
-        assertEquals("Song A", result.first().title)
-    }
-
-    @Nested
-    @DisplayName("Search History Functions")
-    inner class SearchHistoryFunctions {
-        @Test
-        fun `addSearchHistoryItem calls dao methods`() = runTest {
-            val query = "test query"
-            coEvery { mockSearchHistoryDao.deleteByQuery(query) } just runs
-            coEvery { mockSearchHistoryDao.insert(any()) } just runs
-
-            musicRepository.addSearchHistoryItem(query)
-
-            coVerifyOrder {
-                mockSearchHistoryDao.deleteByQuery(query)
-                mockSearchHistoryDao.insert(any())
-            }
-        }
-        // TODO: Añadir más tests para el historial si es necesario
-    }
-
     // TODO: Añadir tests para:
     // - getSongsForAlbum, getSongsForArtist, getSongsByIds
     // - searchSongs, searchAlbums, searchArtists, searchAll (verificando la lógica de combine y filtrado)
     // - getAllUniqueAlbumArtUris
-    // - getMusicByGenre
     // - getAllUniqueAudioDirectories (si se mantiene la lógica de MediaStore, necesitará mockear ContentResolver)
     // - invalidateCachesDependentOnAllowedDirectories (verificar que hace lo esperado, o nada si es obsoleta)
 

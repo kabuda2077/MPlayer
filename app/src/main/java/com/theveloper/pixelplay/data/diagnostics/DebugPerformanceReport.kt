@@ -108,15 +108,11 @@ data class DebugPerformanceReport(
 
         section("CONTROLLERS")
         kv("Widget active", controllers.widgetActive.toString())
-        kv("Wear active", controllers.wearActive.toString())
         kv("Android Auto active", controllers.androidAutoActive.toString())
         if (controllers.connectedControllers.isNotEmpty()) {
             appendLine("  Connected controllers:")
             controllers.connectedControllers.forEach {
-                val tags = buildList {
-                    if (it.isAndroidAuto) add("auto")
-                    if (it.isWear) add("wear")
-                }.joinToString(",").ifEmpty { "external" }
+                val tags = if (it.isAndroidAuto) "auto" else "external"
                 appendLine("    ${it.packageName} ($tags)")
             }
         }
@@ -301,7 +297,6 @@ data class PlaybackSection(
 @Serializable
 data class ControllerSection(
     val widgetActive: Boolean,
-    val wearActive: Boolean,
     val androidAutoActive: Boolean,
     val connectedControllers: List<ConnectedController>
 )
@@ -309,8 +304,7 @@ data class ControllerSection(
 @Serializable
 data class ConnectedController(
     val packageName: String,
-    val isAndroidAuto: Boolean,
-    val isWear: Boolean
+    val isAndroidAuto: Boolean
 )
 
 @Serializable
