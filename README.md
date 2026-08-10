@@ -1,6 +1,6 @@
 # MPlayer
 
-本项目基于 [PixelPlayer](https://github.com/PixelPlayerHQ/PixelPlayer) 开发，并在其基础上进行了界面、播放、歌词、在线内容和功能方面的自定义修改。MPlayer 是此基础项目的个人定制版本，应用内名称为 **PixelPlayer**。
+本项目基于 [PixelPlayer](https://github.com/PixelPlayerHQ/PixelPlayer) 开发，并在其基础上进行了界面、播放、歌词、在线内容和功能方面的自定义修改。
 
 ## 功能
 
