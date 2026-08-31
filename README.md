@@ -1,6 +1,6 @@
 # MPlayer
 
-本项目基于 [PixelPlayer](https://github.com/PixelPlayerHQ/PixelPlayer) 开发，并在其基础上进行了界面、播放、歌词、在线内容和功能方面的自定义修改。MPlayer 是此基础项目的个人定制版本，应用内名称为 **PixelPlayer**。
+本项目基于 [PixelPlayer](https://github.com/PixelPlayerHQ/PixelPlayer) 开发，并在其基础上进行了界面、播放、歌词、在线内容和功能方面的自定义修改。
 
 ## 功能
 
@@ -63,11 +63,3 @@ app/src/main/java/com/theveloper/pixelplay/
 ├── ui/               # 主题和桌面小组件
 └── utils/            # 通用工具
 ```
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request。提交前请运行编译和单元测试，并避免提交本地配置、签名文件和构建产物。
-
-## 许可证
-
-本项目使用仓库中的[专有许可证](LICENSE)。未经版权所有者许可，不得重新分发或商业化发布。
