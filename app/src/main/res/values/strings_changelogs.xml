@@ -84,8 +84,6 @@
         <item>General Bug Fixes &amp; Cleanup</item>
     </string-array>
     <string-array name="changelog_060_whats_new">
-        <item>Android Auto support is now available for in-car playback.</item>
-        <item>Wear OS support is live, including better watch-to-phone playback controls.</item>
         <item>Cloud integrations expanded with Telegram, NetEase, QQ Music, and Google Drive improvements.</item>
         <item>Recently Played and persistent queue restoration keep your listening session ready.</item>
         <item>Backup &amp; Restore v3 and account management tools are now included.</item>
@@ -106,7 +104,6 @@
         <item>General bug fixes and UI polish across the app.</item>
     </string-array>
     <string-array name="changelog_070_whats_new">
-        <item>Wear OS: Music transfer, local playback, queue sync, and remote control from watch.</item>
         <item>AI: Groq AI and OpenRouter (experimental) integration with token optimization.</item>
         <item>Cloud: Jellyfin support added.</item>
         <item>Lyrics: Synced translation with dedicated toggle, Kugou LRC format support, text alignment customization, and improved remote loading.</item>
@@ -131,7 +128,6 @@
     <string-array name="changelog_075_whats_new">
         <item>Google Drive integration with player lifecycle management.</item>
         <item>Batch song metadata editing (tags and cover art).</item>
-        <item>AI lyrics translation with customizable Wear OS preferences.</item>
         <item>Lag diagnostic tool and multi-selection on Search screen.</item>
         <item>Arabic &amp; Turkish support, with localized http URL local-network options.</item>
     </string-array>
@@ -144,6 +140,5 @@
     <string-array name="changelog_075_fixes">
         <item>Resolved stuttering/skipping playback lags and buffering issues.</item>
         <item>Fixed external song deletion sync and metadata consistency.</item>
-        <item>Fixed memory issues, crashes, and layout glitches on Wear OS and phone.</item>
     </string-array>
 </resources>

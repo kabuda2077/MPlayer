@@ -28,6 +28,7 @@ data class PlayerUiState(
     val librarySearchResults: ImmutableList<SearchResultItem> = persistentListOf(),
     val librarySearchLoading: Boolean = false,
     val librarySearchError: String? = null,
+    val popularSearchTerms: ImmutableList<String> = persistentListOf(),
     val musicFolders: ImmutableList<MusicFolder> = persistentListOf(),
     val sortOption: SortOption = SortOption.SongDefaultOrder,
     val isLoadingInitialSongs: Boolean = true,

@@ -36,7 +36,6 @@ import com.theveloper.pixelplay.data.download.DownloadEntity
 )
 abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun albumArtThemeDao(): AlbumArtThemeDao
-    abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun musicDao(): MusicDao
     abstract fun transitionDao(): TransitionDao
     abstract fun engagementDao(): EngagementDao

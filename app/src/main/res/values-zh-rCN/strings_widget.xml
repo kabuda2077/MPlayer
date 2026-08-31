@@ -10,8 +10,6 @@
     <string name="widget_album_art_placeholder">专辑封面占位图</string>
 
     <string name="widget_tap_to_play">点击播放</string>
-    <string name="widget_preview_song_title">歌曲标题</string>
-    <string name="widget_preview_artist">艺术家</string>
 
     <string name="widget_wavy_progress_bar_desc">进度条，%1$d%%</string>
 </resources>

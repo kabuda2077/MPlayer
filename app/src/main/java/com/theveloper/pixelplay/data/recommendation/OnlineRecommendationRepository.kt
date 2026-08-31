@@ -7,7 +7,6 @@ import com.theveloper.pixelplay.data.model.RemoteChartReference
 import com.theveloper.pixelplay.data.model.RemotePlaylistDetail
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
 import com.theveloper.pixelplay.data.model.TransientOnlineSong
-import kotlinx.coroutines.flow.StateFlow
 
 interface OnlineRecommendationProvider {
     val platform: OnlineBrowsePlatform
@@ -22,12 +21,8 @@ interface OnlineRecommendationProvider {
 }
 
 interface OnlineRecommendationRepository {
-    val platform: StateFlow<OnlineBrowsePlatform>
-
-    suspend fun setPlatform(platform: OnlineBrowsePlatform)
-
     suspend fun refresh(
-        platform: OnlineBrowsePlatform = this.platform.value,
+        platform: OnlineBrowsePlatform,
         force: Boolean = false
     ): Result<RecommendationPage>
 

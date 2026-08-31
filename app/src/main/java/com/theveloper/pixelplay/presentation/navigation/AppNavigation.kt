@@ -41,13 +41,11 @@ import com.theveloper.pixelplay.presentation.screens.ArtistSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.DailyMixScreen
 import com.theveloper.pixelplay.presentation.screens.DownloadManagerScreen
 import com.theveloper.pixelplay.presentation.screens.EditTransitionScreen
-import com.theveloper.pixelplay.presentation.screens.EasterEggScreen
 import com.theveloper.pixelplay.presentation.screens.ExperimentalSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.HomeScreen
 import com.theveloper.pixelplay.presentation.screens.LibraryScreen
 import com.theveloper.pixelplay.presentation.screens.OnlineBrowseScreen
 import com.theveloper.pixelplay.presentation.screens.OnlineCollectionScreen
-import com.theveloper.pixelplay.presentation.screens.MashupScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
@@ -256,7 +254,6 @@ fun AppNavigation(
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
                     LibraryScreen(
                         navController = navController,
-                        routeStorageFilter = null,
                         titleResId = R.string.local_library_screen_title,
                         playerViewModel = playerViewModel
                     )
@@ -409,13 +406,6 @@ fun AppNavigation(
             }
 
             composable(
-                Screen.DJSpace.route,
-            ) {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    MashupScreen()
-                }
-            }
-            composable(
                 route = Screen.AlbumDetail.route,
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
             ) { backStackEntry ->
@@ -471,16 +461,6 @@ fun AppNavigation(
                         navController = navController,
                         viewModel = playerViewModel,
                         onNavigationIconClick = { navController.popBackStack() }
-                    )
-                }
-            }
-            composable(
-                Screen.EasterEgg.route,
-            ) {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
-                    EasterEggScreen(
-                        viewModel = playerViewModel,
-                        onNavigationIconClick = { navController.popBackStack() },
                     )
                 }
             }

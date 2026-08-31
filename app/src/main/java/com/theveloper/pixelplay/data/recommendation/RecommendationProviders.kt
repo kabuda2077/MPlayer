@@ -1,7 +1,7 @@
 package com.theveloper.pixelplay.data.recommendation
 
-import com.theveloper.pixelplay.data.model.ArtistRef
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
+import com.theveloper.pixelplay.data.model.OnlineSongMapper
 import com.theveloper.pixelplay.data.model.RecommendationAuthState
 import com.theveloper.pixelplay.data.model.RecommendationItem
 import com.theveloper.pixelplay.data.model.RecommendationPage
@@ -12,14 +12,12 @@ import com.theveloper.pixelplay.data.model.RemoteChartDetail
 import com.theveloper.pixelplay.data.model.RemoteChartReference
 import com.theveloper.pixelplay.data.model.RemotePlaylistDetail
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
-import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.model.TransientOnlineSong
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import com.theveloper.pixelplay.data.network.qqmusic.QqMusicApiService
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
-import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
 import com.theveloper.pixelplay.data.plugin.PluginSource
-import java.util.Locale
+import com.theveloper.pixelplay.data.qqmusic.QqMusicRepository
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -681,26 +679,21 @@ internal object RecommendationJson {
         val artistObjects = obj.optJSONArray("ar") ?: obj.optJSONArray("artists")
         val artists = if (artistObjects == null) emptyList() else (0 until artistObjects.length()).mapNotNull { i ->
             val artist = artistObjects.optJSONObject(i) ?: return@mapNotNull null
-            val name = artist.optString("name").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            ArtistRef(stableId(name), name, i == 0)
+            artist.optString("name").takeIf { it.isNotBlank() }
         }
-        val artist = artists.joinToString(" / ") { it.name }.ifBlank { "未知艺术家" }
+        val artist = artists.joinToString(" / ").ifBlank { "未知艺术家" }
         val album = obj.optJSONObject("al") ?: obj.optJSONObject("album")
         val albumName = album?.optString("name").orEmpty().ifBlank { "未知专辑" }
-        val song = recommendationSong(
-            id = "netease_$id",
+        return OnlineSongMapper.toTransient(
+            source = PluginSource.NETEASE,
+            sourceSongId = id.toString(),
             title = title,
             artist = artist,
             album = albumName,
-            uri = "netease://$id",
-            artwork = normalizeArtwork(album?.optString("picUrl")),
+            artworkUrl = album?.optString("picUrl"),
             durationMs = obj.optLong("dt", obj.optLong("duration", 0L)),
-            source = PluginSource.NETEASE,
-            sourceId = id.toString(),
-            neteaseId = id,
-            artists = artists
+            artistNames = artists
         )
-        return TransientOnlineSong.from(song)
     }
 
     private fun qqSong(obj: JSONObject): TransientOnlineSong? {
@@ -709,10 +702,9 @@ internal object RecommendationJson {
         val singers = obj.optJSONArray("singer") ?: obj.optJSONArray("singers")
         val artists = if (singers == null) emptyList() else (0 until singers.length()).mapNotNull { i ->
             val singer = singers.optJSONObject(i) ?: return@mapNotNull null
-            val name = firstNonBlank(singer, "name", "title") ?: return@mapNotNull null
-            ArtistRef(stableId(name), name, i == 0)
+            firstNonBlank(singer, "name", "title")
         }
-        val artist = artists.joinToString(" / ") { it.name }
+        val artist = artists.joinToString(" / ")
             .ifBlank { firstNonBlank(obj, "singername", "artist") ?: "未知艺术家" }
         val album = obj.optJSONObject("album")
         val albumName = firstNonBlank(album, "name", "title")
@@ -721,53 +713,17 @@ internal object RecommendationJson {
         val albumMid = firstNonBlank(obj, "albummid", "album_mid")
             ?: firstNonBlank(album, "mid", "pmid")
         val duration = obj.optLong("interval", 0L).let { if (it > 0) it * 1000 else obj.optLong("duration", 0L) }
-        val song = recommendationSong(
-            id = "qqmusic_$mid",
+        return OnlineSongMapper.toTransient(
+            source = PluginSource.QQ_MUSIC,
+            sourceSongId = mid,
             title = title,
             artist = artist,
             album = albumName,
-            uri = "qqmusic://$mid",
-            artwork = albumMid?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" },
+            artworkUrl = albumMid?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" },
             durationMs = duration,
-            source = PluginSource.QQ_MUSIC,
-            sourceId = mid,
-            qqMusicMid = mid,
-            artists = artists
+            artistNames = artists
         )
-        return TransientOnlineSong.from(song)
     }
-
-    private fun recommendationSong(
-        id: String,
-        title: String,
-        artist: String,
-        album: String,
-        uri: String,
-        artwork: String?,
-        durationMs: Long,
-        source: PluginSource,
-        sourceId: String,
-        neteaseId: Long? = null,
-        qqMusicMid: String? = null,
-        artists: List<ArtistRef>
-    ): Song = Song(
-        id = id,
-        title = title,
-        artist = artist,
-        artistId = stableId(artist),
-        artists = artists.ifEmpty { listOf(ArtistRef(stableId(artist), artist, true)) },
-        album = album,
-        albumId = stableId("$source:$album"),
-        path = "",
-        contentUriString = uri,
-        albumArtUriString = artwork,
-        duration = durationMs,
-        mimeType = "audio/mpeg",
-        bitrate = null,
-        sampleRate = null,
-        neteaseId = neteaseId,
-        qqMusicMid = qqMusicMid
-    )
 
     private fun collectObjects(value: Any?, depth: Int = 0): List<JSONObject> {
         if (depth > 8) return emptyList()
@@ -793,5 +749,4 @@ internal object RecommendationJson {
         if (it.startsWith("http://", true)) "https://${it.substring(7)}" else it
     }
 
-    private fun stableId(value: String): Long = -kotlin.math.abs(value.lowercase(Locale.ROOT).hashCode().toLong()).coerceAtLeast(1L)
 }

@@ -28,7 +28,6 @@
     <string name="equalizer_band_bass_low">低音 / 低频</string>
     <string name="equalizer_band_mid_high">中音 / 高频</string>
     <string name="equalizer_page_n">第 %1$d 页</string>
-    <string name="equalizer_reset_duration_cd">重置持续时间</string>
     <string name="equalizer_action_save_new">保存为新预设</string>
 
     <!-- CustomPresetsSheet -->

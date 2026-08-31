@@ -1,11 +1,12 @@
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import com.theveloper.pixelplay.presentation.navigation.navigateSafelyReplacing
 
-import android.os.Trace
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.AnimatedVisibility
@@ -106,6 +107,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -322,7 +324,6 @@ private fun PlayerUiState.toLibraryScreenProjection(): LibraryScreenPlayerProjec
 @Composable
 fun LibraryScreen(
     navController: NavController,
-    routeStorageFilter: StorageFilter? = null,
     @StringRes titleResId: Int = R.string.library_screen_title,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
@@ -331,6 +332,7 @@ fun LibraryScreen(
 ) {
     // La recolección de estados de alto nivel se mantiene mínima.
     val context = LocalContext.current // Added context
+    val resources = LocalResources.current
     val haptic = LocalHapticFeedback.current
     val lastTabIndex by playerViewModel.lastLibraryTabIndexFlow.collectAsStateWithLifecycle()
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() // Reintroducir favoriteIds aquí
@@ -357,8 +359,8 @@ fun LibraryScreen(
             .map { it.currentStorageFilter }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = StorageFilter.ALL)
-    val tabTitles = remember(savedTabTitles, routeStorageFilter, selectedStorageFilter) {
-        visibleLibraryTabs(savedTabTitles, routeStorageFilter, selectedStorageFilter)
+    val tabTitles = remember(savedTabTitles, selectedStorageFilter) {
+        visibleLibraryTabs(savedTabTitles, selectedStorageFilter)
     }
     val currentTabId by playerViewModel.currentLibraryTabId.collectAsStateWithLifecycle()
     val libraryNavigationMode by playerViewModel.libraryNavigationMode.collectAsStateWithLifecycle()
@@ -406,14 +408,8 @@ fun LibraryScreen(
     var showCreateAiPlaylistDialog by remember { mutableStateOf(false) }
     var aiGenerationRequestedFromDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(routeStorageFilter) {
-        playerViewModel.setRouteStorageFilter(routeStorageFilter)
-    }
-
     var showReorderTabsSheet by remember { mutableStateOf(false) }
     var showTabSwitcherSheet by remember { mutableStateOf(false) }
-    var librarySearchActive by rememberSaveable(routeStorageFilter) { mutableStateOf(false) }
-    var librarySearchQuery by rememberSaveable(routeStorageFilter) { mutableStateOf("") }
 
     // Multi-selection state
     val multiSelectionState = playerViewModel.multiSelectionStateHolder
@@ -453,7 +449,7 @@ fun LibraryScreen(
             if (existingIndex >= 0) {
                 selectedAlbums = selectedAlbums.toMutableList().also { it.removeAt(existingIndex) }
             } else if (selectedAlbums.size >= MAX_ALBUM_MULTI_SELECTION) {
-                playerViewModel.sendToast(context.getString(R.string.library_toast_max_albums_selection, MAX_ALBUM_MULTI_SELECTION))
+                playerViewModel.sendToast(resources.getString(R.string.library_toast_max_albums_selection, MAX_ALBUM_MULTI_SELECTION))
             } else {
                 selectedAlbums = selectedAlbums + album
             }
@@ -643,7 +639,7 @@ fun LibraryScreen(
         playlistViewModel.playlistCreationEvent.collect { success ->
             if (success) {
                 showCreatePlaylistDialog = false
-                Toast.makeText(context, context.getString(R.string.library_toast_playlist_created), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.library_toast_playlist_created), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -674,21 +670,17 @@ fun LibraryScreen(
     }
     // La lógica de carga diferida (lazy loading) se mantiene.
     LaunchedEffect(Unit) {
-        Trace.beginSection("LibraryScreen.InitialTabLoad")
         playerViewModel.onLibraryTabSelected(
             tabIndex = normalizedLastTabIndex,
             visibleLibraryTabs = tabTitles
         )
-        Trace.endSection()
     }
 
     LaunchedEffect(currentTabIndex, tabTitles, savedTabTitles) {
-        Trace.beginSection("LibraryScreen.PageChangeTabLoad")
         playerViewModel.onLibraryTabSelected(
             tabIndex = currentTabIndex,
             visibleLibraryTabs = tabTitles
         )
-        Trace.endSection()
 
         // Clear selection when switching tabs
         multiSelectionState.clearSelection()
@@ -747,11 +739,11 @@ fun LibraryScreen(
     LibraryHeaderScaffold(
         gradientBrush = gradientBrush,
         headerContainerColor = headerContainerColor,
-        searchBarVisible = routeStorageFilter != null && librarySearchActive,
-        searchQuery = librarySearchQuery,
-        onSearchQueryChange = { librarySearchQuery = it },
+        searchBarVisible = false,
+        searchQuery = "",
+        onSearchQueryChange = {},
         onSearch = {},
-        onClearSearch = { librarySearchQuery = "" },
+        onClearSearch = {},
         topBar = {
                 TopAppBar(
                     title = {
@@ -781,32 +773,6 @@ fun LibraryScreen(
                         }
                     },
                     actions = {
-                        if (routeStorageFilter != null) {
-                            FilledIconButton(
-                                modifier = Modifier.padding(end = 8.dp),
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                onClick = {
-                                    librarySearchActive = !librarySearchActive
-                                    if (!librarySearchActive) {
-                                        librarySearchQuery = ""
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (librarySearchActive) Icons.Rounded.Close else Icons.Rounded.Search,
-                                    contentDescription = stringResource(
-                                        if (librarySearchActive) {
-                                            R.string.search_cd_clear_search_query
-                                        } else {
-                                            R.string.search_cd_search_icon
-                                        }
-                                    )
-                                )
-                            }
-                        }
                         FilledIconButton(
                             modifier = Modifier.padding(end = 14.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
@@ -1021,7 +987,7 @@ fun LibraryScreen(
                                             val remaining = MAX_ALBUM_MULTI_SELECTION - selectedAlbums.size
                                             if (remaining <= 0) {
                                                 playerViewModel.sendToast(
-                                                    context.getString(
+                                                    resources.getString(
                                                         R.string.library_toast_max_albums_selection,
                                                         MAX_ALBUM_MULTI_SELECTION
                                                     )
@@ -1068,7 +1034,7 @@ fun LibraryScreen(
                                         },
                                         onDeselect = { multiSelectionState.clearSelection() },
                                         onOptionsClick = { showMultiSelectionSheet = true },
-                                        showDownloadButton = routeStorageFilter == StorageFilter.ONLINE,
+                                        showDownloadButton = false,
                                         onDownloadClick = {
                                             playerViewModel.downloadSelectedSongs(selectedSongs)
                                         }
@@ -1103,13 +1069,11 @@ fun LibraryScreen(
                                     onFolderClick = { playerViewModel.navigateToFolder(it) },
                                     onNavigateBack = { playerViewModel.navigateBackFolder() },
                                     isShuffleEnabled = isShuffleEnabled,
-                                    showStorageFilterButton = routeStorageFilter == null && (
-                                            currentVisibleTabId == LibraryTabId.SONGS ||
-                                                    currentVisibleTabId == LibraryTabId.ALBUMS ||
-                                                    currentVisibleTabId == LibraryTabId.ARTISTS ||
-                                                    currentVisibleTabId == LibraryTabId.LIKED ||
-                                                    (ENABLE_FOLDERS_STORAGE_FILTER && currentVisibleTabId == LibraryTabId.FOLDERS)
-                                            ),
+                                    showStorageFilterButton = currentVisibleTabId == LibraryTabId.SONGS ||
+                                        currentVisibleTabId == LibraryTabId.ALBUMS ||
+                                        currentVisibleTabId == LibraryTabId.ARTISTS ||
+                                        currentVisibleTabId == LibraryTabId.LIKED ||
+                                        (ENABLE_FOLDERS_STORAGE_FILTER && currentVisibleTabId == LibraryTabId.FOLDERS),
                                     currentStorageFilter = playerUiState.currentStorageFilter,
                                     onStorageFilterClick = { playerViewModel.toggleStorageFilter() }
                                 )
@@ -1121,8 +1085,7 @@ fun LibraryScreen(
                         // to it when the worker takes longer than the pull gesture window.
                         LibraryInlineSyncIndicator(
                             visible = inlineSyncVisible && !isLibraryContentEmpty,
-                            syncManager = syncManager,
-                            routeStorageFilter = routeStorageFilter
+                            syncManager = syncManager
                         )
 
                         if (isSortSheetVisible && sanitizedSortOptions.isNotEmpty()) {
@@ -1322,7 +1285,7 @@ fun LibraryScreen(
                                     }
                                 } else null,
                                 extraContent = {
-                                    if (routeStorageFilter == null && !isFoldersTab) {
+                                    if (!isFoldersTab) {
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Text(
                                             text = stringResource(R.string.library_cloud_sources_heading),
@@ -1348,23 +1311,6 @@ fun LibraryScreen(
 
                         // Box wrapper to allow floating SelectionCountPill overlay
                         Box(modifier = Modifier.weight(1f)) {
-                            val searchStorageFilter = routeStorageFilter ?: playerUiState.currentStorageFilter
-                            val showLibrarySearchResults =
-                                routeStorageFilter != null &&
-                                    librarySearchActive &&
-                                    librarySearchQuery.isNotBlank()
-                            val librarySearchResults by remember(
-                                librarySearchQuery,
-                                searchStorageFilter,
-                                playerViewModel
-                            ) {
-                                playerViewModel.searchLibrary(
-                                    query = librarySearchQuery,
-                                    filterType = SearchFilterType.ALL,
-                                    storageFilter = searchStorageFilter
-                                )
-                            }.collectAsStateWithLifecycle(initialValue = emptyList())
-
                             val artistsForGroupedArtwork by playerViewModel.artistsFlow.collectAsStateWithLifecycle()
                             val groupedArtistArtworkByName = remember(artistsForGroupedArtwork) {
                                 artistsForGroupedArtwork.associate { artist ->
@@ -1372,18 +1318,6 @@ fun LibraryScreen(
                                 }
                             }
 
-                            if (showLibrarySearchResults) {
-                                SearchResultsList(
-                                    results = librarySearchResults,
-                                    searchQuery = librarySearchQuery,
-                                    playerViewModel = playerViewModel,
-                                    onItemSelected = {},
-                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                    isPlaying = stablePlayerState.isPlaying,
-                                    onSongMoreOptionsClick = stableOnMoreOptionsClick,
-                                    navController = navController
-                                )
-                            } else {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier = Modifier
@@ -1402,7 +1336,7 @@ fun LibraryScreen(
                                     LibraryTabId.SONGS -> {
                                         val allSongsLazyPagingItems = libraryViewModel.songsPagingFlow.collectAsLazyPagingItems()
                                         val allSongsForGroupedView by playerViewModel.allSongsFlow.collectAsStateWithLifecycle()
-                                        val songStorageFilter = routeStorageFilter ?: playerUiState.currentStorageFilter
+                                        val songStorageFilter = playerUiState.currentStorageFilter
                                         val groupedSongsForCurrentFilter = remember(
                                             allSongsForGroupedView,
                                             songStorageFilter
@@ -1509,7 +1443,7 @@ fun LibraryScreen(
                                     LibraryTabId.LIKED -> {
                                         val favoritePagingItems = libraryViewModel.favoritesPagingFlow.collectAsLazyPagingItems()
                                         val allSongsForGroupedFavorites by playerViewModel.allSongsFlow.collectAsStateWithLifecycle()
-                                        val favoriteStorageFilter = routeStorageFilter ?: playerUiState.currentStorageFilter
+                                        val favoriteStorageFilter = playerUiState.currentStorageFilter
                                         val groupedFavoritesForCurrentFilter = remember(
                                             allSongsForGroupedFavorites,
                                             favoriteIds,
@@ -1602,7 +1536,6 @@ fun LibraryScreen(
                                     null -> Unit
                                 }
                             }
-                            }
 
                             // Floating selection count pill overlay
                             val selectionCount = when {
@@ -1648,8 +1581,7 @@ fun LibraryScreen(
                     // spinner + LibraryInlineSyncIndicator) handle sync feedback so the
                     // list stays visible.
                     LibrarySyncOverlay(
-                        syncManager = syncManager,
-                        routeStorageFilter = routeStorageFilter
+                        syncManager = syncManager
                     )
                 }
             //Grad box
@@ -1689,7 +1621,7 @@ fun LibraryScreen(
                 playerViewModel.clearAiPlaylistError()
                 showCreateAiPlaylistDialog = true
             } else {
-                Toast.makeText(context, context.getString(R.string.library_toast_set_ai_provider_api_key_first), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.library_toast_set_ai_provider_api_key_first), Toast.LENGTH_SHORT).show()
             }
         },
         isAiEnabled = hasActiveAiProviderApiKey,
@@ -1707,7 +1639,7 @@ fun LibraryScreen(
                 playerViewModel.clearAiPlaylistError()
                 showCreateAiPlaylistDialog = true
             } else {
-                Toast.makeText(context, context.getString(R.string.library_toast_set_gemini_api_key_first), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.library_toast_set_gemini_api_key_first), Toast.LENGTH_SHORT).show()
             }
         },
         onCreate = { name, imageUri, color, icon, songIds, cropScale, cropPanX, cropPanY, shapeType, d1, d2, d3, d4, smartRuleKey ->
@@ -1749,7 +1681,7 @@ fun LibraryScreen(
                 maxLength = maxLength,
                 saveAsPlaylist = true,
                 playlistName = playlistName,
-                storageFilter = routeStorageFilter ?: StorageFilter.ALL
+                storageFilter = StorageFilter.ALL
             )
         }
     )
@@ -1775,11 +1707,11 @@ fun LibraryScreen(
                 },
                 onAddToQueue = {
                     playerViewModel.addSongToQueue(currentSong) // Assumes such a method exists or will be added
-                    playerViewModel.sendToast(context.getString(R.string.library_toast_added_to_queue))
+                    playerViewModel.sendToast(resources.getString(R.string.library_toast_added_to_queue))
                 },
                 onAddNextToQueue = {
                     playerViewModel.addSongNextToQueue(currentSong)
-                    playerViewModel.sendToast(context.getString(R.string.library_toast_playing_next))
+                    playerViewModel.sendToast(resources.getString(R.string.library_toast_playing_next))
                 },
                 onAddToPlayList = {
                     playlistSheetSongs = listOf(currentSong)
@@ -1981,12 +1913,7 @@ fun LibraryScreen(
             tabs = tabTitles,
             onReorder = { newOrder ->
                 playerViewModel.saveLibraryTabsOrder(
-                    mergeRouteTabOrder(
-                        savedTabs = savedTabTitles,
-                        visibleOrder = newOrder,
-                        routeStorageFilter = routeStorageFilter,
-                        selectedStorageFilter = selectedStorageFilter
-                    )
+                    sanitizeLibraryTabOrder(newOrder).map { it.storageKey }
                 )
             },
             onReset = {
@@ -2136,8 +2063,7 @@ private fun CompactLibraryPagerIndicator(
 @Composable
 private fun LibraryInlineSyncIndicator(
     visible: Boolean,
-    syncManager: com.theveloper.pixelplay.data.worker.SyncManager,
-    routeStorageFilter: StorageFilter?
+    syncManager: com.theveloper.pixelplay.data.worker.SyncManager
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -2155,7 +2081,7 @@ private fun LibraryInlineSyncIndicator(
         val syncProgress by syncManager.syncProgress
             .collectAsStateWithLifecycle(initialValue = SyncProgress())
 
-        val phaseLabel = stringResource(syncPhaseLabelRes(syncProgress.phase, routeStorageFilter))
+        val phaseLabel = stringResource(syncPhaseLabelRes(syncProgress.phase))
 
         Column(
             modifier = Modifier
@@ -2191,8 +2117,7 @@ private fun LibraryInlineSyncIndicator(
  */
 @Composable
 private fun LibrarySyncOverlay(
-    syncManager: com.theveloper.pixelplay.data.worker.SyncManager,
-    routeStorageFilter: StorageFilter?
+    syncManager: com.theveloper.pixelplay.data.worker.SyncManager
 ) {
     val syncProgress by syncManager.syncProgress
         .collectAsStateWithLifecycle(initialValue = SyncProgress())
@@ -2217,7 +2142,7 @@ private fun LibrarySyncOverlay(
                     LoadingIndicator(modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = stringResource(syncPhaseLabelRes(syncProgress.phase, routeStorageFilter)),
+                        text = stringResource(syncPhaseLabelRes(syncProgress.phase)),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2229,24 +2154,8 @@ private fun LibrarySyncOverlay(
 
 @StringRes
 private fun syncPhaseLabelRes(
-    phase: SyncProgress.SyncPhase,
-    routeStorageFilter: StorageFilter?
+    phase: SyncProgress.SyncPhase
 ): Int {
-    if (routeStorageFilter == StorageFilter.ONLINE) {
-        return when (phase) {
-            SyncProgress.SyncPhase.CLEANING_CACHE -> R.string.library_sync_cache
-            else -> R.string.library_sync_online_music
-        }
-    }
-
-    if (routeStorageFilter == StorageFilter.OFFLINE) {
-        return when (phase) {
-            SyncProgress.SyncPhase.SCANNING_LRC -> R.string.library_sync_local_lyrics
-            SyncProgress.SyncPhase.CLEANING_CACHE -> R.string.library_sync_cache
-            else -> R.string.library_sync_local_music
-        }
-    }
-
     return when (phase) {
         SyncProgress.SyncPhase.FETCHING_MEDIASTORE ->
             R.string.library_sync_scanning
@@ -2685,42 +2594,10 @@ private fun positiveMod(value: Int, mod: Int): Int {
 
 private fun visibleLibraryTabs(
     savedTabs: List<String>,
-    routeStorageFilter: StorageFilter?,
     selectedStorageFilter: StorageFilter
 ): List<String> {
-    val savedOrder = sanitizeLibraryTabOrder(savedTabs)
-    val routeDefault = defaultLibraryTabsForRoute(routeStorageFilter)
-    val ordered = LinkedHashSet<LibraryTabId>()
-
-    savedOrder
-        .filter { it.isVisibleForLibrary(routeStorageFilter, selectedStorageFilter) }
-        .forEach(ordered::add)
-    routeDefault.forEach(ordered::add)
-
-    return ordered.map { it.storageKey }
-}
-
-private fun mergeRouteTabOrder(
-    savedTabs: List<String>,
-    visibleOrder: List<String>,
-    routeStorageFilter: StorageFilter?,
-    selectedStorageFilter: StorageFilter
-): List<String> {
-    val visibleTabs = visibleOrder
-        .mapNotNull { it.toLibraryTabIdOrNull() }
-        .filter { it.isVisibleForLibrary(routeStorageFilter, selectedStorageFilter) }
-        .distinct()
-
-    if (routeStorageFilter == null) {
-        return sanitizeLibraryTabOrder(visibleTabs.map { it.storageKey })
-            .map { it.storageKey }
-    }
-
-    val hiddenTabs = sanitizeLibraryTabOrder(savedTabs)
-        .filterNot { it in visibleTabs }
-
-    return (visibleTabs + hiddenTabs)
-        .distinct()
+    return sanitizeLibraryTabOrder(savedTabs)
+        .filter { it.isVisibleForLibrary(selectedStorageFilter) }
         .map { it.storageKey }
 }
 
@@ -2843,39 +2720,11 @@ private fun usefulSongSortOptionsForView(
     }
 }
 
-private fun defaultLibraryTabsForRoute(routeStorageFilter: StorageFilter?): List<LibraryTabId> {
-    return when (routeStorageFilter) {
-        StorageFilter.ONLINE -> listOf(
-            LibraryTabId.PLAYLISTS,
-            LibraryTabId.LIKED,
-            LibraryTabId.SONGS,
-            LibraryTabId.ALBUMS,
-            LibraryTabId.ARTISTS
-        )
-        StorageFilter.OFFLINE -> listOf(
-            LibraryTabId.SONGS,
-            LibraryTabId.ALBUMS,
-            LibraryTabId.ARTISTS,
-            LibraryTabId.PLAYLISTS,
-            LibraryTabId.FOLDERS,
-            LibraryTabId.LIKED
-        )
-        else -> listOf(
-            LibraryTabId.SONGS,
-            LibraryTabId.ALBUMS,
-            LibraryTabId.ARTISTS,
-            LibraryTabId.PLAYLISTS,
-            LibraryTabId.LIKED
-        )
-    }
-}
-
 private fun LibraryTabId.isVisibleForLibrary(
-    routeStorageFilter: StorageFilter?,
     selectedStorageFilter: StorageFilter
 ): Boolean {
     return when (this) {
-        LibraryTabId.FOLDERS -> (routeStorageFilter ?: selectedStorageFilter) == StorageFilter.OFFLINE
+        LibraryTabId.FOLDERS -> selectedStorageFilter == StorageFilter.OFFLINE
         else -> true
     }
 }

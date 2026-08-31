@@ -1650,6 +1650,7 @@ class PlayerViewModel @Inject constructor(
                         librarySearchResults = search.libraryResults,
                         librarySearchLoading = search.libraryLoading,
                         librarySearchError = search.libraryError,
+                        popularSearchTerms = search.popularSearchTerms,
                     )
                 }
             }
@@ -1835,10 +1836,6 @@ class PlayerViewModel @Inject constructor(
 
     fun setStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter) {
         libraryStateHolder.setStorageFilter(filter)
-    }
-
-    fun setRouteStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter?) {
-        libraryStateHolder.setRouteStorageFilter(filter)
     }
 
     fun setPlaylistPickerStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter) {

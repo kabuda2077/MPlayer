@@ -63,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -123,6 +124,7 @@ fun NeteaseWebLoginScreen(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val loginState by viewModel.state.collectAsStateWithLifecycle()
     val titleStyle = rememberNeteaseLoginTitleStyle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -142,7 +144,7 @@ fun NeteaseWebLoginScreen(
     LaunchedEffect(loginState) {
         when (val state = loginState) {
             is NeteaseLoginState.Success -> {
-                Toast.makeText(context, context.getString(R.string.auth_welcome_toast, state.nickname), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.auth_welcome_toast, state.nickname), Toast.LENGTH_SHORT).show()
                 onClose()
             }
 
@@ -164,7 +166,7 @@ fun NeteaseWebLoginScreen(
         delay(20_000)
         if (webUiState.isLoadingPage) {
             pageLoadTimeout = true
-            snackbarHostState.showSnackbar(context.getString(R.string.auth_timeout_toast))
+            snackbarHostState.showSnackbar(resources.getString(R.string.auth_timeout_toast))
         }
     }
 
@@ -183,7 +185,7 @@ fun NeteaseWebLoginScreen(
                 viewModel.processCookies(cookieJson)
             },
             onFailure = { error ->
-                val message = error.message ?: context.getString(R.string.auth_cookies_unreadable_error)
+                val message = error.message ?: resources.getString(R.string.auth_cookies_unreadable_error)
                 viewModel.clearError()
                 webUiState = webUiState.copy(lastError = message)
             }

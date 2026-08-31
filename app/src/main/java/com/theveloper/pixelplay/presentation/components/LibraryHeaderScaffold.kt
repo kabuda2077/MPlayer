@@ -64,6 +64,7 @@ fun LibraryHeaderScaffold(
     ),
     contentTopSpacing: Dp = 6.dp,
     topBar: @Composable ColumnScope.() -> Unit,
+    afterSearchBar: @Composable ColumnScope.() -> Unit = {},
     bottomOverlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -98,6 +99,7 @@ fun LibraryHeaderScaffold(
                             .padding(searchBarPadding)
                     )
                 }
+                afterSearchBar()
             }
 
             Surface(

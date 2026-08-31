@@ -10,8 +10,6 @@
     <string name="widget_album_art_placeholder">Album art placeholder</string>
 
     <string name="widget_tap_to_play">Tap to play</string>
-    <string name="widget_preview_song_title">Song title</string>
-    <string name="widget_preview_artist">Artist</string>
 
     <string name="widget_wavy_progress_bar_desc">Progress bar, %1$d percent</string>
 </resources>

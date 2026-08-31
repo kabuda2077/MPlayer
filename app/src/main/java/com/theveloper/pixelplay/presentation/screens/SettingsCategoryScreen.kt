@@ -131,6 +131,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -190,6 +191,7 @@ fun SettingsCategoryScreen(
 ) {
     val category = SettingsCategory.fromId(categoryId) ?: return
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     // Hoisted string resources (for use inside lambdas/callbacks)
     val toastLibrarySyncFinished = stringResource(R.string.settings_toast_library_sync_finished)
@@ -1112,7 +1114,10 @@ fun SettingsCategoryScreen(
                                                 .fillMaxWidth()
                                                 .padding(top = 8.dp, bottom = 8.dp)
                                         ) {
-                                            val dateFormat = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+                                            val dateFormat = SimpleDateFormat(
+                                                "MMMM d, yyyy",
+                                                resources.configuration.locales[0]
+                                            )
                                             val groupedUsage = recentAiUsage.groupBy { 
                                                 dateFormat.format(Date(it.timestamp)) 
                                             }

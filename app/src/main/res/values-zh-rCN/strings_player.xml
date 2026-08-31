@@ -3,10 +3,8 @@
     <!-- Player UI & Playback Controls -->
     <string name="player_cd_collapse">收起播放器</string>
     <string name="player_now_playing">正在播放</string>
-    <string name="player_cd_cloud_stream">云端串流</string>
     <string name="player_cd_bluetooth">蓝牙</string>
     <string name="player_cd_local_playback">本地播放</string>
-    <string name="player_connecting">正在连接…</string>
     <string name="player_cd_open_queue">打开队列</string>  
     <string name="audio_output_title">音频输出</string>
     <string name="audio_output_this_phone">本机</string>
@@ -85,7 +83,6 @@
     <string name="lyrics_title">歌词</string>
     <string name="lyrics_loading">正在加载歌词…</string>
     <string name="lyrics_mode_synced">歌词同步滚动</string>
-    <string name="lyrics_mode_static">静态</string>
     <string name="lyrics_options">歌词选项</string>
     <string name="lyrics_offset_minus_half">−.5</string>
     <string name="lyrics_offset_minus_point_one">−.1</string>
@@ -102,16 +99,12 @@
     <string name="lyrics_server_error">服务器错误（代码 %d）。请稍后再试。</string>
     
     <!-- LyricsStateHolder -->
-    <string name="lyrics_already_available">歌词已可用，跳过在线获取。</string>
-    <string name="lyrics_embedded_already_available">已找到内嵌歌词，跳过在线获取。</string>
-    <string name="lyrics_local_lrc_already_available">已找到本地 (.lrc) 歌词，跳过在线获取。</string>
 
     <!-- LyricsMoreBottomSheet -->
     <string name="lyrics_save_title">保存歌词</string>
     <string name="lyrics_translate_via_ai">使用 AI 翻译</string>
     <string name="lyrics_translate_already_translated">此歌词已有翻译</string>
     <string name="lyrics_translate_already_in_target_language">此歌词已经是该语言</string>
-    <string name="lyrics_translate_api_not_configured">未配置 API</string>
     <string name="lyrics_translate_success">歌词翻译成功！</string>
     <string name="lyrics_translate_progress">正在翻译歌词...</string>
     <string name="lyrics_reset_imported">重置已导入的歌词</string>

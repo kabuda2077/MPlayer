@@ -23,7 +23,6 @@
     <string name="beta_sheet_github_body">Search first, then open a focused report for bugs, crashes, requests, or questions.</string>
     <string name="beta_sheet_open_issues">Open existing issues</string>
     <string name="beta_sheet_report_bug">Report issue or crash</string>
-    <string name="beta_sheet_report_body">Share steps to reproduce, expected results, actual results, and your device/OS details.</string>
     <string name="beta_sheet_report_title">How to report</string>
     <string name="beta_sheet_report_summary">A quick checklist before opening a new issue.</string>
     <string name="beta_sheet_before_title">Before opening an issue</string>
@@ -87,9 +86,6 @@
     <string name="crash_report_toast_log_copied">Crash log copied to clipboard</string>
     <string name="crash_report_share_subject">PixelPlayer crash report</string>
     <string name="crash_report_share_chooser">Share crash report</string>
-
-    <!-- Home Option -->
-    <string name="home_option_dj_mashup">DJ Mashup</string>
 
     <!-- Your Mix -->
     <string name="home_your_mix_title">Your\nMix</string>

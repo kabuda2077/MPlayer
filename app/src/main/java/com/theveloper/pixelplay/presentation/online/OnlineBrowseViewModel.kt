@@ -8,12 +8,12 @@ import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationReposito
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 data class OnlineBrowseUiState(
@@ -39,18 +39,32 @@ class OnlineBrowseViewModel @Inject constructor(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val results = coroutineScope {
+            val errors = mutableListOf<String>()
+            var successCount = 0
+            coroutineScope {
                 platforms.map { platform ->
-                    async { platform to repository.refresh(platform, force) }
-                }.awaitAll()
+                    launch {
+                        repository.refresh(platform, force).fold(
+                            onSuccess = { page ->
+                                successCount++
+                                _uiState.update { state ->
+                                    state.copy(
+                                        pages = (state.pages.filterNot { it.platform == platform } + page)
+                                            .sortedBy { platforms.indexOf(it.platform) }
+                                    )
+                                }
+                            },
+                            onFailure = { errors += it.message ?: "加载失败" }
+                        )
+                    }
+                }.joinAll()
             }
-            val pages = results.mapNotNull { (_, result) -> result.getOrNull() }
-            val errors = results.mapNotNull { (_, result) -> result.exceptionOrNull()?.message }
-            _uiState.value = _uiState.value.copy(
-                pages = pages,
-                isLoading = false,
-                error = if (pages.isEmpty()) errors.firstOrNull() else null
-            )
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = errors.firstOrNull().takeIf { successCount == 0 }
+                )
+            }
         }
     }
 }

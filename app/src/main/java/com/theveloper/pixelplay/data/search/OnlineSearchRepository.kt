@@ -1,11 +1,12 @@
 package com.theveloper.pixelplay.data.search
 
-import com.theveloper.pixelplay.data.model.ArtistRef
+import com.theveloper.pixelplay.data.model.OnlineSongMapper
 import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
 import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
-import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.model.TransientOnlineSong
 import com.theveloper.pixelplay.data.netease.NeteaseRepository
 import com.theveloper.pixelplay.data.network.qqmusic.QqMusicApiService
+import com.theveloper.pixelplay.data.plugin.PluginSource
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,6 +24,29 @@ class OnlineSearchRepository @Inject constructor(
     private val qqMusicApiService: QqMusicApiService,
     private val okHttpClient: OkHttpClient
 ) {
+    suspend fun loadPopularSearchTerms(
+        platform: OnlineSearchPlatform,
+        limit: Int = POPULAR_SEARCH_LIMIT
+    ): Result<List<String>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val terms = when (platform) {
+                OnlineSearchPlatform.NETEASE -> loadNeteasePopularTerms()
+                OnlineSearchPlatform.QQ -> qqMusicApiService.getHotSearchTerms(limit)
+                OnlineSearchPlatform.KUGOU -> loadKugouPopularTerms()
+                OnlineSearchPlatform.KUWO -> loadKuwoPopularTerms()
+            }
+            terms.asSequence()
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+                .take(limit)
+                .toList()
+                .also { require(it.isNotEmpty()) { "Popular search returned no terms" } }
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Popular search failed platform=%s", platform.source.lxSource)
+        }
+    }
+
     suspend fun searchSongs(
         query: String,
         platform: OnlineSearchPlatform,
@@ -36,7 +60,7 @@ class OnlineSearchRepository @Inject constructor(
                 OnlineSearchPlatform.QQ -> searchQq(query, limit)
                 OnlineSearchPlatform.KUGOU -> searchKugou(query, limit)
                 OnlineSearchPlatform.KUWO -> searchKuwo(query, limit)
-            }.map { song -> OnlineSearchResultItem(song = song, platform = platform) }
+            }.map { song -> OnlineSearchResultItem(transientSong = song, platform = platform) }
         }.onFailure { throwable ->
             Timber.w(
                 throwable,
@@ -47,27 +71,81 @@ class OnlineSearchRepository @Inject constructor(
         }
     }
 
-    private suspend fun searchNetease(query: String, limit: Int): List<Song> =
+    private suspend fun searchNetease(query: String, limit: Int): List<TransientOnlineSong> =
         neteaseRepository.searchOnline(query, limit).getOrThrow()
+            .map { TransientOnlineSong.from(it, OnlineSearchPlatform.NETEASE) }
 
-    private suspend fun searchQq(query: String, limit: Int): List<Song> =
+    private suspend fun searchQq(query: String, limit: Int): List<TransientOnlineSong> =
         qqMusicApiService.searchSongs(query, page = 1, pageSize = limit)
             .mapNotNull { item ->
                 val songMid = item.mid.ifBlank { item.qqSongId }.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                onlineSong(
-                    id = "qqmusic_$songMid",
+                OnlineSongMapper.toTransient(
+                    source = PluginSource.QQ_MUSIC,
+                    sourceSongId = songMid,
                     title = item.title,
                     artist = item.artist,
                     album = item.album,
-                    contentUri = "qqmusic://$songMid",
                     durationMs = item.durationMs,
-                    albumArtUri = normalizeArtworkUrl(item.albumArtUrl),
-                    mimeType = "audio/mpeg",
-                    qqMusicMid = songMid
+                    artworkUrl = item.albumArtUrl
                 )
             }
 
-    private fun searchKugou(query: String, limit: Int): List<Song> {
+    private fun loadNeteasePopularTerms(): List<String> {
+        val root = JSONObject(
+            executeTextRequest(
+                url = "https://music.163.com/api/search/hot?type=1111",
+                referer = "https://music.163.com/"
+            )
+        )
+        val hotItems = root.optJSONObject("result")?.optJSONArray("hots") ?: JSONArray()
+        return buildList {
+            for (index in 0 until hotItems.length()) {
+                hotItems.optJSONObject(index)?.optString("first")?.let(::add)
+            }
+        }
+    }
+
+    private fun loadKugouPopularTerms(): List<String> {
+        val root = JSONObject(
+            executeTextRequest(
+                url = "http://gateway.kugou.com/api/v3/search/hot_tab?signature=ee44edb9d7155821412d220bcaf509dd&appid=1005&clientver=10026&plat=0",
+                headers = mapOf(
+                    "dfid" to "1ssiv93oVqMp27cirf2CvoF1",
+                    "mid" to "156798703528610303473757548878786007104",
+                    "clienttime" to "1584257267",
+                    "x-router" to "msearch.kugou.com",
+                    "User-Agent" to "Android9-AndroidPhone-10020-130-0-searchrecommendprotocol-wifi",
+                    "kg-rc" to "1"
+                )
+            )
+        )
+        val tabs = root.optJSONObject("data")?.optJSONArray("list") ?: JSONArray()
+        return buildList {
+            for (tabIndex in 0 until tabs.length()) {
+                val keywords = tabs.optJSONObject(tabIndex)?.optJSONArray("keywords") ?: continue
+                for (keywordIndex in 0 until keywords.length()) {
+                    keywords.optJSONObject(keywordIndex)?.optString("keyword")?.let(::add)
+                }
+            }
+        }
+    }
+
+    private fun loadKuwoPopularTerms(): List<String> {
+        val root = JSONObject(
+            executeTextRequest(
+                url = "http://hotword.kuwo.cn/hotword.s?prod=kwplayer_ar_9.3.0.1&corp=kuwo&newver=2&vipver=9.3.0.1&source=kwplayer_ar_9.3.0.1_40.apk&p2p=1&notrace=0&uid=0&plat=kwplayer_ar&rformat=json&encoding=utf8&tabid=1",
+                headers = mapOf("User-Agent" to "Dalvik/2.1.0 (Linux; U; Android 9;)")
+            )
+        )
+        val hotItems = root.optJSONArray("tagvalue") ?: JSONArray()
+        return buildList {
+            for (index in 0 until hotItems.length()) {
+                hotItems.optJSONObject(index)?.optString("key")?.let(::add)
+            }
+        }
+    }
+
+    private fun searchKugou(query: String, limit: Int): List<TransientOnlineSong> {
         val encodedKeyword = URLEncoder.encode(query, "UTF-8")
         val url = "http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$encodedKeyword&page=1&pagesize=$limit&showtype=1"
         val root = JSONObject(executeTextRequest(url, referer = "https://www.kugou.com/"))
@@ -86,22 +164,21 @@ class OnlineSearchRepository @Inject constructor(
                     ?.takeIf { it.isNotBlank() }
                     ?.replace("{size}", "300")
                 add(
-                    onlineSong(
-                        id = "kugou_$hash",
+                    OnlineSongMapper.toTransient(
+                        source = PluginSource.KUGOU,
+                        sourceSongId = hash,
                         title = title,
                         artist = artist,
                         album = album,
-                        contentUri = "kugou://$hash",
                         durationMs = durationMs,
-                        albumArtUri = artwork,
-                        mimeType = "audio/mpeg"
+                        artworkUrl = artwork
                     )
                 )
             }
         }
     }
 
-    private fun searchKuwo(query: String, limit: Int): List<Song> {
+    private fun searchKuwo(query: String, limit: Int): List<TransientOnlineSong> {
         val encodedKeyword = URLEncoder.encode(query, "UTF-8")
         val url = "http://search.kuwo.cn/r.s?client=kt&all=$encodedKeyword&pn=0&rn=$limit&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json&vermerge=1&mobi=1&issubtitle=1"
         val root = JSONObject(executeTextRequest(url, referer = "https://www.kuwo.cn/"))
@@ -119,59 +196,31 @@ class OnlineSearchRepository @Inject constructor(
                     .takeIf { it.isNotBlank() }
                     ?.let { "https://img4.kuwo.cn/star/albumcover/$it" }
                 add(
-                    onlineSong(
-                        id = "kuwo_$id",
+                    OnlineSongMapper.toTransient(
+                        source = PluginSource.KUWO,
+                        sourceSongId = id,
                         title = title,
                         artist = artist,
                         album = album,
-                        contentUri = "kuwo://$id",
                         durationMs = durationMs,
-                        albumArtUri = normalizeArtworkUrl(artwork),
-                        mimeType = "audio/mpeg"
+                        artworkUrl = artwork
                     )
                 )
             }
         }
     }
 
-    private fun onlineSong(
-        id: String,
-        title: String,
-        artist: String,
-        album: String,
-        contentUri: String,
-        durationMs: Long,
-        albumArtUri: String? = null,
-        mimeType: String?,
-        qqMusicMid: String? = null
-    ): Song {
-        val artistName = artist.ifBlank { UNKNOWN_ARTIST }
-        return Song(
-            id = id,
-            title = title.ifBlank { UNKNOWN_TITLE },
-            artist = artistName,
-            artistId = stableNegativeId(artistName),
-            artists = listOf(ArtistRef(id = stableNegativeId(artistName), name = artistName, isPrimary = true)),
-            album = album.ifBlank { UNKNOWN_ALBUM },
-            albumId = stableNegativeId(album.ifBlank { UNKNOWN_ALBUM }),
-            path = "",
-            contentUriString = contentUri,
-            albumArtUriString = normalizeArtworkUrl(albumArtUri),
-            duration = durationMs,
-            mimeType = mimeType,
-            bitrate = null,
-            sampleRate = null,
-            isFavorite = false,
-            qqMusicMid = qqMusicMid
-        )
-    }
-
-    private fun executeTextRequest(url: String, referer: String): String {
-        val request = Request.Builder()
+    private fun executeTextRequest(
+        url: String,
+        referer: String? = null,
+        headers: Map<String, String> = emptyMap()
+    ): String {
+        val requestBuilder = Request.Builder()
             .url(url)
             .header("Accept", "application/json,text/plain,*/*")
-            .header("Referer", referer)
-            .build()
+        referer?.let { requestBuilder.header("Referer", it) }
+        headers.forEach(requestBuilder::header)
+        val request = requestBuilder.build()
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 Timber.w("Online search request failed url=%s code=%d", url.substringBefore('?'), response.code)
@@ -185,21 +234,9 @@ class OnlineSearchRepository @Inject constructor(
         return raw.removePrefix("MUSIC_").takeIf { it.isNotBlank() }
     }
 
-    private fun normalizeArtworkUrl(value: String?): String? {
-        val trimmed = value?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        return if (trimmed.startsWith("http://", ignoreCase = true)) {
-            "https://${trimmed.removePrefix("http://")}"
-        } else {
-            trimmed
-        }
-    }
-
-    private fun stableNegativeId(value: String): Long =
-        -kotlin.math.abs(value.hashCode().toLong()).coerceAtLeast(1L)
-
     private companion object {
         const val DEFAULT_LIMIT = 30
-        const val UNKNOWN_TITLE = "Unknown Title"
+        const val POPULAR_SEARCH_LIMIT = 8
         const val UNKNOWN_ARTIST = "Unknown Artist"
         const val UNKNOWN_ALBUM = "Unknown Album"
     }

@@ -1,3 +1,5 @@
+@file:Suppress("RestrictedApi") // Material color utilities are intentionally covered by ColorRolesTest.
+
 package com.theveloper.pixelplay.ui.theme
 
 import android.graphics.Bitmap

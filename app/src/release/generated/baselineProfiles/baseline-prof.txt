@@ -34384,7 +34384,6 @@ PLcom/theveloper/pixelplay/data/service/MusicService$widgetUpdateManager$2$2;->i
 Lcom/theveloper/pixelplay/data/service/MusicService_GeneratedInjector;
 Lcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;
 SPLcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;->injectAppScope(Lcom/theveloper/pixelplay/data/service/MusicService;Lkotlinx/coroutines/CoroutineScope;)V
-SPLcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;->injectAutoMediaBrowseTree(Lcom/theveloper/pixelplay/data/service/MusicService;Lcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree;)V
 SPLcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;->injectColorSchemeProcessor(Lcom/theveloper/pixelplay/data/service/MusicService;Lcom/theveloper/pixelplay/presentation/viewmodel/ColorSchemeProcessor;)V
 SPLcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;->injectController(Lcom/theveloper/pixelplay/data/service/MusicService;Lcom/theveloper/pixelplay/data/service/player/TransitionController;)V
 SPLcom/theveloper/pixelplay/data/service/MusicService_MembersInjector;->injectEngine(Lcom/theveloper/pixelplay/data/service/MusicService;Lcom/theveloper/pixelplay/data/service/player/DualPlayerEngine;)V
@@ -34431,12 +34430,6 @@ PLcom/theveloper/pixelplay/data/service/WidgetUpdateManager$requestFullUpdate$1;
 PLcom/theveloper/pixelplay/data/service/WidgetUpdateManager$updateGlanceWidgets$2;-><init>(Lcom/theveloper/pixelplay/data/service/WidgetUpdateManager;Lcom/theveloper/pixelplay/data/model/PlayerInfo;Lkotlin/coroutines/Continuation;)V
 PLcom/theveloper/pixelplay/data/service/WidgetUpdateManager$updateGlanceWidgets$2;->create(Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
 PLcom/theveloper/pixelplay/data/service/WidgetUpdateManager$updateGlanceWidgets$2;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
-Lcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree;
-SPLcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree;-><clinit>()V
-SPLcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree;-><init>(Landroid/content/Context;Lcom/theveloper/pixelplay/data/repository/MusicRepository;Lcom/theveloper/pixelplay/data/preferences/PlaylistPreferencesRepository;Lcom/theveloper/pixelplay/data/database/EngagementDao;)V
-Lcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree$Companion;
-SPLcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree$Companion;-><init>()V
-SPLcom/theveloper/pixelplay/data/service/auto/AutoMediaBrowseTree$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 Lcom/theveloper/pixelplay/data/service/player/DualPlayerEngine;
 SPLcom/theveloper/pixelplay/data/service/player/DualPlayerEngine;-><clinit>()V
 SPLcom/theveloper/pixelplay/data/service/player/DualPlayerEngine;->access$get_activeAudioSessionId$p(Lcom/theveloper/pixelplay/data/service/player/DualPlayerEngine;)Lkotlinx/coroutines/flow/MutableStateFlow;
@@ -36348,9 +36341,6 @@ SPLcom/theveloper/pixelplay/presentation/navigation/Screen$ArtistDetail;-><init>
 Lcom/theveloper/pixelplay/presentation/navigation/Screen$ArtistSettings;
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$ArtistSettings;-><clinit>()V
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$ArtistSettings;-><init>()V
-Lcom/theveloper/pixelplay/presentation/navigation/Screen$DJSpace;
-SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DJSpace;-><clinit>()V
-SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DJSpace;-><init>()V
 Lcom/theveloper/pixelplay/presentation/navigation/Screen$DailyMixScreen;
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DailyMixScreen;-><clinit>()V
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DailyMixScreen;-><init>()V
@@ -36360,9 +36350,6 @@ SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DelimiterConfig;-><in
 Lcom/theveloper/pixelplay/presentation/navigation/Screen$DeviceCapabilities;
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DeviceCapabilities;-><clinit>()V
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$DeviceCapabilities;-><init>()V
-Lcom/theveloper/pixelplay/presentation/navigation/Screen$EasterEgg;
-SPLcom/theveloper/pixelplay/presentation/navigation/Screen$EasterEgg;-><clinit>()V
-SPLcom/theveloper/pixelplay/presentation/navigation/Screen$EasterEgg;-><init>()V
 Lcom/theveloper/pixelplay/presentation/navigation/Screen$EditTransition;
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$EditTransition;-><clinit>()V
 SPLcom/theveloper/pixelplay/presentation/navigation/Screen$EditTransition;-><init>()V
@@ -38142,12 +38129,6 @@ Lcom/theveloper/pixelplay/presentation/viewmodel/MainViewModel_HiltModules_Binds
 SPLcom/theveloper/pixelplay/presentation/viewmodel/MainViewModel_HiltModules_BindsModule_Binds_LazyMapKey;-><clinit>()V
 Lcom/theveloper/pixelplay/presentation/viewmodel/MainViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 SPLcom/theveloper/pixelplay/presentation/viewmodel/MainViewModel_HiltModules_KeyModule_Provide_LazyMapKey;-><clinit>()V
-Lcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules$KeyModule;
-SPLcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules$KeyModule;->provide()Z
-Lcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
-SPLcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules_BindsModule_Binds_LazyMapKey;-><clinit>()V
-Lcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
-SPLcom/theveloper/pixelplay/presentation/viewmodel/MashupViewModel_HiltModules_KeyModule_Provide_LazyMapKey;-><clinit>()V
 Lcom/theveloper/pixelplay/presentation/viewmodel/MetadataEditStateHolder;
 SPLcom/theveloper/pixelplay/presentation/viewmodel/MetadataEditStateHolder;-><clinit>()V
 SPLcom/theveloper/pixelplay/presentation/viewmodel/MetadataEditStateHolder;-><init>(Lcom/theveloper/pixelplay/data/media/SongMetadataEditor;Lcom/theveloper/pixelplay/data/repository/MusicRepository;Lcom/theveloper/pixelplay/data/media/ImageCacheManager;Lcom/theveloper/pixelplay/presentation/viewmodel/ThemeStateHolder;Lcom/theveloper/pixelplay/presentation/viewmodel/PlaybackStateHolder;Lcom/theveloper/pixelplay/presentation/viewmodel/LibraryStateHolder;Lcom/theveloper/pixelplay/presentation/viewmodel/MultiSelectionStateHolder;Lcom/theveloper/pixelplay/data/database/AlbumArtThemeDao;Landroid/content/Context;)V

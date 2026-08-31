@@ -276,6 +276,44 @@ class QqMusicApiService @Inject constructor(
         }
     }
 
+    suspend fun getHotSearchTerms(limit: Int = 8): List<String> = withContext(Dispatchers.IO) {
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf(
+                    "ct" to 11,
+                    "cv" to "1003006",
+                    "v" to "1003006",
+                    "os_ver" to "15",
+                    "phonetype" to "24122RKC7C",
+                    "tmeAppID" to "qqmusiclight",
+                    "nettype" to "NETWORK_WIFI",
+                    "udid" to "0"
+                ),
+                "req_0" to mapOf(
+                    "module" to "music.musicsearch.HotkeyService",
+                    "method" to "GetHotkeyForQQMusicMobile",
+                    "param" to mapOf("search_id" to buildSearchId())
+                )
+            )
+        )
+
+        val response = JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload))
+        val hotKeys = response.optJSONObject("req_0")
+            ?.optJSONObject("data")
+            ?.optJSONArray("vec_hotkey")
+            ?: JSONArray()
+        buildList {
+            for (index in 0 until hotKeys.length()) {
+                val keyword = hotKeys.optJSONObject(index)
+                    ?.optString("query")
+                    ?.trim()
+                    .orEmpty()
+                if (keyword.isNotBlank() && keyword !in this) add(keyword)
+                if (size >= limit) break
+            }
+        }
+    }
+
     // ─── Recommendations ─────────────────────────────────────────────
 
     suspend fun getRecommendHomeFeed(

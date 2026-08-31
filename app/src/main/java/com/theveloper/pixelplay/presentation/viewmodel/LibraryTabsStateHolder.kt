@@ -1,7 +1,6 @@
 package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.util.Log
-import android.os.Trace
 import com.theveloper.pixelplay.data.model.LibraryTabId
 import com.theveloper.pixelplay.data.model.toLibraryTabIdOrNull
 import dagger.hilt.android.scopes.ViewModelScoped
@@ -33,11 +32,9 @@ class LibraryTabsStateHolder @Inject constructor() {
         loadArtists: () -> Unit,
         loadFolders: () -> Unit
     ) {
-        Trace.beginSection("PlayerViewModel.onLibraryTabSelected")
         scope.launch { saveLastTabIndex(tabIndex) }
 
         val tabIdentifier = libraryTabs.getOrNull(tabIndex) ?: run {
-            Trace.endSection()
             return
         }
         val tabId = tabIdentifier.toLibraryTabIdOrNull() ?: LibraryTabId.SONGS
@@ -45,27 +42,20 @@ class LibraryTabsStateHolder @Inject constructor() {
 
         if (loadedTabs.value.contains(tabIdentifier)) {
             Log.d("PlayerViewModel", "Tab '$tabIdentifier' already loaded. Skipping data load.")
-            Trace.endSection()
             return
         }
 
         Log.d("PlayerViewModel", "Tab '$tabIdentifier' selected. Attempting to load data.")
         scope.launch {
-            Trace.beginSection("PlayerViewModel.onLibraryTabSelected_coroutine_load")
-            try {
-                when (tabId) {
-                    LibraryTabId.SONGS -> loadSongs()
-                    LibraryTabId.ALBUMS -> loadAlbums()
-                    LibraryTabId.ARTISTS -> loadArtists()
-                    LibraryTabId.FOLDERS -> loadFolders()
-                    else -> Unit
-                }
-                loadedTabs.update { currentTabs -> currentTabs + tabIdentifier }
-                Log.d("PlayerViewModel", "Tab '$tabIdentifier' marked as loaded. Current loaded tabs: ${loadedTabs.value}")
-            } finally {
-                Trace.endSection()
+            when (tabId) {
+                LibraryTabId.SONGS -> loadSongs()
+                LibraryTabId.ALBUMS -> loadAlbums()
+                LibraryTabId.ARTISTS -> loadArtists()
+                LibraryTabId.FOLDERS -> loadFolders()
+                else -> Unit
             }
+            loadedTabs.update { currentTabs -> currentTabs + tabIdentifier }
+            Log.d("PlayerViewModel", "Tab '$tabIdentifier' marked as loaded. Current loaded tabs: ${loadedTabs.value}")
         }
-        Trace.endSection()
     }
 }

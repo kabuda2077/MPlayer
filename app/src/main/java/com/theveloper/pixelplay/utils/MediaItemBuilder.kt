@@ -74,11 +74,13 @@ object MediaItemBuilder {
         "content",
         "file",
         "android.resource",
+        "https",
     )
     private val SUPPORTED_EXTERNAL_ARTWORK_SCHEMES = setOf(
         "content",
         "file",
         "android.resource",
+        "https",
     )
     const val EXTERNAL_EXTRA_FLAG = EXTERNAL_EXTRA_PREFIX + "FLAG"
     const val EXTERNAL_EXTRA_ALBUM = EXTERNAL_EXTRA_PREFIX + "ALBUM"
@@ -129,7 +131,7 @@ object MediaItemBuilder {
         song: Song,
         playbackRequestId: String = PlaybackTrace.newRequestId()
     ): MediaItem {
-        // This is the MediaSession item path for Android Auto / other external controllers;
+        // This is the MediaSession item path for external controllers;
         // time it so the performance report can attribute browse/queue lag here.
         return com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics.time(
             com.theveloper.pixelplay.data.diagnostics.PerformanceMetrics.Timings.MEDIASESSION_ITEM_BUILD
@@ -252,7 +254,7 @@ object MediaItemBuilder {
     }
 
     /**
-     * Artwork URIs are surfaced to external controllers (Android Auto, widgets, etc.).
+     * Artwork URIs are surfaced to external controllers (widgets, system UI, etc.).
      * Keep only schemes that these surfaces can usually resolve, and normalize raw paths.
      */
     fun artworkUri(rawArtworkUri: String?): Uri? {

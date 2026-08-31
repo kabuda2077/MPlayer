@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -52,7 +53,8 @@ fun AiUsageDateHeader(date: String) {
 fun AiUsageLogItem(
     usage: AiUsageEntity
 ) {
-    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    val locale = LocalResources.current.configuration.locales[0]
+    val timeFormat = SimpleDateFormat("h:mm a", locale)
     val timeStr = timeFormat.format(Date(usage.timestamp))
 
     Surface(

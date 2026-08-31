@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.presentation.components
 
 import android.Manifest
@@ -43,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +62,7 @@ fun AudioOutputBottomSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val bluetoothEnabled by playerViewModel.isBluetoothEnabled.collectAsStateWithLifecycle()
     val bluetoothName by playerViewModel.bluetoothName.collectAsStateWithLifecycle()
     val devices by playerViewModel.bluetoothAudioDeviceStates.collectAsStateWithLifecycle()
@@ -203,7 +207,7 @@ fun AudioOutputBottomSheet(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(device.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 val detail = buildList {
-                                    if (device.isConnected) add(context.getString(R.string.audio_output_connected))
+                                    if (device.isConnected) add(resources.getString(R.string.audio_output_connected))
                                     device.batteryPercent?.let { add("$it%") }
                                 }.joinToString(" · ")
                                 if (detail.isNotBlank()) {

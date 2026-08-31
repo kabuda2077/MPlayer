@@ -3,10 +3,8 @@
     <!-- Player UI & Playback Controls -->
     <string name="player_cd_collapse">Collapse player</string>
     <string name="player_now_playing">Now Playing</string>
-    <string name="player_cd_cloud_stream">Cloud stream</string>
     <string name="player_cd_bluetooth">Bluetooth</string>
     <string name="player_cd_local_playback">Local playback</string>
-    <string name="player_connecting">Connecting…</string>
     <string name="player_cd_open_queue">Open Queue</string>    
     <string name="audio_output_title">Audio output</string>
     <string name="audio_output_this_phone">This phone</string>
@@ -85,7 +83,6 @@
     <string name="lyrics_title">Lyrics</string>
     <string name="lyrics_loading">Loading lyrics…</string>
     <string name="lyrics_mode_synced">Sync scrolling</string>
-    <string name="lyrics_mode_static">Static</string>
     <string name="lyrics_options">Lyrics options</string>
     <string name="lyrics_offset_minus_half">−.5</string>
     <string name="lyrics_offset_minus_point_one">−.1</string>
@@ -102,16 +99,12 @@
     <string name="lyrics_server_error">Server error (code %d). Please try again later.</string>
     
     <!-- LyricsStateHolder -->
-    <string name="lyrics_already_available">Lyrics already available. Online fetch skipped.</string>
-    <string name="lyrics_embedded_already_available">Embedded lyrics already found. Online fetch skipped.</string>
-    <string name="lyrics_local_lrc_already_available">Local (.lrc) lyrics already found. Online fetch skipped.</string>
 
     <!-- LyricsMoreBottomSheet -->
     <string name="lyrics_save_title">Save Lyrics</string>
     <string name="lyrics_translate_via_ai">Translate via AI</string>
     <string name="lyrics_translate_already_translated">These lyrics already have a translation</string>
     <string name="lyrics_translate_already_in_target_language">These lyrics are already in this language</string>
-    <string name="lyrics_translate_api_not_configured">API is not configured</string>
     <string name="lyrics_translate_success">Lyrics translated successfully!</string>
     <string name="lyrics_translate_progress">Translating lyrics...</string>
     <string name="lyrics_reset_imported">Reset imported lyrics</string>

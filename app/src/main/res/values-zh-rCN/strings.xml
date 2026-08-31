@@ -9,7 +9,6 @@
     <!-- Navigation Bar Labels -->
     <string name="nav_bar_home">首页</string>
     <string name="nav_bar_search">搜索</string>
-    <string name="nav_bar_library">音乐库</string>
     <string name="nav_bar_online">在线</string>
     <string name="nav_bar_local_library">资料库</string>
 
@@ -40,26 +39,6 @@
     <string name="playstore_dialog_release_announcement">发布公告</string>
     <string name="playstore_dialog_coming_soon">敬请期待</string>
 
-    <!-- Brick breaker -->
-    <string name="easter_egg_thank_you">感谢您使用 PixelPlayer！</string>
-    <string name="brick_high">最高分 %1$d</string>
-    <string name="brick_cd_close">关闭</string>
-    <string name="brick_stat_score">分数</string>
-    <string name="brick_stat_lvl">第 %1$d 关</string>
-    <string name="brick_stat_lives">生命</string>
-    <string name="brick_level_complete">关卡完成！</string>
-    <string name="brick_game_over">游戏结束</string>
-    <string name="brick_score_line">分数：%1$d</string>
-    <string name="brick_try_again">再试一次？</string>
-    <string name="brick_next_level">下一关</string>
-    <string name="brick_restart">重新开始游戏</string>
-    <string name="brick_tap_relaunch">点击重新启动</string>
-    <string name="brick_play_random">随机播放音乐</string>
-    <string name="brick_title">打砖块</string>
-    <string name="brick_high_score">最高分 %1$d</string>
-    <string name="brick_play">开始</string>
-    <string name="brick_drag_paddle">拖动以移动挡板</string>
-
     <!-- Music Service -->
     <string name="close_notification_player">关闭播放器</string>
     <string name="service_processing_action">正在处理播放操作…</string>
@@ -74,7 +53,6 @@
     <string name="common_error">错误</string>
     <string name="common_search">搜索</string>
     <string name="common_clear_search">清除搜索</string>
-    <string name="common_all">全部</string>
     <string name="common_confirm">确认</string>
     <string name="common_saved">已保存！</string>
     <string name="common_selected">已选择</string>
@@ -95,9 +73,7 @@
     <string name="common_undo">撤销</string>
     <string name="common_import">导入</string>
     <string name="common_delete">删除</string>
-    <string name="common_export">导出</string>
     <string name="common_merge">合并</string>
-    <string name="common_rename">重命名</string>
     <string name="common_create">创建</string>
     <string name="common_lyrics">歌词</string>
     <string name="common_settings">设置</string>
@@ -115,7 +91,6 @@
     <string name="common_favorite">收藏</string>
     <string name="common_pause">暂停</string>
     <string name="common_repeat">循环播放</string>
-    <string name="common_options">选项</string>
     <string name="common_shuffle_play">随机播放</string>
     <string name="common_more_options_for">%1$s 的更多选项</string>
     <string name="common_more_options">更多选项</string>
@@ -129,7 +104,6 @@
     <string name="download_summary_size">占用 %1$s</string>
     <string name="download_empty_title">还没有下载歌曲</string>
     <string name="download_empty_subtitle">可在播放器里下载网易云或 QQ 音乐歌曲。</string>
-    <string name="download_clear_finished">清空已完成和失败任务</string>
     <string name="download_retry">重试</string>
     <string name="download_cancel_all_active">取消全部下载</string>
     <string name="download_retry_failed_canceled">重试失败和已取消</string>
@@ -155,9 +129,7 @@
     <string name="download_action">下载</string>
     <string name="download_unsupported_source">暂时只支持下载网易云和 QQ 音乐歌曲</string>
     <string name="common_reset_defaults">恢复默认设置</string>
-    <string name="common_export_all">导出全部</string>
     <string name="common_merge_all">合并全部</string>
-    <string name="common_share_all">分享全部</string>
     <string name="common_play_album">播放专辑</string>
     <string name="common_shuffle_play_album">随机播放专辑</string>
     <string name="common_album_art_for_title">%1$s 的专辑封面</string>

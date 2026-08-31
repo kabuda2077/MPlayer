@@ -444,6 +444,22 @@ class LyricsRepositoryImplTest {
     }
 
     @Test
+    fun parseNeteaseLyricsPayload_prefersCompleteYrcWithoutMergingLrcLines() = runTest {
+        val lyrics = createRepository().parseNeteaseLyricsPayload(
+            neteasePayload(
+                lrc = "[00:01.00]Line-level text\n",
+                yrc = "[1000,1000]Word(0,500) level(500,500)",
+                ytlrc = "[00:01.00]逐字翻译\n"
+            )
+        )
+
+        val firstLine = requireNotNull(lyrics).synced.orEmpty().first()
+        assertThat(firstLine.line).isEqualTo("Word level")
+        assertThat(firstLine.words.orEmpty().map { it.word }).containsExactly("Word", "level").inOrder()
+        assertThat(firstLine.translation).isEqualTo("逐字翻译")
+    }
+
+    @Test
     fun fetchFromRemote_usesNeteaseCandidateWithoutCrossSourceQqWordLevelMerge() = runTest {
         val neteaseRepository = mockk<NeteaseRepository>(relaxed = true)
         val lyricsDao = mockk<LyricsDao>(relaxed = true)

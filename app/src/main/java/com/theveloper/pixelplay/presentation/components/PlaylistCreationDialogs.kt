@@ -85,8 +85,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -359,10 +358,7 @@ private fun CreateAiPlaylistContent(
     var avoidExplicit by rememberSaveable { mutableStateOf(false) }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
     val controlsEnabled = !isGenerating
-    // Obtain resources through LocalConfiguration so any locale/config change
-    // triggers recomposition and all derived strings are refreshed.
-    LocalConfiguration.current
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
 
     val moodOptions = stringArrayResource(R.array.playlist_creation_ai_mood_options).toList()
     val activityOptions = stringArrayResource(R.array.playlist_creation_ai_activity_options).toList()

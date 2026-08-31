@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.data.diagnostics
 
+import android.annotation.SuppressLint
 import android.os.Trace
 import java.util.ArrayDeque
 
@@ -170,6 +171,7 @@ object AdvancedPerformanceDiagnostics {
         )
     }
 
+    @SuppressLint("UnclosedTrace") // The synchronous block is always closed by the finally clause.
     fun <T> trace(sectionName: String, block: () -> T): T {
         if (!enabled) return block()
         Trace.beginSection(sectionName.take(MAX_TRACE_SECTION_CHARS))
@@ -182,11 +184,13 @@ object AdvancedPerformanceDiagnostics {
 
     suspend fun <T> traceSuspend(sectionName: String, block: suspend () -> T): T {
         if (!enabled) return block()
-        Trace.beginSection(sectionName.take(MAX_TRACE_SECTION_CHARS))
+        val traceName = sectionName.take(MAX_TRACE_SECTION_CHARS)
+        val cookie = block.hashCode()
+        Trace.beginAsyncSection(traceName, cookie)
         return try {
             block()
         } finally {
-            Trace.endSection()
+            Trace.endAsyncSection(traceName, cookie)
         }
     }
 

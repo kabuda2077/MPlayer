@@ -84,8 +84,6 @@
         <item>常规错误修复与代码清理</item>
     </string-array>
     <string-array name="changelog_060_whats_new">
-        <item>现已支持 Android Auto 车载播放。</item>
-        <item>已支持 Wear OS，包括更完善的手表对手机播放控制。</item>
         <item>扩展了云端集成，改进了对 Telegram、网易云音乐、QQ 音乐和 Google Drive 的支持。</item>
         <item>“最近播放”和持久化队列恢复功能，让您的听歌会话随时就绪。</item>
         <item>现已包含备份与恢复 v3 以及账号管理工具。</item>
@@ -106,7 +104,6 @@
         <item>全局的常规错误修复和界面细节打磨。</item>
     </string-array>
     <string-array name="changelog_070_whats_new">
-        <item>Wear OS：支持音乐传输、本地播放、队列同步以及从手表进行远程控制。</item>
         <item>AI：集成了 Groq AI 和 OpenRouter（实验性），并进行了 Token 优化。</item>
         <item>云端：新增了 Jellyfin 支持。</item>
         <item>歌词：带有专属开关的同步翻译，支持酷狗 LRC 格式，自定义文本对齐方式，以及改进了远程加载。</item>

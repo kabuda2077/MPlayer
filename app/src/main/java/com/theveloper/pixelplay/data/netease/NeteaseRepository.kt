@@ -5,21 +5,15 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.theveloper.pixelplay.data.database.AlbumEntity
-import com.theveloper.pixelplay.data.database.ArtistEntity
-import com.theveloper.pixelplay.data.database.MusicDao
-import com.theveloper.pixelplay.data.database.FavoritesDao
 import com.theveloper.pixelplay.data.database.NeteaseDao
 import com.theveloper.pixelplay.data.database.NeteasePlaylistEntity
 import com.theveloper.pixelplay.data.database.NeteaseSongEntity
-import com.theveloper.pixelplay.data.database.SongArtistCrossRef
-import com.theveloper.pixelplay.data.database.SongEntity
-import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.toSong
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.network.netease.NeteaseApiService
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.repository.CloudLibraryProjector
 import com.theveloper.pixelplay.data.repository.OnlineLibraryIds
 import com.theveloper.pixelplay.data.stream.BulkSyncResult
 import com.theveloper.pixelplay.data.stream.CloudMusicUtils
@@ -38,7 +32,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
-import kotlin.math.absoluteValue
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,8 +40,7 @@ import javax.inject.Singleton
 class NeteaseRepository @Inject constructor(
     private val api: NeteaseApiService,
     private val dao: NeteaseDao,
-    private val musicDao: MusicDao,
-    private val favoritesDao: FavoritesDao,
+    private val cloudLibraryProjector: CloudLibraryProjector,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
     @ApplicationContext private val context: Context
 ) {
@@ -226,9 +218,7 @@ class NeteaseRepository @Inject constructor(
             deleteAppPlaylistForNeteasePlaylist(playlist.id)
         }
         
-        val protectedIds = protectedUnifiedSongIds("NETEASE")
-        val removableIds = musicDao.getAllNeteaseSongIds().filterNot { it in protectedIds }
-        musicDao.deleteSongsAndRelatedData(removableIds)
+        cloudLibraryProjector.removeUnretainedNeteaseSongs()
         _isLoggedInFlow.value = false
     }
 
@@ -739,137 +729,8 @@ class NeteaseRepository @Inject constructor(
         }
     }
 
-    private suspend fun syncUnifiedLibrarySongsFromNetease() {
-        val neteaseSongs = dao.getAllNeteaseSongsList()
-        val existingUnifiedNeteaseIds = musicDao.getAllNeteaseSongIds()
-
-        if (neteaseSongs.isEmpty()) {
-            val protectedIds = protectedUnifiedSongIds("NETEASE")
-            musicDao.deleteSongsAndRelatedData(existingUnifiedNeteaseIds.filterNot { it in protectedIds })
-            return
-        }
-
-        val songs = ArrayList<SongEntity>(neteaseSongs.size)
-        val artists = LinkedHashMap<Long, ArtistEntity>()
-        val albums = LinkedHashMap<Long, AlbumEntity>()
-        val crossRefs = mutableListOf<SongArtistCrossRef>()
-
-        neteaseSongs.forEach { neteaseSong ->
-            val songId = toUnifiedSongId(neteaseSong.neteaseId)
-            val artistNames = parseArtistNames(neteaseSong.artist)
-            val primaryArtistName = artistNames.firstOrNull() ?: "Unknown Artist"
-            val primaryArtistId = toUnifiedArtistId(primaryArtistName)
-
-            artistNames.forEachIndexed { index, artistName ->
-                val artistId = toUnifiedArtistId(artistName)
-                artists.putIfAbsent(
-                    artistId,
-                    ArtistEntity(
-                        id = artistId,
-                        name = artistName,
-                        trackCount = 0,
-                        imageUrl = null
-                    )
-                )
-                crossRefs.add(
-                    SongArtistCrossRef(
-                        songId = songId,
-                        artistId = artistId,
-                        isPrimary = index == 0
-                    )
-                )
-            }
-
-            val albumId = toUnifiedAlbumId(neteaseSong.albumId, neteaseSong.album)
-            val albumName = neteaseSong.album.ifBlank { "Unknown Album" }
-            albums.putIfAbsent(
-                albumId,
-                AlbumEntity(
-                    id = albumId,
-                    title = albumName,
-                    artistName = primaryArtistName,
-                    artistId = primaryArtistId,
-                    songCount = 0,
-                    dateAdded = neteaseSong.dateAdded,
-                    year = 0,
-                    albumArtUriString = neteaseSong.albumArtUrl
-                )
-            )
-
-            songs.add(
-                SongEntity(
-                    id = songId,
-                    title = neteaseSong.title,
-                    artistName = neteaseSong.artist.ifBlank { primaryArtistName },
-                    artistId = primaryArtistId,
-                    albumArtist = null,
-                    albumName = albumName,
-                    albumId = albumId,
-                    contentUriString = "netease://${neteaseSong.neteaseId}",
-                    albumArtUriString = neteaseSong.albumArtUrl,
-                    duration = neteaseSong.duration,
-                    genre = NETEASE_GENRE,
-                    filePath = "",
-                    parentDirectoryPath = NETEASE_PARENT_DIRECTORY,
-                    isFavorite = false,
-                    lyrics = null,
-                    trackNumber = 0,
-                    year = 0,
-                    dateAdded = neteaseSong.dateAdded.takeIf { it > 0 } ?: System.currentTimeMillis(),
-                    mimeType = neteaseSong.mimeType,
-                    bitrate = neteaseSong.bitrate,
-                    sampleRate = null,
-                    sourceType = SourceType.NETEASE
-                )
-            )
-        }
-
-        val albumCounts = songs.groupingBy { it.albumId }.eachCount()
-        val finalAlbums = albums.values.map { album ->
-            album.copy(songCount = albumCounts[album.id] ?: 0)
-        }
-
-        val currentUnifiedSongIds = songs.map { it.id }.toSet()
-        val protectedIds = protectedUnifiedSongIds("NETEASE")
-        val deletedUnifiedSongIds = existingUnifiedNeteaseIds
-            .filter { it !in currentUnifiedSongIds && it !in protectedIds }
-
-        musicDao.incrementalSyncMusicData(
-            songs = songs,
-            albums = finalAlbums,
-            artists = artists.values.toList(),
-            crossRefs = crossRefs,
-            deletedSongIds = deletedUnifiedSongIds
-        )
-    }
-
-    private fun parseArtistNames(rawArtist: String): List<String> =
-        CloudMusicUtils.parseArtistNames(rawArtist)
-
-    private fun toUnifiedSongId(neteaseId: Long): Long {
-        return OnlineLibraryIds.neteaseSong(neteaseId)
-    }
-
-    private fun toUnifiedAlbumId(albumId: Long, albumName: String): Long {
-        val normalized = if (albumId > 0L) albumId.absoluteValue else albumName.lowercase().hashCode().toLong().absoluteValue
-        return OnlineLibraryIds.neteaseAlbum(normalized, albumName)
-    }
-
-    private fun toUnifiedArtistId(artistName: String): Long {
-        return OnlineLibraryIds.neteaseArtist(artistName)
-    }
-
-    /** Favorites and user-owned playlists outlive account synchronization. */
-    private suspend fun protectedUnifiedSongIds(platform: String): Set<Long> {
-        val favoriteIds = favoritesDao.getFavoriteSongIdsOnce().toSet()
-        val userPlaylistIds = playlistPreferencesRepository.getPlaylistsOnce()
-            .asSequence()
-            .filterNot { it.source.equals(platform, ignoreCase = true) }
-            .flatMap { it.songIds.asSequence() }
-            .mapNotNull { it.toLongOrNull() }
-            .toSet()
-        return favoriteIds + userPlaylistIds
-    }
+    private suspend fun syncUnifiedLibrarySongsFromNetease() =
+        cloudLibraryProjector.projectNetease()
 
     // ─── Delete ────────────────────────────────────────────────────────
 
@@ -895,7 +756,7 @@ class NeteaseRepository @Inject constructor(
             // Convert Netease song entities to unified song IDs (Long format, stored as String)
             // These must match the IDs generated in syncUnifiedLibrarySongsFromNetease
             val unifiedSongIds = neteaseEntities.map { entity ->
-                toUnifiedSongId(entity.neteaseId).toString()
+                OnlineLibraryIds.neteaseSong(entity.neteaseId).toString()
             }
 
             val appPlaylistId = getAppPlaylistIdForNetease(neteasePlaylistId)

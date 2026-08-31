@@ -53,6 +53,7 @@ class PublicAudioDownloadStore @Inject constructor(
         )
     }
 
+    @Suppress("Recycle") // Ownership is transferred; DownloadWorker closes the returned stream with use().
     suspend fun openOutputStream(pending: PendingPublicDownload): OutputStream =
         withContext(Dispatchers.IO) {
             resolver.openOutputStream(pending.uri, "w")

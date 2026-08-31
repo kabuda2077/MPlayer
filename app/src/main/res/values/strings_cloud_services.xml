@@ -18,29 +18,14 @@
     <string name="cloud_dashboard_action_sync">Sync</string>
     <string name="cloud_dashboard_playlists_empty_title">No playlists synced yet</string>
     <string name="cloud_dashboard_playlists_empty_hint">Tap sync to fetch your playlists</string>
-    <string name="cloud_dashboard_quick_actions">Quick actions</string>
-    <string name="cloud_dashboard_action_sync_library">Sync library</string>
-    <string name="cloud_dashboard_action_disconnect">Disconnect</string>
     <string name="cloud_dashboard_song_count">%1$d songs</string>
 
     <!-- Cloud sync status -->
-    <string name="cloud_sync_status_syncing">Syncing</string>
-    <string name="cloud_sync_status_syncing_library">Syncing library…</string>
-    <string name="cloud_sync_status_fetching_playlists">Fetching playlists…</string>
-    <string name="cloud_sync_status_syncing_playlist_format">Syncing playlist: %1$s</string>
-    <string name="cloud_sync_status_updating_local">Updating local library…</string>
-    <string name="cloud_sync_status_sync_complete">Sync complete</string>
-    <string name="cloud_sync_status_fetching_albums">Fetching album list…</string>
-    <string name="cloud_sync_status_fetching_songs_from_format">Fetching songs from %1$s…</string>
-    <string name="cloud_sync_status_saving_songs_format">Saving %1$d songs to database…</string>
-    <string name="cloud_sync_status_no_songs_found">No library songs found</string>
-    <string name="cloud_sync_status_library_sync_complete">Library sync complete</string>
     <string name="cloud_sync_status_syncing_ellipsis">Syncing…</string>
     <string name="cloud_sync_error_with_message_format">Error: %1$s</string>
 
     <!-- Cloud content descriptions -->
     <string name="cloud_cd_sync">Sync</string>
-    <string name="cloud_cd_sync_all">Sync all</string>
     <string name="cloud_cd_logout">Log out</string>
     <string name="cloud_cd_sync_all_playlists">Sync all playlists</string>
     <string name="cloud_cd_user_avatar">User avatar</string>
@@ -52,18 +37,6 @@
     <string name="offline_screen_message">Please check your internet connection and try again to access this content.</string>
 
     <!-- Cloud Authentication & Login Shared Strings -->
-    <string name="auth_connect_action">Connect</string>
-    <string name="auth_connecting_msg">Connecting…</string>
-    <string name="auth_details_subtitle">Enter your server URL and account credentials.</string>
-    <string name="auth_details_title">Connection details</string>
-    <string name="auth_hide_pwd_action">Hide password</string>
-    <string name="auth_password_label">Password</string>
-    <string name="auth_password_placeholder">Enter password</string>
-    <string name="auth_prefill_http_action">Prefill http://</string>
-    <string name="auth_server_url_label">Server URL</string>
-    <string name="auth_show_pwd_action">Show password</string>
-    <string name="auth_username_label">Username</string>
-    <string name="auth_username_placeholder">admin</string>
     <string name="auth_welcome_toast">Welcome, %1$s!</string>
 
 
@@ -75,7 +48,6 @@
     <string name="auth_exit_action">Exit</string>
     <string name="auth_no_cookies_error">No cookies found. Log in first.</string>
     <string name="auth_page_slow_msg">Page is taking too long to load. Use refresh or try another network.</string>
-    <string name="auth_plus_label">+</string>
     <string name="auth_saving_msg">Saving…</string>
     <string name="auth_stay_action">Stay</string>
     <string name="auth_timeout_toast">Page load timed out. You can retry without losing your progress.</string>

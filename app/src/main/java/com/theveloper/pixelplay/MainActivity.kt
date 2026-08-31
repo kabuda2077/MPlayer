@@ -15,7 +15,6 @@ import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import android.os.Bundle
-import android.os.Trace
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -27,6 +26,7 @@ import androidx.activity.viewModels
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.annotation.CallSuper
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -528,7 +528,6 @@ class MainActivity : ComponentActivity() {
     @androidx.annotation.OptIn(UnstableApi::class)
     @Composable
     private fun MainAppContent(playerViewModel: PlayerViewModel, mainViewModel: MainViewModel) {
-        Trace.beginSection("MainActivity.MainAppContent")
         val navController = rememberNavController()
         val isSyncing by mainViewModel.isSyncing.collectAsStateWithLifecycle()
         val isLibraryEmpty by mainViewModel.isLibraryEmpty.collectAsStateWithLifecycle()
@@ -611,13 +610,11 @@ class MainActivity : ComponentActivity() {
                 LoadingOverlay(syncProgress)
             }
         }
-        Trace.endSection() // End MainActivity.MainAppContent
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
     @Composable
     private fun MainUI(playerViewModel: PlayerViewModel, navController: NavHostController) {
-        Trace.beginSection("MainActivity.MainUI")
 
         val commonNavItems = remember {
             persistentListOf(
@@ -640,7 +637,6 @@ class MainActivity : ComponentActivity() {
                 Screen.RecentlyPlayed.route,
                 Screen.AlbumDetail.route,
                 Screen.ArtistDetail.route,
-                Screen.DJSpace.route,
                 Screen.NavBarCrRad.route,
                 Screen.About.route,
                 Screen.Stats.route,
@@ -653,7 +649,6 @@ class MainActivity : ComponentActivity() {
                 Screen.PaletteStyle.route,
                 Screen.RecentlyPlayed.route,
                 Screen.DeviceCapabilities.route,
-                Screen.EasterEgg.route,
                 Screen.AudioSourcePlugins.route,
                 Screen.Downloads.route,
                 Screen.WordDelimiterConfig.route
@@ -1096,7 +1091,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        Trace.endSection()
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -1189,6 +1183,7 @@ private class BlurEffectCache {
     private var lastRadiusPx: Float = Float.NaN
     private var cached: androidx.compose.ui.graphics.RenderEffect? = null
 
+    @RequiresApi(Build.VERSION_CODES.S)
     fun get(radiusPx: Float): androidx.compose.ui.graphics.RenderEffect? {
         if (radiusPx <= 0f) {
             lastRadiusPx = 0f

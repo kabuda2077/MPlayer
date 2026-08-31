@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Navigation -->
-    <string name="nav_error_genre_id_missing">错误：流派 ID 缺失</string>
 
     <!-- SetupScreen -->
     <string name="setup_lets_go">开始吧！</string>
@@ -75,17 +74,15 @@
     <string name="setup_all_set_body">您已准备好享受音乐了。</string>
 
     <!-- SearchScreen -->
-    <string name="search_placeholder">搜索…</string>
+    <string name="search_placeholder">搜索歌曲、歌手或专辑</string>
+    <string name="search_popular_title">热门搜索</string>
     <string name="search_cd_search_icon">搜索</string>
     <string name="search_cd_clear_search_query">清除搜索</string>
-    <string name="search_recent_searches">最近搜索</string>
-    <string name="search_action_clear_all">清除全部</string>
     <string name="search_cd_no_results">无结果</string>
     <string name="search_no_results_for_query">没有找到“%1$s”的结果</string>
     <string name="search_nothing_found">未找到任何内容</string>
     <string name="search_try_different_or_filters">尝试不同的搜索词或检查您的过滤条件。</string>
     <string name="search_no_results_found">未找到结果。</string>
-    <string name="search_online_songs">在线歌曲</string>
     <string name="search_online_error">在线搜索失败。</string>
     <string name="search_online_action_play_next">下一首播放</string>
     <string name="search_online_action_add_to_queue">加入队列</string>
@@ -184,7 +181,6 @@
     <string name="playlist_creation_adjust_cover_hint">使用双指缩放和拖动手势找到完美的构图</string>
     <string name="playlist_creation_mode_manual">手动</string>
     <string name="playlist_creation_mode_smart">智能</string>
-    <string name="playlist_creation_generate_with_ai">使用 AI 生成</string>
     <string name="playlist_creation_smart_rule">智能规则</string>
     <string name="playlist_creation_tab_default">默认</string>
     <string name="playlist_creation_tab_image">图片</string>
@@ -208,21 +204,4 @@
     <string name="playlist_creation_rule_new_gems_title">新发现</string>
     <string name="playlist_creation_rule_new_gems_sub">最近添加但播放次数较少的曲目。</string>
 
-    <!-- MashupScreen -->
-    <string name="mashup_title">DJ 空间</string>
-    <string name="mashup_loading">正在加载…</string>
-    <string name="mashup_deck_n">打碟机 %1$d</string>
-    <string name="mashup_load_song_cd">加载歌曲</string>
-    <string name="mashup_no_song_loaded">未加载歌曲</string>
-    <string name="mashup_artist_placeholder">…</string>
-    <string name="mashup_stem_separation_unavailable">音轨分离 (Stem separation) 功能暂不可用。</string>
-    <string name="mashup_volume">音量</string>
-    <string name="mashup_speed">速度</string>
-    <string name="mashup_crossfader">交叉推子</string>
-    <string name="mashup_deck_1">打碟机 1</string>
-    <string name="mashup_deck_2">打碟机 2</string>
-    <string name="mashup_select_song_title">选择一首歌曲</string>
-    <string name="mashup_cd_play_pause">播放/暂停</string>
-    <string name="mashup_cd_song_cover">歌曲封面</string>
-    <string name="mashup_speed_multiplier">x%1$.2f</string>
 </resources>

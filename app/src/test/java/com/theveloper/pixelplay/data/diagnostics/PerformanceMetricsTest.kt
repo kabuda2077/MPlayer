@@ -128,11 +128,11 @@ class PerformanceMetricsTest {
 
     @Test
     fun controllers_areDeduplicatedByPackage() {
-        PerformanceMetrics.recordControllerConnected("com.google.android.projection.gearhead", true, 100)
-        PerformanceMetrics.recordControllerConnected("com.google.android.projection.gearhead", true, 200)
+        PerformanceMetrics.recordControllerConnected("external.controller", 100)
+        PerformanceMetrics.recordControllerConnected("external.controller", 200)
 
         val controllers = PerformanceMetrics.snapshot().controllers
         assertThat(controllers).hasSize(1)
-        assertThat(controllers.first().isAndroidAuto).isTrue()
+        assertThat(controllers.first().packageName).isEqualTo("external.controller")
     }
 }

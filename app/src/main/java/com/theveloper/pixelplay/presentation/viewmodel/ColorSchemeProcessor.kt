@@ -3,7 +3,6 @@ package com.theveloper.pixelplay.presentation.viewmodel
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.os.Trace
 import android.util.LruCache
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
@@ -77,31 +76,23 @@ class ColorSchemeProcessor @Inject constructor(
         colorAccuracyLevel: Int = AlbumArtColorAccuracy.DEFAULT,
         forceRefresh: Boolean = false
     ): ColorSchemePair? {
-        Trace.beginSection("ColorSchemeProcessor.getOrGenerate")
-        try {
-            val resolvedAccuracyLevel = AlbumArtColorAccuracy.clamp(colorAccuracyLevel)
-            val cacheKey = buildCacheKey(albumArtUri, paletteStyle, resolvedAccuracyLevel)
-            if (!forceRefresh) {
-                loadCachedColorScheme(
-                    albumArtUri = albumArtUri,
-                    paletteStyle = paletteStyle,
-                    colorAccuracyLevel = resolvedAccuracyLevel
-                )?.let { schemePair ->
-                    Trace.endSection()
-                    return schemePair
-                }
-            }
-
-            // 3. Generate new color scheme
-            return generateAndCacheColorScheme(
+        val resolvedAccuracyLevel = AlbumArtColorAccuracy.clamp(colorAccuracyLevel)
+        if (!forceRefresh) {
+            loadCachedColorScheme(
                 albumArtUri = albumArtUri,
                 paletteStyle = paletteStyle,
-                colorAccuracyLevel = resolvedAccuracyLevel,
-                forceRefresh = forceRefresh
-            )
-        } finally {
-            Trace.endSection()
+                colorAccuracyLevel = resolvedAccuracyLevel
+            )?.let { schemePair ->
+                return schemePair
+            }
         }
+
+        return generateAndCacheColorScheme(
+            albumArtUri = albumArtUri,
+            paletteStyle = paletteStyle,
+            colorAccuracyLevel = resolvedAccuracyLevel,
+            forceRefresh = forceRefresh
+        )
     }
 
     suspend fun getPreviewColorScheme(
@@ -133,7 +124,6 @@ class ColorSchemeProcessor @Inject constructor(
         persistToDatabase: Boolean = true,
         forceRefresh: Boolean = false
     ): ColorSchemePair? {
-        Trace.beginSection("ColorSchemeProcessor.generate")
         try {
             val cacheKey = buildCacheKey(albumArtUri, paletteStyle, colorAccuracyLevel)
             // Load bitmap on IO dispatcher
@@ -176,8 +166,6 @@ class ColorSchemeProcessor @Inject constructor(
             return schemePair
         } catch (e: Exception) {
             return null
-        } finally {
-            Trace.endSection()
         }
     }
 

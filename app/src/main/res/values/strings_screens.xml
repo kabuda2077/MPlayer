@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Navigation -->
-    <string name="nav_error_genre_id_missing">Error: Genre ID missing</string>
 
     <!-- SetupScreen -->
     <string name="setup_lets_go">Let\'s Go!</string>
@@ -75,17 +74,15 @@
     <string name="setup_all_set_body">You\'re ready to enjoy your music.</string>
 
     <!-- SearchScreen -->
-    <string name="search_placeholder">Search…</string>
+    <string name="search_placeholder">Search songs, artists, or albums</string>
+    <string name="search_popular_title">Popular searches</string>
     <string name="search_cd_search_icon">Search</string>
     <string name="search_cd_clear_search_query">Clear search</string>
-    <string name="search_recent_searches">Recent searches</string>
-    <string name="search_action_clear_all">Clear all</string>
     <string name="search_cd_no_results">No results</string>
     <string name="search_no_results_for_query">No results for \"%1$s\"</string>
     <string name="search_nothing_found">Nothing found</string>
     <string name="search_try_different_or_filters">Try a different search term or check your filters.</string>
     <string name="search_no_results_found">No results found.</string>
-    <string name="search_online_songs">Online songs</string>
     <string name="search_online_error">Online search failed.</string>
     <string name="search_online_action_play_next">Play next</string>
     <string name="search_online_action_add_to_queue">Add to queue</string>
@@ -184,7 +181,6 @@
     <string name="playlist_creation_adjust_cover_hint">Use pinch and drag gestures to find the perfect framing</string>
     <string name="playlist_creation_mode_manual">Manual</string>
     <string name="playlist_creation_mode_smart">Smart</string>
-    <string name="playlist_creation_generate_with_ai">Generate with AI</string>
     <string name="playlist_creation_smart_rule">Smart Rule</string>
     <string name="playlist_creation_tab_default">Default</string>
     <string name="playlist_creation_tab_image">Image</string>
@@ -208,21 +204,4 @@
     <string name="playlist_creation_rule_new_gems_title">New Gems</string>
     <string name="playlist_creation_rule_new_gems_sub">Recently added tracks with low play counts.</string>
 
-    <!-- MashupScreen -->
-    <string name="mashup_title">DJ Space</string>
-    <string name="mashup_loading">Loading…</string>
-    <string name="mashup_deck_n">Deck %1$d</string>
-    <string name="mashup_load_song_cd">Load song</string>
-    <string name="mashup_no_song_loaded">No song loaded</string>
-    <string name="mashup_artist_placeholder">…</string>
-    <string name="mashup_stem_separation_unavailable">Stem separation is not available yet.</string>
-    <string name="mashup_volume">Volume</string>
-    <string name="mashup_speed">Speed</string>
-    <string name="mashup_crossfader">Crossfader</string>
-    <string name="mashup_deck_1">Deck 1</string>
-    <string name="mashup_deck_2">Deck 2</string>
-    <string name="mashup_select_song_title">Select a song</string>
-    <string name="mashup_cd_play_pause">Play/Pause</string>
-    <string name="mashup_cd_song_cover">Song cover</string>
-    <string name="mashup_speed_multiplier">x%1$.2f</string>
 </resources>

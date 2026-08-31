@@ -92,7 +92,6 @@ import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardV
 import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
 import com.theveloper.pixelplay.presentation.components.DailyMixSection
 import com.theveloper.pixelplay.presentation.components.HomeGradientTopBar
-import com.theveloper.pixelplay.presentation.components.HomeOptionsBottomSheet
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSection
 import com.theveloper.pixelplay.presentation.components.RecentlyPlayedSectionMinSongsToShow
@@ -242,7 +241,6 @@ fun HomeScreen(
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
-    var showOptionsBottomSheet by remember { mutableStateOf(false) }
     var showChangelogBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
     var showStreamingProviderSheet by remember { mutableStateOf(false) }
@@ -496,25 +494,6 @@ fun HomeScreen(
                 )
         ) {
 
-        }
-    }
-    if (showOptionsBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showOptionsBottomSheet = false },
-            sheetState = sheetState
-        ) {
-            HomeOptionsBottomSheet(
-                onNavigateToMashup = {
-                    scope.launch {
-                        sheetState.hide()
-                    }.invokeOnCompletion {
-                        if (!sheetState.isVisible) {
-                            showOptionsBottomSheet = false
-                            navController.navigateSafely(Screen.DJSpace.route)
-                        }
-                    }
-                }
-            )
         }
     }
     if (showChangelogBottomSheet) {

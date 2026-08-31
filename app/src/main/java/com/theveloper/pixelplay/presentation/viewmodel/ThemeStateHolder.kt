@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.net.Uri
 import android.content.ComponentCallbacks2
-import android.os.Trace
 import androidx.compose.ui.graphics.Color
 import com.theveloper.pixelplay.data.preferences.AlbumArtColorAccuracy
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
@@ -94,7 +93,6 @@ class ThemeStateHolder @Inject constructor(
     }
 
     suspend fun extractAndGenerateColorScheme(albumArtUriAsUri: Uri?, currentSongUriString: String?, isPreload: Boolean = false) {
-        Trace.beginSection("ThemeStateHolder.extractAndGenerateColorScheme")
         try {
             if (albumArtUriAsUri == null) {
                 if (!isPreload && currentSongUriString == null) {
@@ -121,8 +119,6 @@ class ThemeStateHolder @Inject constructor(
                 _currentAlbumArtColorSchemePair.value = null
                 _currentAlbumArtUri.value = null
             }
-        } finally {
-            Trace.endSection()
         }
     }
 

@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -95,6 +96,7 @@ fun EditTransitionScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val displayedSettings = if (uiState.useGlobalDefaults) {
         uiState.globalSettings
@@ -115,7 +117,7 @@ fun EditTransitionScreen(
             } else {
                 R.string.transition_snackbar_saved
             }
-            snackbarHostState.showSnackbar(message = context.getString(messageRes))
+            snackbarHostState.showSnackbar(message = resources.getString(messageRes))
         }
     }
 

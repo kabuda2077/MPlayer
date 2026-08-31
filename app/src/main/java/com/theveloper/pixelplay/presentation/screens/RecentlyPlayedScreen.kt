@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 
-import android.os.Trace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,7 +104,6 @@ fun RecentlyPlayedScreen(
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
     navController: NavController
 ) {
-    Trace.beginSection("RecentlyPlayedScreen.Composition")
 
     val context = LocalContext.current
     val queueRecentlyPlayed = stringResource(R.string.recently_played_queue_name)
@@ -365,7 +363,6 @@ fun RecentlyPlayedScreen(
         }
     }
 
-    Trace.endSection()
 }
 
 @Composable

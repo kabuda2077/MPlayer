@@ -67,6 +67,7 @@ android {
         targetSdk = 37
         versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toInt() ?: 1
         versionName = (project.findProperty("APP_VERSION_NAME") as? String) ?: "1.0.0"
+        resourceConfigurations += listOf("en", "zh-rCN")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -203,10 +204,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.animation)
-    implementation(libs.androidx.palette.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.material)
@@ -233,20 +232,17 @@ dependencies {
     implementation(libs.androidx.paging.common)
 
     // Media & Files
+    implementation(libs.androidx.documentfile)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.datasource.okhttp)
-    implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer.ffmpeg)
     implementation(libs.androidx.media3.exoplayer.midi)
-    implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media)
     implementation(libs.coil.compose)
     implementation(libs.taglib)
     implementation(libs.jaudiotagger)
     implementation(libs.vorbisjava.core)
-    implementation(libs.wavy.slider)
-    implementation(libs.androidx.graphics.shapes)
 
     // Networking & Serialization
     implementation(libs.retrofit)
@@ -267,7 +263,6 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.smooth.corner.rect.android.compose)
     implementation(libs.reorderables)
-    implementation(libs.codeview)
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)

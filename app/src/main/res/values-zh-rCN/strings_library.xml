@@ -2,7 +2,6 @@
 <resources>
     <!-- Library Screen -->
     <string name="library_screen_title">音乐库</string>
-    <string name="online_library_screen_title">在线音乐</string>
     <string name="local_library_screen_title">资料库</string>
     <string name="library_tabs_sheet_title">媒体库选项卡</string>
     <string name="library_tabs_sheet_subtitle">直接跳转到任意选项卡或对它们进行重新排序。</string>
@@ -46,7 +45,6 @@
     <string name="library_storage_internal">内部存储</string>
     <string name="library_storage_sd_card">SD 卡</string>
     <string name="library_storage_sd_card_unavailable">SD 卡目前不可用。</string>
-    <string name="library_sort_section_cloud">云端</string>
     <string name="library_cloud_sources_heading">云端</string>
     <string name="library_cloud_only_label">仅云端</string>
 
@@ -85,13 +83,9 @@
     <string name="library_sync_in_progress">正在同步媒体库…</string>
     <string name="library_sync_complete">同步完成</string>
     <string name="library_sync_pending">等待中…</string>
-    <string name="library_syncing">正在同步媒体库…</string>
     <string name="library_sync_cache">正在清理专辑封面缓存…</string>
     <string name="library_sync_cloud">正在同步云端数据源…</string>
     <string name="library_sync_lyrics">正在扫描歌词…</string>
-    <string name="library_sync_online_music">正在同步在线音乐…</string>
-    <string name="library_sync_local_music">正在扫描本地音乐…</string>
-    <string name="library_sync_local_lyrics">正在扫描本地歌词…</string>
 
     <!-- Library Empty State -->
     <string name="library_empty_songs_all_title">暂无歌曲</string>
@@ -144,8 +138,6 @@
     <string name="song_info_cd_add_to_playlist">添加到播放列表</string>
     <string name="song_info_action_delete">删除</string>
     <string name="song_info_action_delete_all">全部删除</string>
-    <string name="song_info_transferring_percent">正在传输 %1$d%%</string>
-    <string name="song_info_transfer_in_progress">传输进行中</string>
     <string name="song_info_set_sound_as_short">设为</string>
     <string name="song_info_set_sound_as_long">设为声音</string>
     <string name="song_info_cd_set_sound_as">选择如何将此歌曲用作系统声音</string>
@@ -166,7 +158,6 @@
     <string name="song_info_tone_alarm_label">闹钟音</string>
     <string name="song_info_ringtone_permission_prompt">启用“修改系统设置”，然后返回 PixelPlayer 自动完成。</string>
     <string name="song_info_ringtone_permission_missing">未启用“修改系统设置”。</string>
-    <string name="song_info_ringtone_success">已将“%1$s”设为您的铃声</string>
     <string name="song_info_ringtone_local_only">只有本地歌曲才能设为铃声。</string>
     <string name="song_info_ringtone_missing_file">无法将此音频文件准备为铃声。</string>
     <string name="song_info_ringtone_failed">无法设置铃声：%1$s</string>
@@ -188,9 +179,6 @@
     <string name="multi_selection_albums_selected">已选择</string>
     <string name="multi_selection_albums_selected_limit">限制：每次选择最多 %1$d 张专辑。</string>
     <string name="multi_selection_albums_queue_hint">加入队列及播放将遵循您的选择顺序。</string>
-    <string name="multi_selection_genres_count_upper">%1$d 个流派</string>
-    <string name="multi_selection_genres_selected">已选择</string>
-    <string name="multi_selection_genres_queue_hint">对这些流派中的所有歌曲进行批量操作。</string>
 
     <!-- Sort Option Display Names -->
     <string name="sort_display_default_order">默认顺序</string>
@@ -436,7 +424,6 @@
     <string name="player_view_model_no_songs_to_shuffle">没有可供随机播放的歌曲。</string>
     <string name="player_view_model_queue_name_selected_albums">选定的专辑</string>
     <string name="player_view_model_no_playable_songs_in_albums">在选定的专辑中未找到可播放的歌曲</string>
-    <string name="player_view_model_no_playable_songs_in_genres">在选定的流派中未找到可播放的歌曲</string>
     <string name="player_view_model_only_first_n_albums_queued">仅前 %1$d 张专辑已加入队列</string>
     <string name="player_view_model_albums_queued_format">已将 %1$d 张专辑加入队列（共 %2$d 首歌曲）</string>
     <string name="player_view_model_could_not_queue_albums">无法将选定的专辑加入队列</string>
@@ -462,15 +449,8 @@
     </plurals>
 
     <!-- PlaylistViewModel -->
-    <string name="playlist_view_model_none_to_share">没有可分享的播放列表</string>
-    <string name="playlist_view_model_share_chooser_title">分享播放列表</string>
-    <string name="playlist_view_model_share_failed">分享失败：%1$s</string>
     <string name="playlist_view_model_ai_gemini_key_required">请在设置中配置您的 Gemini API 密钥。</string>
     <string name="playlist_view_model_restored_toast">播放列表已恢复</string>
-    <plurals name="playlist_view_model_sharing_message">
-        <item quantity="one">正在分享 %d 个播放列表</item>
-        <item quantity="other">正在分享 %d 个播放列表</item>
-    </plurals>
 
     <!-- AlbumDetailViewModel -->
     <string name="album_detail_invalid_id">无效的专辑 ID</string>

@@ -116,6 +116,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -169,6 +170,7 @@ fun SetupScreen(
     onSetupComplete: () -> Unit
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val uiState by setupViewModel.uiState.collectAsStateWithLifecycle()
     val currentPath by setupViewModel.currentPath.collectAsStateWithLifecycle()
@@ -263,7 +265,7 @@ fun SetupScreen(
                 setupViewModel.checkPermissions(context)
                 pagerState.scrollToPage(blockedPageIndex)
                 previousPageIndex = blockedPageIndex
-                Toast.makeText(context, context.getString(R.string.setup_toast_grant_permission_first), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.setup_toast_grant_permission_first), Toast.LENGTH_SHORT).show()
                 return@LaunchedEffect
             }
         }
@@ -291,7 +293,7 @@ fun SetupScreen(
                         navigateToPage(pagerState.currentPage + 1)
                     } else {
                         setupViewModel.checkPermissions(context)
-                        Toast.makeText(context, context.getString(R.string.setup_toast_grant_permission_first), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.setup_toast_grant_permission_first), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onFinishClicked = {
@@ -300,7 +302,7 @@ fun SetupScreen(
                         onSetupComplete()
                     } else {
                         setupViewModel.checkPermissions(context)
-                        Toast.makeText(context, context.getString(R.string.setup_toast_grant_all_permissions), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.setup_toast_grant_all_permissions), Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -471,6 +473,7 @@ fun DirectorySelectionPage(
 ) {
     var showDirectoryPicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val hasMediaPermission = uiState.mediaPermissionGranted
     val canOpenDirectoryPicker = hasMediaPermission
@@ -491,7 +494,7 @@ fun DirectorySelectionPage(
                 showDirectoryPicker = true
                 onOpenExplorer()
             } else {
-                Toast.makeText(context, context.getString(R.string.setup_toast_grant_storage_first), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.setup_toast_grant_storage_first), Toast.LENGTH_SHORT).show()
             }
         },
         icons = persistentListOf(
@@ -1450,6 +1453,7 @@ fun BatteryOptimizationPage(
     onSkip: () -> Unit
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val powerManager = remember { context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager }
     
@@ -1499,7 +1503,7 @@ fun BatteryOptimizationPage(
                         val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                         context.startActivity(fallbackIntent)
                     } catch (e2: Exception) {
-                        Toast.makeText(context, context.getString(R.string.settings_toast_battery_settings_unavailable), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.settings_toast_battery_settings_unavailable), Toast.LENGTH_SHORT).show()
                     }
                 }
             }

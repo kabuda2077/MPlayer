@@ -63,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -91,6 +92,7 @@ fun DelimiterConfigScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var newDelimiter by remember { mutableStateOf("") }
@@ -211,7 +213,7 @@ fun DelimiterConfigScreen(
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.delimiter_toast_at_least_one),
+                                                resources.getString(R.string.delimiter_toast_at_least_one),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
@@ -266,13 +268,13 @@ fun DelimiterConfigScreen(
                                                 keyboardController?.hide()
                                                 Toast.makeText(
                                                     context,
-                                                    context.getString(R.string.delimiter_toast_added),
+                                                    resources.getString(R.string.delimiter_toast_added),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             } else {
                                                 Toast.makeText(
                                                     context,
-                                                    context.getString(R.string.delimiter_toast_invalid),
+                                                    resources.getString(R.string.delimiter_toast_invalid),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             }
@@ -298,13 +300,13 @@ fun DelimiterConfigScreen(
                                             keyboardController?.hide()
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.delimiter_toast_added),
+                                                resources.getString(R.string.delimiter_toast_added),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.delimiter_toast_invalid),
+                                                resources.getString(R.string.delimiter_toast_invalid),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
@@ -416,7 +418,7 @@ fun DelimiterConfigScreen(
                     Button(
                         onClick = {
                             viewModel.resetDelimitersToDefault()
-                            Toast.makeText(context, context.getString(R.string.delimiter_toast_reset), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, resources.getString(R.string.delimiter_toast_reset), Toast.LENGTH_SHORT).show()
                             showResetDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(

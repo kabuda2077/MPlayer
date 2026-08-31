@@ -39,7 +39,8 @@ data class UnifiedSearchState(
     val libraryLoading: Boolean = false,
     val onlineLoading: Boolean = false,
     val libraryError: String? = null,
-    val onlineError: String? = null
+    val onlineError: String? = null,
+    val popularSearchTerms: ImmutableList<String> = persistentListOf()
 )
 
 @Singleton
@@ -49,7 +50,20 @@ class SearchStateHolder @Inject constructor(
 ) {
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
+        const val POPULAR_SEARCH_CACHE_MS = 15 * 60 * 1000L
+
+        val POPULAR_SEARCH_FALLBACKS = mapOf(
+            OnlineSearchPlatform.NETEASE to listOf("晴天", "后来", "周杰伦", "如愿", "陈奕迅", "起风了"),
+            OnlineSearchPlatform.QQ to listOf("晴天", "小幸运", "林俊杰", "演员", "邓紫棋", "一路生花"),
+            OnlineSearchPlatform.KUGOU to listOf("奢香夫人", "起风了", "凤凰传奇", "后来", "周深", "红日"),
+            OnlineSearchPlatform.KUWO to listOf("海阔天空", "后来", "陈奕迅", "晴天", "孙燕姿", "红豆")
+        )
     }
+
+    private data class PopularSearchCacheEntry(
+        val terms: ImmutableList<String>,
+        val fetchedAt: Long
+    )
 
     private data class SearchRequest(
         val query: String,
@@ -90,10 +104,14 @@ class SearchStateHolder @Inject constructor(
 
     private var scope: CoroutineScope? = null
     private var searchJob: Job? = null
+    private var popularSearchJob: Job? = null
+    private val popularSearchCache = mutableMapOf<OnlineSearchPlatform, PopularSearchCacheEntry>()
+    private var popularSearchTerms: ImmutableList<String> = persistentListOf()
 
     fun initialize(scope: CoroutineScope) {
         this.scope = scope
         observeSearchRequests()
+        loadPopularSearchTerms(_onlineSearchPlatform.value)
     }
 
     @OptIn(FlowPreview::class)
@@ -185,7 +203,31 @@ class SearchStateHolder @Inject constructor(
     fun updateOnlineSearchPlatform(platform: OnlineSearchPlatform, query: String) {
         if (_onlineSearchPlatform.value == platform) return
         _onlineSearchPlatform.value = platform
+        loadPopularSearchTerms(platform)
         performSearch(query)
+    }
+
+    private fun loadPopularSearchTerms(platform: OnlineSearchPlatform) {
+        popularSearchJob?.cancel()
+        val fallback = POPULAR_SEARCH_FALLBACKS.getValue(platform).toImmutableList()
+        val now = System.currentTimeMillis()
+        val cached = popularSearchCache[platform]
+        popularSearchTerms = cached
+            ?.takeIf { now - it.fetchedAt < POPULAR_SEARCH_CACHE_MS }
+            ?.terms
+            ?: fallback
+        publishUnifiedState(_unifiedState.value.query)
+
+        if (cached != null && now - cached.fetchedAt < POPULAR_SEARCH_CACHE_MS) return
+        popularSearchJob = scope?.launch {
+            onlineSearchRepository.loadPopularSearchTerms(platform).onSuccess { terms ->
+                if (_onlineSearchPlatform.value != platform || terms.isEmpty()) return@onSuccess
+                val immutableTerms = terms.toImmutableList()
+                popularSearchCache[platform] = PopularSearchCacheEntry(immutableTerms, System.currentTimeMillis())
+                popularSearchTerms = immutableTerms
+                publishUnifiedState(_unifiedState.value.query)
+            }
+        }
     }
 
     fun performSearch(query: String) {
@@ -194,6 +236,18 @@ class SearchStateHolder @Inject constructor(
 
         if (normalizedQuery.isBlank()) {
             clearResults()
+        } else {
+            // Mark the new request as pending before the debounce window starts.
+            // Otherwise Compose briefly interprets the empty result list as a
+            // completed search and flashes the "no results" state.
+            _onlineSearchResults.value = persistentListOf()
+            _onlineSearchLoading.value = true
+            _onlineSearchError.value = null
+            if (normalizedQuery != lastLibraryQuery) {
+                _librarySearchResults.value = persistentListOf()
+                _librarySearchError.value = null
+            }
+            publishUnifiedState(normalizedQuery)
         }
 
         searchRequests.tryEmit(
@@ -231,12 +285,14 @@ class SearchStateHolder @Inject constructor(
             libraryLoading = _librarySearchLoading.value,
             onlineLoading = _onlineSearchLoading.value,
             libraryError = _librarySearchError.value,
-            onlineError = _onlineSearchError.value
+            onlineError = _onlineSearchError.value,
+            popularSearchTerms = popularSearchTerms
         )
     }
 
     fun onCleared() {
         searchJob?.cancel()
+        popularSearchJob?.cancel()
         scope = null
     }
 }

@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.data.service.player
 
 import android.content.Context

@@ -69,7 +69,6 @@ class LibraryStateHolder @Inject constructor(
 
     // Filter Options
     private val _selectedStorageFilter = MutableStateFlow(com.theveloper.pixelplay.data.model.StorageFilter.ALL)
-    private val _routeStorageFilter = MutableStateFlow<com.theveloper.pixelplay.data.model.StorageFilter?>(null)
     private val _currentStorageFilter = MutableStateFlow(com.theveloper.pixelplay.data.model.StorageFilter.ALL)
     val currentStorageFilter = _currentStorageFilter.asStateFlow()
 
@@ -81,10 +80,9 @@ class LibraryStateHolder @Inject constructor(
     private val effectiveStorageFilter: kotlinx.coroutines.flow.Flow<com.theveloper.pixelplay.data.model.StorageFilter> =
         kotlinx.coroutines.flow.combine(
             _selectedStorageFilter,
-            _routeStorageFilter,
             userPreferencesRepository.hideLocalMediaFlow
-        ) { filter, routeFilter, hideLocal ->
-            routeFilter ?: if (hideLocal) com.theveloper.pixelplay.data.model.StorageFilter.ONLINE else filter
+        ) { filter, hideLocal ->
+            if (hideLocal) com.theveloper.pixelplay.data.model.StorageFilter.ONLINE else filter
         }
             .distinctUntilChanged()
 
@@ -535,10 +533,6 @@ class LibraryStateHolder @Inject constructor(
         scope?.launch {
             userPreferencesRepository.saveLastStorageFilter(filter)
         }
-    }
-
-    fun setRouteStorageFilter(filter: com.theveloper.pixelplay.data.model.StorageFilter?) {
-        _routeStorageFilter.value = filter
     }
 
     @Suppress("DEPRECATION")

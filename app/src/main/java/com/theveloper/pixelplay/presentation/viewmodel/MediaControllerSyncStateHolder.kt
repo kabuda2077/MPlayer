@@ -1,8 +1,9 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
-import android.os.Trace
 import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -508,8 +509,7 @@ class MediaControllerSyncStateHolder @Inject constructor(
      *  - [setupMetadataListeners]: tracks, metadata, shuffle and repeat mode
      */
     fun setupMediaControllerListeners(playerCtrl: MediaController?) {
-        Trace.beginSection("PlayerViewModel.setupMediaControllerListeners")
-        if (playerCtrl == null) return Trace.endSection()
+        if (playerCtrl == null) return
         applyInitialControllerState(playerCtrl)
         clearMediaControllerPlaybackListeners(playerCtrl)
         setupVolumeListeners(playerCtrl)
@@ -517,7 +517,6 @@ class MediaControllerSyncStateHolder @Inject constructor(
         setupTransitionListeners(playerCtrl)
         setupMetadataListeners(playerCtrl)
         observeCloudStreamPlaybackInfo(playerCtrl)
-        Trace.endSection()
     }
 
     /** Registers [listener] on [playerCtrl] and tracks it for later removal. */

@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.foundation.layout.Arrangement

@@ -10,9 +10,6 @@ import com.theveloper.pixelplay.data.model.TransientOnlineSong
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -30,15 +27,9 @@ class OnlineRecommendationRepositoryImpl @Inject constructor(
 
     private data class CachedPage(val page: RecommendationPage, val storedAt: Long)
 
-    private val _platform = MutableStateFlow(OnlineBrowsePlatform.NETEASE)
-    override val platform: StateFlow<OnlineBrowsePlatform> = _platform.asStateFlow()
     private val providers: List<OnlineRecommendationProvider> = listOf(neteaseProvider, qqMusicProvider)
     private val cache = ConcurrentHashMap<OnlineBrowsePlatform, CachedPage>()
     private val refreshMutexes = OnlineBrowsePlatform.entries.associateWith { Mutex() }
-
-    override suspend fun setPlatform(platform: OnlineBrowsePlatform) {
-        _platform.value = platform
-    }
 
     override suspend fun refresh(
         platform: OnlineBrowsePlatform,

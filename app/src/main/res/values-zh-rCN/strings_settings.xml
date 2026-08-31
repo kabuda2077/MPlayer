@@ -25,10 +25,6 @@
     <string name="settings_category_about_subtitle">应用信息、版本和鸣谢</string>
 
     <!-- Common toggles / labels used in ThemeSelectorItem maps -->
-    <string name="settings_label_on">开</string>
-    <string name="settings_label_off">关</string>
-    <string name="settings_label_enabled">已启用</string>
-    <string name="settings_label_disabled">已禁用</string>
     <string name="settings_cd_open">打开</string>
     <string name="settings_cd_select_all">全选</string>
     <string name="settings_cd_clear_selection">清除选择</string>
@@ -52,7 +48,6 @@
     <string name="settings_online_audio_cache_cleared">已清空在线歌曲缓存</string>
     <string name="settings_download_manager_title">下载管理</string>
     <string name="settings_download_manager_subtitle">已下载 %1$d 首，占用 %2$s。</string>
-    <string name="settings_action_open_downloads">打开下载管理</string>
     <string name="settings_sync_scanning_section">同步与扫描</string>
     <string name="settings_refresh_library_title">刷新媒体库</string>
     <string name="settings_refresh_library_subtitle">扫描整个媒体库以查找新增和修改的文件。</string>
@@ -69,9 +64,6 @@
     <string name="settings_auto_scan_lrc_title">自动扫描 .lrc 文件</string>
     <string name="settings_auto_scan_lrc_subtitle">在同步媒体库时，自动扫描并分配同一文件夹中的 .lrc 文件。</string>
     <string name="settings_lyrics_management_section">歌词管理</string>
-    <string name="settings_lyrics_remote_first">远程优先</string>
-    <string name="settings_lyrics_enable_ttml_title">启用 TTML 歌词</string>
-    <string name="settings_lyrics_enable_ttml_subtitle">网易云歌曲优先尝试 AMLL TTML，再回退到官方歌词接口。</string>
     <string name="settings_lyrics_enable_online_title">在线歌词</string>
     <string name="settings_lyrics_enable_online_subtitle">在线歌曲自动获取歌词，并允许手动在线搜索歌词。</string>
     <string name="settings_lyrics_show_romanization_title">显示罗马音</string>
@@ -223,12 +215,10 @@
     <string name="settings_compact_mode_subtitle">仅显示图标并降低导航栏高度。</string>
     <string name="settings_navbar_corner_title">导航栏圆角半径</string>
     <string name="settings_navbar_corner_subtitle">调整导航栏的圆角半径。</string>
-    <string name="settings_lyrics_screen_section">歌词界面</string>
     <string name="settings_app_navigation_section">应用导航</string>
     <string name="settings_default_tab_title">默认选项卡</string>
     <string name="settings_default_tab_subtitle">选择默认启动时的选项卡。</string>
     <string name="settings_default_tab_home">首页</string>
-    <string name="settings_default_tab_search">搜索</string>
     <string name="settings_default_tab_library">媒体库</string>
     <string name="settings_library_navigation_title">媒体库导航</string>
     <string name="settings_library_navigation_subtitle">选择在媒体库选项卡之间移动的方式。</string>
@@ -605,15 +595,12 @@
     <string name="accounts_linked_services">已关联服务</string>
     <string name="accounts_stat_active">活跃</string>
     <string name="accounts_stat_available">可用</string>
-    <string name="accounts_status_soon">敬请期待</string>
     <string name="accounts_status_connected">已连接</string>
-    <string name="accounts_action_coming_soon">敬请期待</string>
     <string name="accounts_action_open_service">打开服务</string>
     <string name="accounts_logging_out_status">正在登出…</string>
     <string name="accounts_no_linked_title">尚未关联任何账户</string>
     <string name="accounts_no_linked_subtitle">连接一个提供商即可在此界面对其进行管理。</string>
     <string name="accounts_connect_service">连接 %1$s</string>
-    <string name="accounts_service_coming_soon">%1$s（敬请期待）</string>
     <string name="accounts_unable_open_screen">目前无法打开此屏幕。</string>
 
     <!-- About category -->

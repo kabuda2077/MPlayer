@@ -53,7 +53,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import android.os.Trace // Import Trace
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -104,7 +103,6 @@ fun DailyMixScreen(
     playerViewModel: PlayerViewModel,
     navController: NavController,
 ) {
-    Trace.beginSection("DailyMixScreen.Composition")
     val dailyMixTitle = stringResource(R.string.daily_mix_title)
     val playItLabel = stringResource(R.string.daily_mix_action_play_it)
     val shuffleLabel = stringResource(R.string.common_shuffle)
@@ -424,7 +422,6 @@ fun DailyMixScreen(
 
         }
     }
-    Trace.endSection()
 }
 
 
@@ -436,7 +433,6 @@ private fun ExpressiveDailyMixHeader(
     onShowMenu: () -> Unit
 ) {
     val dailyMixHeaderTitle = stringResource(R.string.daily_mix_title)
-    Trace.beginSection("ExpressiveDailyMixHeader.Composition")
     val albumArts = remember(songs) { songs.map { it.albumArtUriString }.distinct().take(3) }
     val totalDuration = remember(songs) { songs.sumOf { it.duration } }
 
@@ -591,7 +587,6 @@ private fun ExpressiveDailyMixHeader(
             }
         }
     }
-    Trace.endSection()
 }
 
 @OptIn(ExperimentalTextApi::class)

@@ -28,7 +28,6 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
-import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
@@ -84,7 +83,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import com.theveloper.pixelplay.data.preferences.ThemePreference
-import com.theveloper.pixelplay.data.service.auto.AutoMediaBrowseTree
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemePair
 import com.theveloper.pixelplay.utils.ArtworkTransportSanitizer
 import com.theveloper.pixelplay.utils.MediaItemBuilder
@@ -101,6 +99,12 @@ import coil.size.Precision
 
 import javax.inject.Inject
 import androidx.core.net.toUri
+
+internal fun canUsePrivilegedSessionCommands(
+    controllerPackage: String,
+    appPackage: String,
+    isTrusted: Boolean
+): Boolean = controllerPackage == appPackage || isTrusted
 
 // Acciones personalizadas para compatibilidad con el widget existente
 
@@ -162,8 +166,6 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var colorSchemeProcessor: ColorSchemeProcessor
     @Inject
-    lateinit var autoMediaBrowseTree: AutoMediaBrowseTree
-    @Inject
     lateinit var replayGainManager: com.theveloper.pixelplay.data.media.ReplayGainManager
     @Inject
     lateinit var listeningStatsTracker: ListeningStatsTracker
@@ -190,7 +192,6 @@ class MusicService : MediaLibraryService() {
 
     private var favoriteSongIds = emptySet<String>()
     private var mediaSession: MediaLibrarySession? = null
-    private val controllerLastBrowsedParent = mutableMapOf<String, String>()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var keepPlayingInBackground = true
     private var isManualShuffleEnabled = false
@@ -246,12 +247,6 @@ class MusicService : MediaLibraryService() {
         private val pendingMediaButtonForegroundStarts = AtomicInteger(0)
 
         private const val APP_PACKAGE_PREFIX = "com.theveloper.pixelplay"
-        private const val AUTO_CONTEXT_RECENT = "recent"
-        private const val AUTO_CONTEXT_FAVORITES = "favorites"
-        private const val AUTO_CONTEXT_ALL_SONGS = "all_songs"
-        private const val AUTO_CONTEXT_ALBUM = "album"
-        private const val AUTO_CONTEXT_ARTIST = "artist"
-        private const val AUTO_CONTEXT_PLAYLIST = "playlist"
         private const val DEFAULT_STREAM_BUFFER_SIZE = 8 * 1024
         private const val WIDGET_ART_FAILURE_RETRY_MS = 30_000L
         private const val HEADSET_RECONNECT_RESUME_WINDOW_MS = 15_000L
@@ -524,7 +519,14 @@ class MusicService : MediaLibraryService() {
 
                 val sessionCommandsBuilder = SessionCommands.Builder()
                     .addSessionCommands(defaultResult.availableSessionCommands.commands)
-                customCommands.forEach { sessionCommandsBuilder.add(it) }
+                if (canUsePrivilegedSessionCommands(
+                        controllerPackage,
+                        packageName,
+                        controller.isTrusted
+                    )
+                ) {
+                    customCommands.forEach { sessionCommandsBuilder.add(it) }
+                }
                 grantArtworkUriPermissions(
                     controller.packageName,
                     listOfNotNull(session.player.currentMediaItem)
@@ -534,13 +536,8 @@ class MusicService : MediaLibraryService() {
                 // correlate lag with their artwork and queue requests.
                 // so the performance report can correlate lag with their artwork/queue demands.
                 if (!controllerPackage.startsWith(APP_PACKAGE_PREFIX)) {
-                    val isAuto = controllerPackage.startsWith("com.google.android.projection.gearhead") ||
-                        controllerPackage.startsWith("com.google.android.gms.car") ||
-                        controllerPackage.startsWith("com.google.android.apps.automotive") ||
-                        controller.connectionHints.keySet().any { it.contains("automotive", ignoreCase = true) }
                     PerformanceMetrics.recordControllerConnected(
                         packageName = controllerPackage,
-                        isAndroidAuto = isAuto,
                         elapsedRealtimeMs = SystemClock.elapsedRealtime()
                     )
                 }
@@ -551,17 +548,22 @@ class MusicService : MediaLibraryService() {
                 )
             }
 
-            override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
-                clearLastBrowsedParent(controller)
-                super.onDisconnected(session, controller)
-            }
-
             override fun onCustomCommand(
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo,
                 customCommand: SessionCommand,
                 args: Bundle
             ): ListenableFuture<SessionResult> {
+                if (!canUsePrivilegedSessionCommands(
+                        controller.packageName,
+                        packageName,
+                        controller.isTrusted
+                    )
+                ) {
+                    return Futures.immediateFuture(
+                        SessionResult(SessionError.ERROR_PERMISSION_DENIED)
+                    )
+                }
                 Timber.tag("MusicService")
                     .d("onCustomCommand received: ${customCommand.customAction}")
                 when (customCommand.customAction) {
@@ -652,120 +654,12 @@ class MusicService : MediaLibraryService() {
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
 
-            // --- Android Auto: Media Library Browsing ---
-
-            override fun onGetLibraryRoot(
-                session: MediaLibrarySession,
-                browser: MediaSession.ControllerInfo,
-                params: MediaLibraryService.LibraryParams?
-            ): ListenableFuture<LibraryResult<MediaItem>> {
-                val rootItem = MediaItem.Builder()
-                    .setMediaId(AutoMediaBrowseTree.ROOT_ID)
-                    .setMediaMetadata(
-                        androidx.media3.common.MediaMetadata.Builder()
-                            .setTitle("PixelPlay")
-                            .setIsBrowsable(true)
-                            .setIsPlayable(false)
-                            .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
-                            .build()
-                    )
-                    .build()
-                return Futures.immediateFuture(LibraryResult.ofItem(rootItem, params))
-            }
-
-            override fun onGetChildren(
-                session: MediaLibrarySession,
-                browser: MediaSession.ControllerInfo,
-                parentId: String,
-                page: Int,
-                pageSize: Int,
-                params: MediaLibraryService.LibraryParams?
-            ): ListenableFuture<LibraryResult<com.google.common.collect.ImmutableList<MediaItem>>> {
-                return serviceScope.future {
-                    try {
-                        rememberLastBrowsedParent(browser, parentId)
-                        val children = autoMediaBrowseTree.getChildren(parentId, page, pageSize)
-                        grantArtworkUriPermissions(browser.packageName, children)
-                        LibraryResult.ofItemList(children, params)
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "onGetChildren failed for parentId=$parentId")
-                        LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
-                    }
-                }
-            }
-
-            override fun onGetItem(
-                session: MediaLibrarySession,
-                browser: MediaSession.ControllerInfo,
-                mediaId: String
-            ): ListenableFuture<LibraryResult<MediaItem>> {
-                return serviceScope.future {
-                    try {
-                        val item = autoMediaBrowseTree.getItem(mediaId)
-                        if (item != null) {
-                            grantArtworkUriPermissions(browser.packageName, listOf(item))
-                            LibraryResult.ofItem(item, null)
-                        } else {
-                            LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "onGetItem failed for mediaId=$mediaId")
-                        LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
-                    }
-                }
-            }
-
-            override fun onSearch(
-                session: MediaLibrarySession,
-                browser: MediaSession.ControllerInfo,
-                query: String,
-                params: MediaLibraryService.LibraryParams?
-            ): ListenableFuture<LibraryResult<Void>> {
-                // Signal that search is supported; results delivered via onGetSearchResult
-                return Futures.immediateFuture(LibraryResult.ofVoid())
-            }
-
-            override fun onGetSearchResult(
-                session: MediaLibrarySession,
-                browser: MediaSession.ControllerInfo,
-                query: String,
-                page: Int,
-                pageSize: Int,
-                params: MediaLibraryService.LibraryParams?
-            ): ListenableFuture<LibraryResult<com.google.common.collect.ImmutableList<MediaItem>>> {
-                return serviceScope.future {
-                    try {
-                        val allResults = autoMediaBrowseTree.search(query)
-                        val effectivePage = page.coerceAtLeast(0)
-                        val effectivePageSize = if (pageSize > 0) pageSize else Int.MAX_VALUE
-                        val offset = (effectivePage.toLong() * effectivePageSize.toLong())
-                            .coerceAtMost(Int.MAX_VALUE.toLong())
-                            .toInt()
-                        val pagedResults = allResults
-                            .drop(offset)
-                            .take(effectivePageSize)
-
-                        grantArtworkUriPermissions(browser.packageName, pagedResults)
-                        LibraryResult.ofItemList(pagedResults, params)
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "onGetSearchResult failed for query=$query")
-                        LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
-                    }
-                }
-            }
-
             override fun onAddMediaItems(
                 mediaSession: MediaSession,
                 controller: MediaSession.ControllerInfo,
                 mediaItems: MutableList<MediaItem>
             ): ListenableFuture<MutableList<MediaItem>> {
                 return serviceScope.future {
-                    if (mediaItems.size == 1 && !controller.packageName.startsWith(APP_PACKAGE_PREFIX)) {
-                        resolveContextQueueForRequestedItem(mediaItems.first(), controller)?.let { queue ->
-                            grantArtworkUriPermissions(controller.packageName, queue.mediaItems)
-                            return@future queue.mediaItems
-                        }
-                    }
                     resolveMediaItemsByIds(mediaItems).also { resolvedItems ->
                         grantArtworkUriPermissions(
                             controller.packageName,
@@ -784,22 +678,6 @@ class MusicService : MediaLibraryService() {
             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                 return serviceScope.future {
                     val requestedIndex = startIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0))
-                    val requestedItem = mediaItems.getOrNull(requestedIndex)
-
-                    val contextQueue = if (requestedItem != null && !controller.packageName.startsWith(APP_PACKAGE_PREFIX)) {
-                        resolveContextQueueForRequestedItem(requestedItem, controller)
-                    } else {
-                        null
-                    }
-                    if (contextQueue != null) {
-                        grantArtworkUriPermissions(controller.packageName, contextQueue.mediaItems)
-                        return@future MediaSession.MediaItemsWithStartPosition(
-                            contextQueue.mediaItems,
-                            contextQueue.startIndex,
-                            startPositionMs
-                        )
-                    }
-
                     val resolvedItems = resolveMediaItemsByIds(mediaItems)
                     grantArtworkUriPermissions(
                         controller.packageName,
@@ -2463,75 +2341,6 @@ class MusicService : MediaLibraryService() {
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }
 
-    private data class ContextQueueResolution(
-        val mediaItems: MutableList<MediaItem>,
-        val startIndex: Int
-    )
-
-    private fun controllerKey(controller: MediaSession.ControllerInfo): String {
-        return "${controller.packageName}:${controller.uid}"
-    }
-
-    private fun rememberLastBrowsedParent(controller: MediaSession.ControllerInfo, parentId: String) {
-        synchronized(controllerLastBrowsedParent) {
-            controllerLastBrowsedParent[controllerKey(controller)] = parentId
-        }
-    }
-
-    private fun getLastBrowsedParent(controller: MediaSession.ControllerInfo): String? {
-        return synchronized(controllerLastBrowsedParent) {
-            controllerLastBrowsedParent[controllerKey(controller)]
-        }
-    }
-
-    private fun clearLastBrowsedParent(controller: MediaSession.ControllerInfo) {
-        synchronized(controllerLastBrowsedParent) {
-            controllerLastBrowsedParent.remove(controllerKey(controller))
-        }
-    }
-
-    private suspend fun resolveContextQueueForRequestedItem(
-        requestedItem: MediaItem,
-        controller: MediaSession.ControllerInfo
-    ): ContextQueueResolution? {
-        var contextType = requestedItem.mediaMetadata.extras
-            ?.getString(AutoMediaBrowseTree.CONTEXT_TYPE_EXTRA)
-        var contextId = requestedItem.mediaMetadata.extras
-            ?.getString(AutoMediaBrowseTree.CONTEXT_ID_EXTRA)
-
-        if (contextType.isNullOrBlank()) {
-            val parentId = requestedItem.mediaMetadata.extras
-                ?.getString(AutoMediaBrowseTree.CONTEXT_PARENT_ID_EXTRA)
-                ?: getLastBrowsedParent(controller)
-            val parentContext = parentId?.let { resolveAutoContextFromParentId(it) }
-            contextType = parentContext?.first
-            contextId = parentContext?.second
-        }
-
-        if (contextType.isNullOrBlank()) {
-            return null
-        }
-
-        val queueSongs = autoMediaBrowseTree.getSongsForContext(contextType, contextId)
-        if (queueSongs.isEmpty()) {
-            return null
-        }
-
-        val startIndex = queueSongs.indexOfFirst { it.id == requestedItem.mediaId }
-        if (startIndex < 0) {
-            return null
-        }
-
-        val queueMediaItems = queueSongs.map { song ->
-            MediaItemBuilder.buildForExternalController(this, song)
-        }.toMutableList()
-
-        return ContextQueueResolution(
-            mediaItems = queueMediaItems,
-            startIndex = startIndex
-        )
-    }
-
     private suspend fun resolveMediaItemsByIds(
         requestedItems: List<MediaItem>
     ): TrustedMediaItemsResolution {
@@ -2573,24 +2382,6 @@ class MusicService : MediaLibraryService() {
                     artworkUri
                 )
             }
-        }
-    }
-
-    private fun resolveAutoContextFromParentId(parentId: String): Pair<String, String?>? {
-        return when {
-            parentId == AutoMediaBrowseTree.RECENT_ID -> AUTO_CONTEXT_RECENT to null
-            parentId == AutoMediaBrowseTree.FAVORITES_ID -> AUTO_CONTEXT_FAVORITES to null
-            parentId == AutoMediaBrowseTree.SONGS_ID -> AUTO_CONTEXT_ALL_SONGS to null
-            parentId.startsWith(AutoMediaBrowseTree.ALBUM_PREFIX) -> {
-                AUTO_CONTEXT_ALBUM to parentId.removePrefix(AutoMediaBrowseTree.ALBUM_PREFIX)
-            }
-            parentId.startsWith(AutoMediaBrowseTree.ARTIST_PREFIX) -> {
-                AUTO_CONTEXT_ARTIST to parentId.removePrefix(AutoMediaBrowseTree.ARTIST_PREFIX)
-            }
-            parentId.startsWith(AutoMediaBrowseTree.PLAYLIST_PREFIX) -> {
-                AUTO_CONTEXT_PLAYLIST to parentId.removePrefix(AutoMediaBrowseTree.PLAYLIST_PREFIX)
-            }
-            else -> null
         }
     }
 

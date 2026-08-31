@@ -25,10 +25,6 @@
     <string name="settings_category_about_subtitle">App info, version, and credits</string>
 
     <!-- Common toggles / labels used in ThemeSelectorItem maps -->
-    <string name="settings_label_on">On</string>
-    <string name="settings_label_off">Off</string>
-    <string name="settings_label_enabled">Enabled</string>
-    <string name="settings_label_disabled">Disabled</string>
     <string name="settings_cd_open">Open</string>
     <string name="settings_cd_select_all">Select all</string>
     <string name="settings_cd_clear_selection">Clear selection</string>
@@ -52,7 +48,6 @@
     <string name="settings_online_audio_cache_cleared">Online song cache cleared</string>
     <string name="settings_download_manager_title">Download Management</string>
     <string name="settings_download_manager_subtitle">%1$d songs downloaded, using %2$s.</string>
-    <string name="settings_action_open_downloads">Open Downloads</string>
     <string name="settings_sync_scanning_section">Sync and Scanning</string>
     <string name="settings_refresh_library_title">Refresh Library</string>
     <string name="settings_refresh_library_subtitle">Scan entire library for new and modified files.</string>
@@ -69,9 +64,6 @@
     <string name="settings_auto_scan_lrc_title">Auto-scan .lrc files</string>
     <string name="settings_auto_scan_lrc_subtitle">Automatically scan and assign .lrc files in the same folder during library sync.</string>
     <string name="settings_lyrics_management_section">Lyrics Management</string>
-    <string name="settings_lyrics_remote_first">Remote First</string>
-    <string name="settings_lyrics_enable_ttml_title">Enable TTML lyrics</string>
-    <string name="settings_lyrics_enable_ttml_subtitle">For NetEase songs, try AMLL TTML before the official lyrics API.</string>
     <string name="settings_lyrics_enable_online_title">Online lyrics</string>
     <string name="settings_lyrics_enable_online_subtitle">Automatically fetch online lyrics for cloud songs and allow manual online search.</string>
     <string name="settings_lyrics_show_romanization_title">Show romanization</string>
@@ -223,12 +215,10 @@
     <string name="settings_compact_mode_subtitle">Show only icons and reduce the navbar height.</string>
     <string name="settings_navbar_corner_title">NavBar Corner Radius</string>
     <string name="settings_navbar_corner_subtitle">Adjust the corner radius of the navigation bar.</string>
-    <string name="settings_lyrics_screen_section">Lyrics Screen</string>
     <string name="settings_app_navigation_section">App Navigation</string>
     <string name="settings_default_tab_title">Default Tab</string>
     <string name="settings_default_tab_subtitle">Choose the Default launch tab.</string>
     <string name="settings_default_tab_home">Home</string>
-    <string name="settings_default_tab_search">Search</string>
     <string name="settings_default_tab_library">Library</string>
     <string name="settings_library_navigation_title">Library Navigation</string>
     <string name="settings_library_navigation_subtitle">Choose how to move between Library tabs.</string>
@@ -605,15 +595,12 @@
     <string name="accounts_linked_services">Linked Services</string>
     <string name="accounts_stat_active">Active</string>
     <string name="accounts_stat_available">Available</string>
-    <string name="accounts_status_soon">Soon</string>
     <string name="accounts_status_connected">Connected</string>
-    <string name="accounts_action_coming_soon">Coming soon</string>
     <string name="accounts_action_open_service">Open Service</string>
     <string name="accounts_logging_out_status">Logging out…</string>
     <string name="accounts_no_linked_title">No linked accounts yet</string>
     <string name="accounts_no_linked_subtitle">Connect a provider to manage it from this screen.</string>
     <string name="accounts_connect_service">Connect %1$s</string>
-    <string name="accounts_service_coming_soon">%1$s (Coming soon)</string>
     <string name="accounts_unable_open_screen">Unable to open this screen right now.</string>
 
     <!-- About category -->

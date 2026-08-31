@@ -67,8 +67,7 @@ class SyncWorkerTest {
                     musicDao = dao,
                     userPreferencesRepository = preferences,
                     lyricsRepository = mockk(relaxed = true),
-                    neteaseDao = mockk(relaxed = true),
-                    qqMusicDao = mockk(relaxed = true),
+                    cloudLibraryProjector = mockk(relaxed = true),
                     downloadDao = mockk(relaxed = true)
                 )
             } else {

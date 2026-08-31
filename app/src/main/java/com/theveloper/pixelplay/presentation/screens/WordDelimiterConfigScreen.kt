@@ -64,6 +64,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +86,7 @@ fun WordDelimiterConfigScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var newDelimiter by remember { mutableStateOf("") }
@@ -275,9 +277,9 @@ fun WordDelimiterConfigScreen(
                                             if (success) {
                                                 newDelimiter = ""
                                                 keyboardController?.hide()
-                                                Toast.makeText(context, context.getString(R.string.word_delimiter_toast_added), Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, resources.getString(R.string.word_delimiter_toast_added), Toast.LENGTH_SHORT).show()
                                             } else {
-                                                Toast.makeText(context, context.getString(R.string.word_delimiter_toast_invalid), Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, resources.getString(R.string.word_delimiter_toast_invalid), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
@@ -299,9 +301,9 @@ fun WordDelimiterConfigScreen(
                                         if (success) {
                                             newDelimiter = ""
                                             keyboardController?.hide()
-                                            Toast.makeText(context, context.getString(R.string.word_delimiter_toast_added), Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, resources.getString(R.string.word_delimiter_toast_added), Toast.LENGTH_SHORT).show()
                                         } else {
-                                            Toast.makeText(context, context.getString(R.string.word_delimiter_toast_invalid), Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, resources.getString(R.string.word_delimiter_toast_invalid), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 },
@@ -411,7 +413,7 @@ fun WordDelimiterConfigScreen(
                     Button(
                         onClick = {
                             viewModel.resetWordDelimitersToDefault()
-                            Toast.makeText(context, context.getString(R.string.word_delimiter_toast_reset), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, resources.getString(R.string.word_delimiter_toast_reset), Toast.LENGTH_SHORT).show()
                             showResetDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(

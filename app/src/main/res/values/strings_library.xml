@@ -2,7 +2,6 @@
 <resources>
     <!-- Library Screen -->
     <string name="library_screen_title">Library</string>
-    <string name="online_library_screen_title">Online Music</string>
     <string name="local_library_screen_title">Library</string>
     <string name="library_tabs_sheet_title">Library tabs</string>
     <string name="library_tabs_sheet_subtitle">Jump directly to any tab or reorder them.</string>
@@ -46,7 +45,6 @@
     <string name="library_storage_internal">Internal</string>
     <string name="library_storage_sd_card">SD Card</string>
     <string name="library_storage_sd_card_unavailable">SD card is not available right now.</string>
-    <string name="library_sort_section_cloud">Cloud</string>
     <string name="library_cloud_sources_heading">Cloud</string>
     <string name="library_cloud_only_label">Cloud Only</string>
 
@@ -85,13 +83,9 @@
     <string name="library_sync_in_progress">Syncing library…</string>
     <string name="library_sync_complete">Sync complete</string>
     <string name="library_sync_pending">Waiting…</string>
-    <string name="library_syncing">Syncing library…</string>
     <string name="library_sync_cache">Cleaning album art cache…</string>
     <string name="library_sync_cloud">Syncing cloud sources…</string>
     <string name="library_sync_lyrics">Scanning lyrics…</string>
-    <string name="library_sync_online_music">Syncing online music…</string>
-    <string name="library_sync_local_music">Scanning local music…</string>
-    <string name="library_sync_local_lyrics">Scanning local lyrics…</string>
 
     <!-- Library Empty State -->
     <string name="library_empty_songs_all_title">No songs yet</string>
@@ -144,8 +138,6 @@
     <string name="song_info_cd_add_to_playlist">Add to playlist</string>
     <string name="song_info_action_delete">Delete</string>
     <string name="song_info_action_delete_all">Delete all</string>
-    <string name="song_info_transferring_percent">Transferring %1$d%%</string>
-    <string name="song_info_transfer_in_progress">Transfer in progress</string>
     <string name="song_info_set_sound_as_short">Set as</string>
     <string name="song_info_set_sound_as_long">Set as sound</string>
     <string name="song_info_cd_set_sound_as">Choose how to use this song as a system sound</string>
@@ -166,7 +158,6 @@
     <string name="song_info_tone_alarm_label">alarm sound</string>
     <string name="song_info_ringtone_permission_prompt">Enable Modify system settings, then return to PixelPlayer to finish automatically.</string>
     <string name="song_info_ringtone_permission_missing">Modify system settings was not enabled.</string>
-    <string name="song_info_ringtone_success">Set \"%1$s\" as your ringtone</string>
     <string name="song_info_ringtone_local_only">Only local songs can be used as ringtones.</string>
     <string name="song_info_ringtone_missing_file">Couldn\'t prepare this audio file for ringtone.</string>
     <string name="song_info_ringtone_failed">Couldn\'t set ringtone: %1$s</string>
@@ -188,9 +179,6 @@
     <string name="multi_selection_albums_selected">selected</string>
     <string name="multi_selection_albums_selected_limit">Limit: %1$d albums per selection.</string>
     <string name="multi_selection_albums_queue_hint">Queue + play respects your selection order.</string>
-    <string name="multi_selection_genres_count_upper">%1$d GENRES</string>
-    <string name="multi_selection_genres_selected">selected</string>
-    <string name="multi_selection_genres_queue_hint">Perform batch operations on all songs within these genres.</string>
 
     <!-- Sort Option Display Names -->
     <string name="sort_display_default_order">Default Order</string>
@@ -436,7 +424,6 @@
     <string name="player_view_model_no_songs_to_shuffle">No songs to shuffle.</string>
     <string name="player_view_model_queue_name_selected_albums">Selected Albums</string>
     <string name="player_view_model_no_playable_songs_in_albums">No playable songs found in selected albums</string>
-    <string name="player_view_model_no_playable_songs_in_genres">No playable songs found in selected genres</string>
     <string name="player_view_model_only_first_n_albums_queued">Only the first %1$d albums were queued</string>
     <string name="player_view_model_albums_queued_format">%1$d albums queued (%2$d songs)</string>
     <string name="player_view_model_could_not_queue_albums">Could not queue selected albums</string>
@@ -462,15 +449,8 @@
     </plurals>
 
     <!-- PlaylistViewModel -->
-    <string name="playlist_view_model_none_to_share">No playlists to share</string>
-    <string name="playlist_view_model_share_chooser_title">Share playlists</string>
-    <string name="playlist_view_model_share_failed">Share failed: %1$s</string>
     <string name="playlist_view_model_ai_gemini_key_required">Please configure your Gemini API key in Settings.</string>
     <string name="playlist_view_model_restored_toast">Playlist restored</string>
-    <plurals name="playlist_view_model_sharing_message">
-        <item quantity="one">Sharing %d playlist</item>
-        <item quantity="other">Sharing %d playlists</item>
-    </plurals>
 
     <!-- AlbumDetailViewModel -->
     <string name="album_detail_invalid_id">Invalid album ID</string>

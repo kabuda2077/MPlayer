@@ -52,7 +52,31 @@ class MediaItemIdentityTest {
         assertThat(restored?.contentUriString).isEqualTo("netease://42")
     }
 
-    private fun song(id: String, libraryId: Long?, contentUri: String) = Song(
+    @Test
+    fun transientOnlineArtworkIsPublishedToMediaSessionMetadata() {
+        val mediaItem = MediaItemBuilder.build(
+            PlaybackItem.fromTransient(
+                TransientOnlineSong.from(
+                    song(
+                        id = "qq_123",
+                        libraryId = null,
+                        contentUri = "qqmusic://123",
+                        albumArtUri = "https://y.qq.com/music/photo.jpg"
+                    )
+                )
+            )
+        )
+
+        assertThat(mediaItem.mediaMetadata.artworkUri?.toString())
+            .isEqualTo("https://y.qq.com/music/photo.jpg")
+    }
+
+    private fun song(
+        id: String,
+        libraryId: Long?,
+        contentUri: String,
+        albumArtUri: String? = null
+    ) = Song(
         id = id,
         libraryId = libraryId,
         title = "Track",
@@ -62,7 +86,7 @@ class MediaItemIdentityTest {
         albumId = -1L,
         path = "",
         contentUriString = contentUri,
-        albumArtUriString = null,
+        albumArtUriString = albumArtUri,
         duration = 180_000L,
         mimeType = "audio/mpeg",
         bitrate = 320_000,

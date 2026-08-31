@@ -549,83 +549,21 @@ class LyricsRepositoryImpl @Inject constructor(
         val ytlrc = nestedLyric("ytlrc")
         val yromalrc = nestedLyric("yromalrc")
 
-        val primaryLyrics = buildNeteaseLineLyrics(
-            lyric = lrc,
-            translatedLyric = tlyric,
-            romanizedLyric = romalrc
-        )
-
-        val wordLevelLyrics = buildNeteaseWordLevelLyrics(
+        buildNeteaseWordLevelLyrics(
             yrc = yrc,
             translatedLyric = ytlrc,
             romanizedLyric = yromalrc
-        )
+        )?.takeIf { it.isValid() }
+            ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
+            ?.let { return it.copy(areFromRemote = true) }
 
-        if (primaryLyrics != null && wordLevelLyrics == null) {
-            return primaryLyrics.copy(areFromRemote = true)
-        }
-        if (primaryLyrics == null && wordLevelLyrics != null) {
-            return wordLevelLyrics.copy(areFromRemote = true)
-        }
-        return mergeSameProviderLyricsPayloads(primaryLyrics, wordLevelLyrics)?.copy(areFromRemote = true)
-            ?: if (lrc.isNotBlank()) LyricsUtils.parseLyrics(lrc)
-                .takeIf { it.isValid() }
-                ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
-                ?.copy(areFromRemote = true) else null
-    }
-
-    private fun mergeSameProviderLyricsPayloads(
-        primaryLyrics: Lyrics?,
-        wordLevelLyrics: Lyrics?
-    ): Lyrics? {
-        val base = primaryLyrics ?: wordLevelLyrics ?: return null
-        val primarySynced = primaryLyrics?.synced.orEmpty()
-        val wordSynced = wordLevelLyrics?.synced.orEmpty()
-
-        if (primarySynced.isEmpty() && wordSynced.isEmpty()) {
-            return base.copy(areFromRemote = true)
-        }
-
-        val mergedSynced = when {
-            primarySynced.isEmpty() -> wordSynced
-            wordSynced.isEmpty() -> primarySynced
-            else -> mergeSameProviderLineAndWordLevel(primarySynced, wordSynced)
-        }
-
-        return base.copy(
-            synced = mergedSynced.ifEmpty { null },
-            plain = mergedSynced.takeIf { it.isNotEmpty() }?.let(LyricsUtils::rebuildPlainFromSynced) ?: base.plain,
-            areFromRemote = true
-        )
-    }
-
-    private fun mergeSameProviderLineAndWordLevel(
-        primaryLines: List<SyncedLine>,
-        wordLines: List<SyncedLine>
-    ): List<SyncedLine> {
-        val merged = mutableListOf<SyncedLine>()
-        var wordIndex = 0
-
-        for (primary in primaryLines) {
-            while (wordIndex < wordLines.size && wordLines[wordIndex].time < primary.time - 300) {
-                wordIndex++
-            }
-
-            val matched = wordLines.getOrNull(wordIndex)
-                ?.takeIf { kotlin.math.abs(it.time - primary.time) <= 300 }
-
-            merged += if (matched != null) {
-                primary.copy(
-                    words = matched.words ?: primary.words,
-                    translation = primary.translation ?: matched.translation,
-                    romanization = primary.romanization ?: matched.romanization
-                )
-            } else {
-                primary
-            }
-        }
-
-        return merged
+        return buildNeteaseLineLyrics(
+            lyric = lrc,
+            translatedLyric = tlyric,
+            romanizedLyric = romalrc
+        )?.takeIf { it.isValid() }
+            ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
+            ?.copy(areFromRemote = true)
     }
 
     private fun buildNeteaseLineLyrics(

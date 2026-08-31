@@ -86,42 +86,15 @@ class AiPreferencesRepository @Inject constructor(
         }
     }
 
-    // Convenience properties for legacy compatibility (e.g. PlayerViewModel)
+    // Aggregate player state still observes these provider keys directly.
     val geminiApiKey: Flow<String> = getApiKey(AiProvider.GEMINI)
-    val geminiModel: Flow<String> = getModel(AiProvider.GEMINI)
-    val geminiSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.GEMINI)
-
     val deepseekApiKey: Flow<String> = getApiKey(AiProvider.DEEPSEEK)
-    val deepseekModel: Flow<String> = getModel(AiProvider.DEEPSEEK)
-    val deepseekSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.DEEPSEEK)
-
     val groqApiKey: Flow<String> = getApiKey(AiProvider.GROQ)
-    val groqModel: Flow<String> = getModel(AiProvider.GROQ)
-    val groqSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.GROQ)
-
     val mistralApiKey: Flow<String> = getApiKey(AiProvider.MISTRAL)
-    val mistralModel: Flow<String> = getModel(AiProvider.MISTRAL)
-    val mistralSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.MISTRAL)
-
     val nvidiaApiKey: Flow<String> = getApiKey(AiProvider.NVIDIA)
-    val nvidiaModel: Flow<String> = getModel(AiProvider.NVIDIA)
-    val nvidiaSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.NVIDIA)
-
     val kimiApiKey: Flow<String> = getApiKey(AiProvider.KIMI)
-    val kimiModel: Flow<String> = getModel(AiProvider.KIMI)
-    val kimiSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.KIMI)
-
     val glmApiKey: Flow<String> = getApiKey(AiProvider.GLM)
-    val glmModel: Flow<String> = getModel(AiProvider.GLM)
-    val glmSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.GLM)
-
     val openaiApiKey: Flow<String> = getApiKey(AiProvider.OPENAI)
-    val openaiModel: Flow<String> = getModel(AiProvider.OPENAI)
-    val openaiSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.OPENAI)
-
-    val openrouterApiKey: Flow<String> = getApiKey(AiProvider.OPENROUTER)
-    val openrouterModel: Flow<String> = getModel(AiProvider.OPENROUTER)
-    val openrouterSystemPrompt: Flow<String> = getSystemPrompt(AiProvider.OPENROUTER)
 
     val aiProvider: Flow<String> =
         dataStore.data.map { preferences -> preferences[Keys.AI_PROVIDER] ?: "GEMINI" }

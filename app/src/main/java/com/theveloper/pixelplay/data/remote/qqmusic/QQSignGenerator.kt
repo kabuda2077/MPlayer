@@ -75,6 +75,7 @@ class QQSignGenerator(private val context: Context) {
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
+                        blockNetworkLoads = true
                         allowFileAccess = false
                         allowContentAccess = false
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
@@ -93,8 +94,15 @@ class QQSignGenerator(private val context: Context) {
                         }
                     }
                     addJavascriptInterface(JsBridge(), "AndroidBridge")
-                    // vm_new encryption relies on web crypto APIs; initialize on HTTPS origin.
-                    loadUrl("https://y.qq.com/")
+                    // Web Crypto needs a secure origin; a local empty document keeps the bridge
+                    // away from third-party page scripts and network navigation.
+                    loadDataWithBaseURL(
+                        "https://localhost/",
+                        "<html></html>",
+                        "text/html",
+                        "UTF-8",
+                        null
+                    )
                 }
                 created.set(instance)
             } finally {

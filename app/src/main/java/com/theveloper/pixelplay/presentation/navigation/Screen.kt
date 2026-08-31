@@ -31,7 +31,6 @@ sealed class Screen(val route: String) {
     object  DailyMixScreen : Screen("daily_mix")
     object RecentlyPlayed : Screen("recently_played")
     object Stats : Screen("stats")
-    object DJSpace : Screen("dj_space")
     // La ruta base es "album_detail". La ruta completa con el argumento se define en AppNavigation.
     object AlbumDetail : Screen("album_detail/{albumId}") {
         // Función de ayuda para construir la ruta de navegación con el ID del álbum.
@@ -48,8 +47,6 @@ sealed class Screen(val route: String) {
     }
 
     object About : Screen("about")
-    object EasterEgg : Screen("easter_egg")
-
     object ArtistSettings : Screen("artist_settings")
     object DelimiterConfig : Screen("delimiter_config")
     object WordDelimiterConfig : Screen("word_delimiter_config")

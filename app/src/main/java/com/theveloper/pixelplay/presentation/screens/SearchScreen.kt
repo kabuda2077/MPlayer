@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
@@ -6,12 +8,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -96,11 +102,16 @@ private data class SearchUiSlice(
     val onlineSearchError: String? = null,
     val librarySearchResults: ImmutableList<SearchResultItem> = persistentListOf(),
     val librarySearchLoading: Boolean = false,
-    val librarySearchError: String? = null
+    val librarySearchError: String? = null,
+    val popularSearchTerms: ImmutableList<String> = persistentListOf()
 )
 
 @androidx.annotation.OptIn(UnstableApi::class)
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class
+)
 @Composable
 fun SearchScreen(
     paddingValues: PaddingValues,
@@ -122,7 +133,8 @@ fun SearchScreen(
                     onlineSearchError = uiState.onlineSearchError,
                     librarySearchResults = uiState.librarySearchResults,
                     librarySearchLoading = uiState.librarySearchLoading,
-                    librarySearchError = uiState.librarySearchError
+                    librarySearchError = uiState.librarySearchError,
+                    popularSearchTerms = uiState.popularSearchTerms
                 )
             }
             .distinctUntilChanged()
@@ -135,6 +147,9 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
+        delay(180L)
+        searchInputFocusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     LaunchedEffect(playerViewModel, keyboardController) {
@@ -252,11 +267,17 @@ fun SearchScreen(
                     scrolledContainerColor = Color.Transparent
                 )
             )
-
+        },
+        afterSearchBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = LibraryHeaderHorizontalPadding),
+                    .padding(
+                        start = LibraryHeaderHorizontalPadding,
+                        top = 2.dp,
+                        end = LibraryHeaderHorizontalPadding,
+                        bottom = 8.dp
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 onlinePlatforms.forEachIndexed { index, platform ->
@@ -304,6 +325,19 @@ fun SearchScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
+            if (searchQuery.isBlank()) {
+                item(key = "search_start_content") {
+                    SearchStartContent(
+                        suggestions = searchUiState.popularSearchTerms,
+                        onSuggestionClick = { suggestion ->
+                            searchQuery = suggestion
+                            playerViewModel.updateSearchQuery(suggestion)
+                            searchInputFocusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
+                    )
+                }
+            }
             if (searchQuery.isNotBlank() && (
                     searchUiState.librarySearchResults.isNotEmpty() ||
                         searchUiState.librarySearchLoading ||
@@ -359,18 +393,20 @@ fun SearchScreen(
                     )
                 }
             }
-            item(key = "search_online_results") {
-                OnlineSearchResultsPane(
-                    results = onlineSearchResults,
-                    searchQuery = searchQuery,
-                    isLoading = searchUiState.onlineSearchLoading,
-                    errorMessage = searchUiState.onlineSearchError,
-                    playerViewModel = playerViewModel,
-                    currentPlayingSongId = stablePlayerState.currentSong?.id,
-                    isPlaying = stablePlayerState.isPlaying,
-                    onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
-                    embedded = true
-                )
+            if (searchQuery.isNotBlank()) {
+                item(key = "search_online_results") {
+                    OnlineSearchResultsPane(
+                        results = onlineSearchResults,
+                        searchQuery = searchQuery,
+                        isLoading = searchUiState.onlineSearchLoading,
+                        errorMessage = searchUiState.onlineSearchError,
+                        playerViewModel = playerViewModel,
+                        currentPlayingSongId = stablePlayerState.currentSong?.id,
+                        isPlaying = stablePlayerState.isPlaying,
+                        onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
+                        embedded = true
+                    )
+                }
             }
         }
     }
@@ -413,6 +449,53 @@ fun SearchScreen(
             playerViewModel = playerViewModel,
             playlistViewModel = playlistViewModel
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SearchStartContent(
+    suggestions: List<String>,
+    onSuggestionClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 22.dp, vertical = 24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.search_popular_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontFamily = GoogleSansRounded,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(18.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            suggestions.forEach { suggestion ->
+                Surface(
+                    onClick = { onSuggestionClick(suggestion) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = suggestion,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

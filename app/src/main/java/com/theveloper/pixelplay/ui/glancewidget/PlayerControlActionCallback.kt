@@ -2,7 +2,6 @@ package com.theveloper.pixelplay.ui.glancewidget
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.annotation.OptIn
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
@@ -42,24 +41,18 @@ class PlayerControlActionCallback : ActionCallback {
         }
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                try {
-                    context.startService(serviceIntent)
-                } catch (e: IllegalStateException) {
-                    Timber.tag(TAG).w(
-                        e,
-                        "startService denied in background for action %s; retrying as foreground service",
-                        action
-                    )
-                    serviceIntent.putExtra(MusicService.EXTRA_FORCE_FOREGROUND_ON_START, true)
-                    context.startForegroundService(serviceIntent)
-                }
-            } else {
+            try {
                 context.startService(serviceIntent)
+            } catch (e: IllegalStateException) {
+                Timber.tag(TAG).w(
+                    e,
+                    "startService denied in background for action %s; retrying as foreground service",
+                    action
+                )
+                serviceIntent.putExtra(MusicService.EXTRA_FORCE_FOREGROUND_ON_START, true)
+                context.startForegroundService(serviceIntent)
             }
             Timber.tag(TAG).d("Service intent sent for action: $action")
-        } catch (e: android.app.ForegroundServiceStartNotAllowedException) {
-            Timber.tag(TAG).w(e, "Cannot start foreground service from background for action $action")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error starting service for action $action: ${e.message}")
         }
