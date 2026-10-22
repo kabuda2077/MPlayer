@@ -294,8 +294,30 @@ fun OnlineCollectionScreen(
 
                                 Column(
                                     modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = when (state.platform) {
+                                            OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFF4A151B) else Color(0xFFFFEBEE)
+                                            OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF0F3E30) else Color(0xFFE8F8F3)
+                                        }
+                                    ) {
+                                        Text(
+                                            text = when (state.platform) {
+                                                OnlineBrowsePlatform.NETEASE -> "网易云音乐"
+                                                OnlineBrowsePlatform.QQ -> "QQ 音乐"
+                                            },
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = when (state.platform) {
+                                                OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFFFF5252) else Color(0xFFD32F2F)
+                                                OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF2DD8A5) else Color(0xFF00A86B)
+                                            }
+                                        )
+                                    }
+
                                     Text(
                                         text = state.title,
                                         fontFamily = GoogleSansRounded,
@@ -305,46 +327,19 @@ fun OnlineCollectionScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = when (state.platform) {
-                                                OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFF4A151B) else Color(0xFFFFEBEE)
-                                                OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF0F3E30) else Color(0xFFE8F8F3)
-                                            }
-                                        ) {
-                                            Text(
-                                                text = when (state.platform) {
-                                                    OnlineBrowsePlatform.NETEASE -> "网易云音乐"
-                                                    OnlineBrowsePlatform.QQ -> "QQ 音乐"
-                                                },
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = when (state.platform) {
-                                                    OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFFFF5252) else Color(0xFFD32F2F)
-                                                    OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF2DD8A5) else Color(0xFF00A86B)
-                                                }
-                                            )
-                                        }
-
-                                        val songCountText = if (state.songs.isNotEmpty()) {
-                                            formatSongCount(state.songs.size)
-                                        } else if (state.isLoading) {
-                                            "正在加载..."
-                                        } else {
-                                            ""
-                                        }
-                                        if (songCountText.isNotBlank()) {
-                                            Text(
-                                                text = songCountText,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                    val songCountText = if (state.songs.isNotEmpty()) {
+                                        formatSongCount(state.songs.size)
+                                    } else if (state.isLoading) {
+                                        "正在加载..."
+                                    } else {
+                                        ""
+                                    }
+                                    if (songCountText.isNotBlank()) {
+                                        Text(
+                                            text = songCountText,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
                             }
