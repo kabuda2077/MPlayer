@@ -10,9 +10,10 @@ sealed class Screen(val route: String) {
     object Library : Screen("library")
     object OnlineLibrary : Screen("online_library")
     object LocalLibrary : Screen("local_library")
-    object OnlineCollection : Screen("online_collection/{kind}/{platform}/{id}?title={title}") {
-        fun createRoute(kind: String, platform: String, id: String, title: String): String =
-            "online_collection/$kind/$platform/$id?title=${android.net.Uri.encode(title)}"
+    object OnlineCollection : Screen("online_collection/{kind}/{platform}/{id}?title={title}&coverUrl={coverUrl}") {
+        fun createRoute(kind: String, platform: String, id: String, title: String, coverUrl: String? = null): String =
+            "online_collection/$kind/$platform/$id?title=${android.net.Uri.encode(title)}" +
+                if (!coverUrl.isNullOrBlank()) "&coverUrl=${android.net.Uri.encode(coverUrl)}" else ""
     }
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")

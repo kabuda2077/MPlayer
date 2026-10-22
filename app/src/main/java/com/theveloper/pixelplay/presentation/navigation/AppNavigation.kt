@@ -263,7 +263,8 @@ fun AppNavigation(
                     navArgument("kind") { type = NavType.StringType },
                     navArgument("platform") { type = NavType.StringType },
                     navArgument("id") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType; defaultValue = "在线内容" }
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("coverUrl") { type = NavType.StringType; nullable = true; defaultValue = null }
                 )
             ) {
                 ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {

@@ -293,7 +293,13 @@ private fun RecommendationPageContent(
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 navController.navigateSafely(
-                                    Screen.OnlineCollection.createRoute("chart", page.platform.name, chart.remoteId, chart.title)
+                                    Screen.OnlineCollection.createRoute(
+                                        kind = "chart",
+                                        platform = page.platform.name,
+                                        id = chart.remoteId,
+                                        title = chart.title,
+                                        coverUrl = chart.previewArtworkUris.firstOrNull() ?: chart.artworkUri
+                                    )
                                 )
                             }
                         )
@@ -314,20 +320,25 @@ private fun navigateToRecommendationTile(
 ) {
     when (tile) {
         is PendingDailyTile -> Unit
-        is SectionTile -> navController.navigateSafely(
-            Screen.OnlineCollection.createRoute(
-                "section",
-                tile.page.platform.name,
-                tile.section.id,
-                tile.section.title
+        is SectionTile -> {
+            val cover = tile.section.items.filterIsInstance<RecommendationSongItem>().firstOrNull()?.artworkUri
+            navController.navigateSafely(
+                Screen.OnlineCollection.createRoute(
+                    kind = "section",
+                    platform = tile.page.platform.name,
+                    id = tile.section.id,
+                    title = tile.section.title,
+                    coverUrl = cover
+                )
             )
-        )
+        }
         is PlaylistTile -> navController.navigateSafely(
             Screen.OnlineCollection.createRoute(
-                "playlist",
-                tile.page.platform.name,
-                tile.playlist.remoteId,
-                tile.playlist.title
+                kind = "playlist",
+                platform = tile.page.platform.name,
+                id = tile.playlist.remoteId,
+                title = tile.playlist.title,
+                coverUrl = tile.playlist.artworkUri
             )
         )
     }
