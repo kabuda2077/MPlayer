@@ -602,8 +602,8 @@
     <string name="accounts_no_linked_subtitle">Connect a provider to manage it from this screen.</string>
     <string name="accounts_connect_service">Connect %1$s</string>
     <string name="accounts_available_services">Available Services</string>
-    <string name="accounts_netease_desc">Sync your favorite songs, created playlists and stream online.</string>
-    <string name="accounts_qqmusic_desc">Sync your favorite songs, created playlists and stream online.</string>
+    <string name="accounts_netease_desc">Sync favorite songs and playlists</string>
+    <string name="accounts_qqmusic_desc">Sync favorite songs and playlists</string>
     <string name="accounts_unable_open_screen">Unable to open this screen right now.</string>
 
     <!-- About category -->

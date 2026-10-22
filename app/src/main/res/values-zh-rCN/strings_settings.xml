@@ -602,8 +602,8 @@
     <string name="accounts_no_linked_subtitle">连接一个提供商即可在此界面对其进行管理。</string>
     <string name="accounts_connect_service">连接 %1$s</string>
     <string name="accounts_available_services">可关联服务</string>
-    <string name="accounts_netease_desc">同步个人红心歌曲、创建的歌单并支持在线播放。</string>
-    <string name="accounts_qqmusic_desc">同步个人喜爱歌曲、创建的歌单并支持在线播放。</string>
+    <string name="accounts_netease_desc">同步红心歌曲与自建歌单</string>
+    <string name="accounts_qqmusic_desc">同步喜爱歌曲与自建歌单</string>
     <string name="accounts_unable_open_screen">目前无法打开此屏幕。</string>
 
     <!-- About category -->
