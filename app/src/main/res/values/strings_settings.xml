@@ -416,8 +416,6 @@
     <string name="settings_experiments_section">Experiments</string>
     <string name="settings_experimental_title">Experimental</string>
     <string name="settings_experimental_subtitle">Player UI loading experiments and toggles.</string>
-    <string name="settings_test_setup_title">Test Setup Flow</string>
-    <string name="settings_test_setup_subtitle">Launch the onboarding setup screen for testing.</string>
     <string name="settings_maintenance_section">Maintenance</string>
     <string name="settings_force_daily_mix_title">Force Daily Mix Regeneration</string>
     <string name="settings_force_daily_mix_subtitle">Re-creates the daily mix playlist immediately.</string>
@@ -460,10 +458,11 @@
     <!-- Experimental settings -->
     <string name="settings_exp_screen_title">Experimental</string>
     <string name="settings_exp_player_ui_tweaks_section">PlayerUI loading tweaks</string>
-    <string name="settings_exp_animated_lyrics_title">Animated Lyrics (High-end devices)</string>
-    <string name="settings_exp_animated_lyrics_subtitle">Uses spring animations and visual effects for lyrics. May cause frame drops on low-end devices.</string>
-    <string name="settings_exp_lyrics_blur_title">Lyric Blur Effect</string>
-    <string name="settings_exp_lyrics_blur_subtitle">Applies a depth-of-field blur to inactive lyrics.</string>
+    <string name="settings_album_art_quality_subtitle">Control album artwork rendering quality and memory usage in player view.</string>
+    <string name="settings_exp_animated_lyrics_title">Animated Lyrics</string>
+    <string name="settings_exp_animated_lyrics_subtitle">Smooth spring animations and focus effects for lyrics.</string>
+    <string name="settings_exp_lyrics_blur_title">Lyrics Background Blur</string>
+    <string name="settings_exp_lyrics_blur_subtitle">Apply Gaussian blur effect on inactive lyrics lines.</string>
     <string name="settings_exp_lyrics_blur_strength_title">Blur Strength</string>
     <string name="settings_exp_lyrics_blur_strength_subtitle">Adjust the intensity of the blur effect.</string>
     <string name="settings_exp_lyrics_blur_strength_value">%1$.1fx</string>

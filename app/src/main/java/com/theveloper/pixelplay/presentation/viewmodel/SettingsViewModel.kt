@@ -1024,12 +1024,6 @@ class SettingsViewModel @Inject constructor(
         throw RuntimeException(context.getString(R.string.settings_dev_test_crash_message))
     }
 
-    fun resetSetupFlow() {
-        viewModelScope.launch {
-            userPreferencesRepository.setInitialSetupDone(false)
-        }
-    }
-
     // ===== Developer Options =====
 
     val albumArtQuality: StateFlow<AlbumArtQuality> = userPreferencesRepository.albumArtQualityFlow

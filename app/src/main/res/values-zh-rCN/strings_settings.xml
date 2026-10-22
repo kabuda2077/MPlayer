@@ -416,8 +416,6 @@
     <string name="settings_experiments_section">实验性功能</string>
     <string name="settings_experimental_title">实验性</string>
     <string name="settings_experimental_subtitle">播放器界面加载实验和开关。</string>
-    <string name="settings_test_setup_title">测试设置流程</string>
-    <string name="settings_test_setup_subtitle">启动新手引导设置界面进行测试。</string>
     <string name="settings_maintenance_section">维护</string>
     <string name="settings_force_daily_mix_title">强制重新生成 Daily Mix</string>
     <string name="settings_force_daily_mix_subtitle">立即重新创建每日推荐播放列表。</string>
@@ -460,10 +458,11 @@
     <!-- Experimental settings -->
     <string name="settings_exp_screen_title">实验性</string>
     <string name="settings_exp_player_ui_tweaks_section">播放器界面加载调整</string>
-    <string name="settings_exp_animated_lyrics_title">动画歌词（高端设备）</string>
-    <string name="settings_exp_animated_lyrics_subtitle">为歌词使用弹簧动画和视觉效果。在低端设备上可能导致掉帧。</string>
-    <string name="settings_exp_lyrics_blur_title">歌词模糊效果</string>
-    <string name="settings_exp_lyrics_blur_subtitle">对非活动歌词应用景深模糊。</string>
+    <string name="settings_album_art_quality_subtitle">控制播放界面专辑封面的渲染清晰度与内存占用。</string>
+    <string name="settings_exp_animated_lyrics_title">动态歌词</string>
+    <string name="settings_exp_animated_lyrics_subtitle">为歌词提供平滑的逐行弹簧动效与聚焦效果。</string>
+    <string name="settings_exp_lyrics_blur_title">歌词背景模糊</string>
+    <string name="settings_exp_lyrics_blur_subtitle">对非当前播放歌词行应用高斯模糊效果。</string>
     <string name="settings_exp_lyrics_blur_strength_title">模糊强度</string>
     <string name="settings_exp_lyrics_blur_strength_subtitle">调整模糊效果的强度。</string>
     <string name="settings_exp_lyrics_blur_strength_value">%1$.1fx</string>

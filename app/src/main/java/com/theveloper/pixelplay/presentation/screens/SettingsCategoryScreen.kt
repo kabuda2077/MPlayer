@@ -158,6 +158,7 @@ import com.theveloper.pixelplay.data.backup.model.BackupSection
 import com.theveloper.pixelplay.data.backup.model.BackupTransferProgressUpdate
 import com.theveloper.pixelplay.data.backup.model.ModuleRestoreDetail
 import com.theveloper.pixelplay.data.backup.model.RestorePlan
+import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
 import com.theveloper.pixelplay.data.preferences.AppLanguage
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.CollagePattern
@@ -557,6 +558,42 @@ fun SettingsCategoryScreen(
                                 addBottomSpace = false
                             ) {
                                 SwitchSettingItem(
+                                    title = stringResource(R.string.settings_exp_animated_lyrics_title),
+                                    subtitle = stringResource(R.string.settings_exp_animated_lyrics_subtitle),
+                                    checked = uiState.useAnimatedLyrics,
+                                    onCheckedChange = settingsViewModel::setUseAnimatedLyrics,
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_lyrics_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                AnimatedVisibility(
+                                    visible = uiState.useAnimatedLyrics,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        SwitchSettingItem(
+                                            title = stringResource(R.string.settings_exp_lyrics_blur_title),
+                                            subtitle = stringResource(R.string.settings_exp_lyrics_blur_subtitle),
+                                            checked = uiState.animatedLyricsBlurEnabled,
+                                            onCheckedChange = settingsViewModel::setAnimatedLyricsBlurEnabled,
+                                            leadingIcon = { Icon(Icons.Rounded.BlurOn, null, tint = MaterialTheme.colorScheme.secondary) }
+                                        )
+                                        AnimatedVisibility(
+                                            visible = uiState.animatedLyricsBlurEnabled,
+                                            enter = fadeIn() + expandVertically(),
+                                            exit = fadeOut() + shrinkVertically()
+                                        ) {
+                                            SliderSettingsItem(
+                                                label = stringResource(R.string.settings_exp_lyrics_blur_strength_title),
+                                                value = uiState.animatedLyricsBlurStrength,
+                                                valueRange = 0.1f..2.0f,
+                                                steps = 19,
+                                                onValueChange = { settingsViewModel.setAnimatedLyricsBlurStrength(it) },
+                                                valueText = { value -> "%.1fx".format(value) }
+                                            )
+                                        }
+                                    }
+                                }
+                                SwitchSettingItem(
                                     title = stringResource(R.string.settings_lyrics_enable_online_title),
                                     subtitle = stringResource(R.string.settings_lyrics_enable_online_subtitle),
                                     checked = uiState.enableOnlineLyrics,
@@ -639,6 +676,23 @@ fun SettingsCategoryScreen(
                                     selectedKey = uiState.playerThemePreference,
                                     onSelectionChanged = { settingsViewModel.setPlayerThemePreference(it) },
                                     leadingIcon = { Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.settings_exp_album_art_resolution),
+                                    description = stringResource(R.string.settings_album_art_quality_subtitle),
+                                    options = mapOf(
+                                        AlbumArtQuality.LOW.name to stringResource(R.string.settings_exp_album_art_quality_low_line),
+                                        AlbumArtQuality.MEDIUM.name to stringResource(R.string.settings_exp_album_art_quality_medium_line),
+                                        AlbumArtQuality.HIGH.name to stringResource(R.string.settings_exp_album_art_quality_high_line),
+                                        AlbumArtQuality.ORIGINAL.name to stringResource(R.string.settings_exp_album_art_quality_original_line)
+                                    ),
+                                    selectedKey = uiState.albumArtQuality.name,
+                                    onSelectionChanged = { key ->
+                                        runCatching { AlbumArtQuality.valueOf(key) }.getOrNull()?.let {
+                                            settingsViewModel.setAlbumArtQuality(it)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_album_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
                                     title = stringResource(R.string.settings_show_player_file_info_title),
@@ -1190,14 +1244,6 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.secondary) },
                                     trailingIcon = { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.settings_cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { navController.navigateSafely(Screen.Experimental.route) }
-                                )
-                                SettingsItem(
-                                    title = stringResource(R.string.settings_test_setup_title),
-                                    subtitle = stringResource(R.string.settings_test_setup_subtitle),
-                                    leadingIcon = { Icon(Icons.Rounded.Science, null, tint = MaterialTheme.colorScheme.tertiary) },
-                                    onClick = {
-                                        settingsViewModel.resetSetupFlow()
-                                    }
                                 )
                             }
 
