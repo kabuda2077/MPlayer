@@ -87,8 +87,6 @@ import com.theveloper.pixelplay.data.preferences.CollagePattern
 import com.theveloper.pixelplay.presentation.components.AlbumArtCollage
 import com.theveloper.pixelplay.presentation.components.BetaInfoBottomSheet
 import com.theveloper.pixelplay.presentation.components.ChangelogBottomSheet
-import com.theveloper.pixelplay.presentation.netease.dashboard.NeteaseDashboardViewModel
-import com.theveloper.pixelplay.presentation.qqmusic.dashboard.QqMusicDashboardViewModel
 import com.theveloper.pixelplay.presentation.components.DailyMixSection
 import com.theveloper.pixelplay.presentation.components.HomeGradientTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -101,7 +99,6 @@ import com.theveloper.pixelplay.presentation.model.collectRecentlyPlayedSongIds
 import com.theveloper.pixelplay.presentation.model.mapRecentlyPlayedSongs
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.presentation.navigation.Screen
-import com.theveloper.pixelplay.presentation.components.StreamingProviderSheet
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.SettingsViewModel
 import com.theveloper.pixelplay.presentation.viewmodel.StatsViewModel
@@ -126,8 +123,6 @@ fun HomeScreen(
     paddingValuesParent: PaddingValues,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
-    neteaseViewModel: NeteaseDashboardViewModel = hiltViewModel(),
-    qqMusicViewModel: QqMusicDashboardViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // DETECTAR MODO BENCHMARK
@@ -241,7 +236,6 @@ fun HomeScreen(
 
     var showChangelogBottomSheet by remember { mutableStateOf(false) }
     var showBetaInfoBottomSheet by remember { mutableStateOf(false) }
-    var showStreamingProviderSheet by remember { mutableStateOf(false) }
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
     val betaSheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
     val scope = rememberCoroutineScope()
@@ -305,9 +299,6 @@ fun HomeScreen(
                     },
                     onBetaClick = {
                         showBetaInfoBottomSheet = true
-                    },
-                    onCloudClick = {
-                         showStreamingProviderSheet = true
                     },
                     isScrolled = isScrolledPastThreshold.value
                 )
@@ -505,21 +496,6 @@ fun HomeScreen(
         ) {
             BetaInfoBottomSheet()
         }
-    }
-    if (showStreamingProviderSheet) {
-        val isNeteaseLoggedIn by neteaseViewModel.isLoggedIn.collectAsStateWithLifecycle()
-        val isQqMusicLoggedIn by qqMusicViewModel.isLoggedIn.collectAsStateWithLifecycle()
-        StreamingProviderSheet(
-            onDismissRequest = { showStreamingProviderSheet = false },
-            isNeteaseLoggedIn = isNeteaseLoggedIn,
-            onNavigateToNeteaseDashboard = {
-                navController.navigateSafely(Screen.NeteaseDashboard.route)
-            },
-            isQqMusicLoggedIn = isQqMusicLoggedIn,
-            onNavigateToQqMusicDashboard = {
-                navController.navigateSafely(Screen.QqMusicDashboard.route)
-            }
-        )
     }
 }
 

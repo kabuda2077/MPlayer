@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Card
@@ -74,7 +75,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
-import com.theveloper.pixelplay.presentation.components.subcomps.TightWrapText
 import com.theveloper.pixelplay.presentation.netease.auth.NeteaseLoginActivity
 import com.theveloper.pixelplay.presentation.qqmusic.auth.QqMusicLoginActivity
 import com.theveloper.pixelplay.presentation.viewmodel.AccountsViewModel
@@ -180,7 +180,7 @@ fun AccountsScreen(
             }
 
             if (uiState.connectedAccounts.isNotEmpty()) {
-                item {
+                item(key = "header_connected") {
                     Text(
                         text = stringResource(R.string.accounts_linked_services),
                         style = MaterialTheme.typography.titleLarge,
@@ -192,7 +192,7 @@ fun AccountsScreen(
 
                 items(
                     items = uiState.connectedAccounts,
-                    key = { it.service.name }
+                    key = { "connected_${it.service.name}" }
                 ) { account ->
                     ConnectedAccountCard(
                         account = account,
@@ -212,11 +212,26 @@ fun AccountsScreen(
                         }
                     )
                 }
-            } else {
-                item {
-                    EmptyAccountsCard(
-                        disconnectedServices = uiState.disconnectedServices,
-                        onConnect = { service ->
+            }
+
+            if (uiState.disconnectedServices.isNotEmpty()) {
+                item(key = "header_available") {
+                    Text(
+                        text = stringResource(R.string.accounts_available_services),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = 4.dp, top = if (uiState.connectedAccounts.isNotEmpty()) 8.dp else 4.dp)
+                    )
+                }
+
+                items(
+                    items = uiState.disconnectedServices,
+                    key = { "disconnected_${it.name}" }
+                ) { service ->
+                    DisconnectedAccountCard(
+                        service = service,
+                        onConnect = {
                             openService(
                                 context = context,
                                 service = service,
@@ -224,6 +239,10 @@ fun AccountsScreen(
                                 onOpenQqMusicDashboard = onOpenQqMusicDashboard,
                                 preferNeteaseDashboard = false
                             )
+                        },
+                        painter = when (service) {
+                            ExternalServiceAccount.NETEASE -> painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_)
+                            ExternalServiceAccount.QQ_MUSIC -> painterResource(R.drawable.qq_music)
                         }
                     )
                 }
@@ -484,60 +503,96 @@ private fun ConnectedAccountCard(
 }
 
 @Composable
-private fun EmptyAccountsCard(
-    disconnectedServices: List<ExternalServiceAccount>,
-    onConnect: (ExternalServiceAccount) -> Unit
+private fun DisconnectedAccountCard(
+    service: ExternalServiceAccount,
+    onConnect: () -> Unit,
+    painter: androidx.compose.ui.graphics.painter.Painter? = null
 ) {
-    val noLinkedTitle = stringResource(R.string.accounts_no_linked_title)
-    val noLinkedBody = stringResource(R.string.accounts_no_linked_subtitle)
     val connectTemplate = stringResource(R.string.accounts_connect_service)
+    val palette = servicePalette(service)
+    val cardShape = AbsoluteSmoothCornerShape(28.dp, 60)
+
     Card(
-        shape = AbsoluteSmoothCornerShape(28.dp, 60),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = noLinkedTitle,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = noLinkedBody,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            disconnectedServices.forEach { service ->
-                val painter = when (service) {
-                    ExternalServiceAccount.NETEASE -> painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_)
-                    ExternalServiceAccount.QQ_MUSIC -> painterResource(R.drawable.qq_music)
-                }
-                FilledTonalButton(
-                    onClick = { onConnect(service) },
-                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
-                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                    color = palette.iconContainer
                 ) {
-                    Icon(
-                        painter = painter,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                    if (painter != null) {
+                        Icon(
+                            painter = painter,
+                            contentDescription = null,
+                            tint = palette.iconTint,
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(20.dp)
+                        )
+                    } else {
+                        ServiceIcon(
+                            service = service,
+                            tint = palette.iconTint,
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.size(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = serviceDisplayName(service),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    TightWrapText(
-                        text = connectTemplate.format(serviceDisplayName(service)),
-                        overflow = TextOverflow.Ellipsis,
+                    Text(
+                        text = when (service) {
+                            ExternalServiceAccount.NETEASE -> stringResource(R.string.accounts_netease_desc)
+                            ExternalServiceAccount.QQ_MUSIC -> stringResource(R.string.accounts_qqmusic_desc)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+
+            FilledTonalButton(
+                onClick = onConnect,
+                shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                    containerColor = palette.primaryActionContainer,
+                    contentColor = palette.primaryActionTint
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(
+                    text = connectTemplate.format(serviceDisplayName(service)),
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

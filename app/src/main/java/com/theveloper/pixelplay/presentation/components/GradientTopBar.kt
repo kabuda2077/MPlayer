@@ -18,7 +18,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
@@ -101,7 +100,6 @@ fun HomeGradientTopBar(
     onNavigationIconClick: () -> Unit,
     onMoreOptionsClick: () -> Unit,
     onBetaClick: () -> Unit,
-    onCloudClick: () -> Unit,
     isScrolled: Boolean = false,
     showBetaEntry: Boolean = false,
     showChangelogEntry: Boolean = false,
@@ -160,18 +158,6 @@ fun HomeGradientTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 14.dp)
             ) {
-                FilledIconButton(
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    onClick = onCloudClick
-                ) {
-                    Icon(
-                         imageVector = Icons.Rounded.Cloud,
-                         contentDescription = stringResource(R.string.topbar_cd_cloud_streaming)
-                    )
-                }
                 if (showChangelogEntry) {
                     FilledIconButton(
                         colors = IconButtonDefaults.filledIconButtonColors(

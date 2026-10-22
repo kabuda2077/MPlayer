@@ -3,10 +3,7 @@
     <!-- Top Bar -->
     <string name="topbar_beta_letter">β</string>
     <string name="topbar_beta_label">Beta</string>
-    <string name="topbar_cd_cloud_streaming">云端串流</string>
     <string name="topbar_cd_changelog">更新日志</string>
-    <string name="topbar_cloud_streaming_title">云端串流</string>
-    <string name="topbar_cloud_streaming_subtitle">从您的云端账户串流音乐</string>
 
     <!-- BetaInfoBottomSheet -->
     <string name="beta_sheet_version">Beta 0.7.0</string>

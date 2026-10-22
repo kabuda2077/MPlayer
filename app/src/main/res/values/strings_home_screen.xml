@@ -3,10 +3,7 @@
     <!-- Top Bar -->
     <string name="topbar_beta_letter">β</string>
     <string name="topbar_beta_label">Beta</string>
-    <string name="topbar_cd_cloud_streaming">Cloud Streaming</string>
     <string name="topbar_cd_changelog">Changelog</string>
-    <string name="topbar_cloud_streaming_title">Cloud Streaming</string>
-    <string name="topbar_cloud_streaming_subtitle">Stream music from your cloud accounts</string>
 
     <!-- BetaInfoBottomSheet -->
     <string name="beta_sheet_version">Beta 0.7.0</string>
