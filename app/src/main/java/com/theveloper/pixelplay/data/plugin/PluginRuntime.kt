@@ -448,8 +448,11 @@ class PluginRuntime @Inject constructor(
         if (clearState) _state.value = PluginRuntimeState()
     }
 
-    private fun readPreloadScript(): String =
+    private val preloadScript: String by lazy {
         context.assets.open("script/pixel-plugin-preload.js").bufferedReader().use { it.readText() }
+    }
+
+    private fun readPreloadScript(): String = preloadScript
 
     private fun addLog(level: String, message: String) {
         val trimmed = message.take(1024)

@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PluginDao {
-    @Query("SELECT * FROM audio_source_plugins ORDER BY updated_at DESC")
+    @Query("SELECT * FROM audio_source_plugins ORDER BY created_at DESC")
     fun observePlugins(): Flow<List<PluginEntity>>
 
-    @Query("SELECT * FROM audio_source_plugins ORDER BY updated_at DESC")
+    @Query("SELECT * FROM audio_source_plugins ORDER BY created_at DESC")
     suspend fun getPlugins(): List<PluginEntity>
 
     @Query("SELECT * FROM audio_source_plugins WHERE id = :id LIMIT 1")
@@ -43,6 +43,12 @@ interface PluginDao {
 
     @Query("UPDATE audio_source_plugins SET enabled = 1, updated_at = :updatedAt WHERE id = :id")
     suspend fun enable(id: String, updatedAt: Long)
+
+    @Transaction
+    suspend fun switchEnabled(id: String, updatedAt: Long) {
+        disableAll(updatedAt)
+        enable(id, updatedAt)
+    }
 
     @Query("UPDATE audio_source_plugins SET enabled = 0, updated_at = :updatedAt WHERE id = :id")
     suspend fun disable(id: String, updatedAt: Long)

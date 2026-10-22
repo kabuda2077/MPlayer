@@ -133,4 +133,22 @@
     <string name="common_play_album">播放专辑</string>
     <string name="common_shuffle_play_album">随机播放专辑</string>
     <string name="common_album_art_for_title">%1$s 的专辑封面</string>
+    <string name="download_filter_all">全部</string>
+    <string name="download_filter_active">进行中</string>
+    <string name="download_filter_attention">待处理</string>
+    <string name="download_filter_empty_title">此分类暂无下载</string>
+    <string name="download_filter_empty_subtitle">下载状态变化后，任务会自动归入对应分类。</string>
+    <string name="download_show_all">查看全部下载</string>
+    <string name="download_options_title">下载选项</string>
+    <string name="download_retry_subtitle">重新尝试所有失败与已取消的任务</string>
+    <string name="download_cancel_subtitle">停止当前进行中与排队中的任务</string>
+    <string name="download_clear_subtitle">从列表中移除已终止的任务记录</string>
+    <string name="download_delete_subtitle">从本地存储中彻底删除已下载的文件并清空记录</string>
+    <string name="plugin_screen_title">音源插件</string>
+    <string name="plugin_options_title">音源插件选项</string>
+    <string name="plugin_edit_source">修改更新链接</string>
+    <string name="plugin_delete">删除插件</string>
+    <string name="plugin_check_update">检查更新</string>
+    <string name="plugin_delete_disabled_hint">请先停用插件再删除</string>
+    <string name="plugin_delete_confirm_hint">彻底删除该音源插件</string>
 </resources>

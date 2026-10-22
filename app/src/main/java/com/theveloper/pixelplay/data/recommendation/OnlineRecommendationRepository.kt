@@ -11,7 +11,10 @@ import com.theveloper.pixelplay.data.model.TransientOnlineSong
 interface OnlineRecommendationProvider {
     val platform: OnlineBrowsePlatform
 
-    suspend fun loadHomePage(forceRefresh: Boolean = false): Result<RecommendationPage>
+    suspend fun loadHomePage(
+        forceRefresh: Boolean = false,
+        onPartialPage: suspend (RecommendationPage) -> Unit = {}
+    ): Result<RecommendationPage>
 
     suspend fun loadSection(sectionId: String): Result<List<TransientOnlineSong>>
 
@@ -23,7 +26,8 @@ interface OnlineRecommendationProvider {
 interface OnlineRecommendationRepository {
     suspend fun refresh(
         platform: OnlineBrowsePlatform,
-        force: Boolean = false
+        force: Boolean = false,
+        onPartialPage: suspend (RecommendationPage) -> Unit = {}
     ): Result<RecommendationPage>
 
     suspend fun loadPlaylist(reference: RemotePlaylistReference): Result<RemotePlaylistDetail>

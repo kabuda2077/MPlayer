@@ -133,4 +133,22 @@
     <string name="common_play_album">Play album</string>
     <string name="common_shuffle_play_album">Shuffle play album</string>
     <string name="common_album_art_for_title">Album art for %1$s</string>
+    <string name="download_filter_all">All</string>
+    <string name="download_filter_active">In progress</string>
+    <string name="download_filter_attention">Needs attention</string>
+    <string name="download_filter_empty_title">No downloads in this category</string>
+    <string name="download_filter_empty_subtitle">Downloads appear here as their status changes.</string>
+    <string name="download_show_all">Show all downloads</string>
+    <string name="download_options_title">Download options</string>
+    <string name="download_retry_subtitle">Retry all canceled and failed downloads</string>
+    <string name="download_cancel_subtitle">Stop all queued and active downloads</string>
+    <string name="download_clear_subtitle">Remove failed and canceled records from the list</string>
+    <string name="download_delete_subtitle">Permanently delete all downloaded files from storage</string>
+    <string name="plugin_screen_title">Audio Source Plugins</string>
+    <string name="plugin_options_title">Plugin options</string>
+    <string name="plugin_edit_source">Edit update URL</string>
+    <string name="plugin_delete">Delete plugin</string>
+    <string name="plugin_check_update">Check for updates</string>
+    <string name="plugin_delete_disabled_hint">Disable the plugin before deleting</string>
+    <string name="plugin_delete_confirm_hint">Permanently delete this audio source plugin</string>
 </resources>

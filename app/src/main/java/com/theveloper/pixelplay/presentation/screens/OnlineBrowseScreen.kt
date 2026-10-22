@@ -127,6 +127,9 @@ fun OnlineBrowseScreen(
             state.pages.isNotEmpty() -> {
                 RecommendationPageContent(
                     pages = state.pages,
+                    loadingPlatforms = state.loadingPlatforms,
+                    platformErrors = state.platformErrors,
+                    onRetry = { viewModel.refresh(true) },
                     navController = navController,
                     paddingValues = paddingValues
                 )
@@ -153,9 +156,19 @@ private data class PlaylistTile(
     override val key: String = "playlist_${page.platform.name}_${playlist.remoteId}"
 }
 
+private data class PendingDailyTile(
+    val platform: OnlineBrowsePlatform,
+    val failed: Boolean
+) : RecommendationTile {
+    override val key: String = "daily_pending_${platform.name}"
+}
+
 @Composable
 private fun RecommendationPageContent(
     pages: List<RecommendationPage>,
+    loadingPlatforms: Set<OnlineBrowsePlatform>,
+    platformErrors: Map<OnlineBrowsePlatform, String>,
+    onRetry: () -> Unit,
     navController: NavController,
     paddingValues: PaddingValues
 ) {
@@ -175,7 +188,25 @@ private fun RecommendationPageContent(
                 .filter(::isQqDaily30)
                 .forEach { add(PlaylistTile(page, it)) }
         }
-    }.distinctBy { it.key }
+        OnlineBrowsePlatform.entries.forEach { platform ->
+            val hasDailyTile = any { tile ->
+                when (tile) {
+                    is SectionTile -> tile.page.platform == platform
+                    is PlaylistTile -> tile.page.platform == platform
+                    is PendingDailyTile -> tile.platform == platform
+                }
+            }
+            if (!hasDailyTile && (platform in loadingPlatforms || platform in platformErrors)) {
+                add(PendingDailyTile(platform, failed = platform in platformErrors))
+            }
+        }
+    }.distinctBy { it.key }.sortedBy { tile ->
+        when (tile) {
+            is SectionTile -> tile.page.platform.ordinal
+            is PlaylistTile -> tile.page.platform.ordinal
+            is PendingDailyTile -> tile.platform.ordinal
+        }
+    }
 
     val playlistTiles = buildList<RecommendationTile> {
         // Keep each platform's new-song feed beside that platform's playlists.
@@ -229,7 +260,8 @@ private fun RecommendationPageContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { entry ->
                         RecommendationTileCard(entry, Modifier.weight(1f)) {
-                            navigateToRecommendationTile(navController, entry)
+                            if (entry is PendingDailyTile) onRetry()
+                            else navigateToRecommendationTile(navController, entry)
                         }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -281,6 +313,7 @@ private fun navigateToRecommendationTile(
     tile: RecommendationTile
 ) {
     when (tile) {
+        is PendingDailyTile -> Unit
         is SectionTile -> navController.navigateSafely(
             Screen.OnlineCollection.createRoute(
                 "section",
@@ -309,6 +342,39 @@ private fun RecommendationTileCard(
     when (tile) {
         is SectionTile -> RecommendationSectionCard(tile, modifier, onClick)
         is PlaylistTile -> RecommendationPlaylistCard(tile.playlist, modifier, onClick)
+        is PendingDailyTile -> PendingDailyCard(tile, modifier, onClick)
+    }
+}
+
+@Composable
+private fun PendingDailyCard(tile: PendingDailyTile, modifier: Modifier, onRetry: () -> Unit) {
+    Card(
+        modifier = modifier.then(if (tile.failed) Modifier.clickable(onClick = onRetry) else Modifier),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(1f)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
+            ) {
+                if (tile.failed) {
+                    Text("加载失败，点击重试", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+                PlatformBadge(tile.platform, Modifier.align(Alignment.TopEnd).padding(7.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                if (tile.platform == OnlineBrowsePlatform.QQ) "每日30首" else "每日推荐",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 

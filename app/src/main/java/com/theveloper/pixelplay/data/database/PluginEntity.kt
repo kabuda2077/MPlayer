@@ -22,5 +22,6 @@ data class PluginEntity(
     val enabled: Boolean,
     val script: String,
     @ColumnInfo(name = "created_at") val createdAt: Long,
-    @ColumnInfo(name = "updated_at") val updatedAt: Long
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    @ColumnInfo(name = "source_url") val sourceUrl: String? = null
 )

@@ -10,6 +10,10 @@ import com.theveloper.pixelplay.data.model.TransientOnlineSong
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -33,35 +37,48 @@ class OnlineRecommendationRepositoryImpl @Inject constructor(
 
     override suspend fun refresh(
         platform: OnlineBrowsePlatform,
-        force: Boolean
-    ): Result<RecommendationPage> = refreshMutexes.getValue(platform).withLock {
-        val now = System.currentTimeMillis()
-        val cached = cache[platform] ?: cacheStore.read(platform)?.let {
-            CachedPage(it.page, it.storedAt).also { restored -> cache[platform] = restored }
-        }
-        if (!force && cached != null && now - cached.storedAt < CACHE_TTL_MS) {
-            return@withLock Result.success(cached.page)
-        }
-
-        val provider = providers.firstOrNull { it.platform == platform }
-            ?: return@withLock Result.failure(IllegalStateException("No recommendation provider for $platform"))
-
-        provider.loadHomePage(forceRefresh = force).fold(
-            onSuccess = { page ->
-                val freshPage = page.copy(isStale = false)
-                cache[platform] = CachedPage(freshPage, now)
-                cacheStore.write(freshPage)
-                Result.success(page)
-            },
-            onFailure = { error ->
-                Timber.w(error, "Recommendation refresh failed platform=%s", platform)
-                if (cached != null && now - cached.storedAt < STALE_CACHE_TTL_MS) {
-                    Result.success(cached.page.copy(isStale = true))
-                } else {
-                    Result.failure(error)
-                }
+        force: Boolean,
+        onPartialPage: suspend (RecommendationPage) -> Unit
+    ): Result<RecommendationPage> = withContext(Dispatchers.IO) {
+        refreshMutexes.getValue(platform).withLock {
+            val now = System.currentTimeMillis()
+            val cached = cache[platform] ?: cacheStore.read(platform)?.let {
+                CachedPage(it.page, it.storedAt).also { restored -> cache[platform] = restored }
             }
-        )
+            if (!force && cached != null && now - cached.storedAt < CACHE_TTL_MS) {
+                return@withLock Result.success(cached.page)
+            }
+
+            val provider = providers.firstOrNull { it.platform == platform }
+                ?: return@withLock Result.failure(IllegalStateException("No recommendation provider for $platform"))
+
+            if (cached != null && now - cached.storedAt < STALE_CACHE_TTL_MS) {
+                onPartialPage(cached.page.copy(isStale = true))
+            }
+            var latestPartial: RecommendationPage? = null
+            val result = provider.loadHomePage(forceRefresh = force) { page ->
+                currentCoroutineContext().ensureActive()
+                latestPartial = page
+                onPartialPage(page)
+            }
+            currentCoroutineContext().ensureActive()
+            result.fold(
+                onSuccess = { page ->
+                    val freshPage = page.copy(isStale = false)
+                    cache[platform] = CachedPage(freshPage, System.currentTimeMillis())
+                    cacheStore.write(freshPage)
+                    Result.success(freshPage)
+                },
+                onFailure = { error ->
+                    Timber.w(error, "Recommendation refresh failed platform=%s", platform)
+                    val fallback = latestPartial ?: cached?.takeIf {
+                        now - it.storedAt < STALE_CACHE_TTL_MS
+                    }?.page
+                    if (fallback != null) Result.success(fallback.copy(isStale = true))
+                    else Result.failure(error)
+                }
+            )
+        }
     }
 
     override suspend fun loadPlaylist(reference: RemotePlaylistReference): Result<RemotePlaylistDetail> =

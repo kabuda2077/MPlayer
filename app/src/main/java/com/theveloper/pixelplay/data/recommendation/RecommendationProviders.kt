@@ -35,7 +35,10 @@ class NeteaseRecommendationProvider @Inject constructor(
 ) : OnlineRecommendationProvider {
     override val platform: OnlineBrowsePlatform = OnlineBrowsePlatform.NETEASE
 
-    override suspend fun loadHomePage(forceRefresh: Boolean): Result<RecommendationPage> = withContext(Dispatchers.IO) {
+    override suspend fun loadHomePage(
+        forceRefresh: Boolean,
+        onPartialPage: suspend (RecommendationPage) -> Unit
+    ): Result<RecommendationPage> = withContext(Dispatchers.IO) {
         runCatching {
             val loggedIn = repository.isLoggedIn
             val (dailyResult, newSongsResult, playlistResult) = coroutineScope {
@@ -197,62 +200,68 @@ class QqMusicRecommendationProvider @Inject constructor(
     override val platform: OnlineBrowsePlatform = OnlineBrowsePlatform.QQ
     private val feedSongsBySectionId = ConcurrentHashMap<String, List<TransientOnlineSong>>()
 
-    override suspend fun loadHomePage(forceRefresh: Boolean): Result<RecommendationPage> = withContext(Dispatchers.IO) {
+    override suspend fun loadHomePage(
+        forceRefresh: Boolean,
+        onPartialPage: suspend (RecommendationPage) -> Unit
+    ): Result<RecommendationPage> = withContext(Dispatchers.IO) {
         runCatching {
-            val loggedIn = repository.isLoggedIn
-            val (feedResult, newSongsResult, playlistResult) = coroutineScope {
-                val feed = async { loadQqHomeFeed() }
-                val newSongs = async { safeRaw { api.getRecommendNewSongs() } }
-                val playlists = async { safeRaw { api.getRecommendSonglists() } }
-                Triple(feed.await(), newSongs.await(), playlists.await())
-            }
-            val chartReferences = loadChartPreviews(
-                listOf(
+            coroutineScope {
+                val authState = if (repository.isLoggedIn) RecommendationAuthState.LOGGED_IN else RecommendationAuthState.LOGGED_OUT
+                fun page(sections: List<RecommendationSection>) = RecommendationPage(
+                    platform = platform,
+                    authState = authState,
+                    sections = sections,
+                    fetchedAt = System.currentTimeMillis()
+                )
+                val chartEntries = listOf(
                     RemoteChartReference(platform, "26", "热歌榜"),
                     RemoteChartReference(platform, "62", "飙升榜"),
                     RemoteChartReference(platform, "27", "新歌榜"),
                     RemoteChartReference(platform, "4", "流行指数榜")
                 )
-            )
-            val sections = buildList {
-                feedResult.getOrNull()?.let { feedSections ->
-                    enrichQqHomeFeedPlaylistCounts(feedSections)
-                        .take(MAX_HOME_FEED_SECTIONS)
-                        .forEach { section ->
-                        val songs = section.items
-                            .filterIsInstance<RecommendationSongItem>()
-                            .map { it.transientSong }
-                        if (songs.isNotEmpty()) {
-                            feedSongsBySectionId[section.id] = songs.take(MAX_SECTION_SONGS)
-                        }
-                        add(section)
+                fun chartSection(charts: List<RemoteChartReference>) = RecommendationSection(
+                    id = "charts",
+                    title = "榜单",
+                    kind = RecommendationSectionKind.CHART_ENTRY,
+                    items = charts
+                )
+
+                val feed = async { loadQqHomeFeed() }
+                val newSongs = async { safeRaw { api.getRecommendNewSongs() } }
+                val playlists = async { safeRaw { api.getRecommendSonglists() } }
+                val chartPreviews = async { loadChartPreviews(chartEntries) }
+                val feedSections = feed.await().getOrNull().orEmpty()
+                    .take(MAX_HOME_FEED_SECTIONS)
+                    .map { section ->
+                        section.copy(items = section.items.map { item ->
+                            if (item is RemotePlaylistReference && item.songCount <= 0) {
+                                item.copy(songCount = knownQqPlaylistCount(item.title))
+                            } else item
+                        })
+                    }
+                feedSections.forEach { section ->
+                    val songs = section.items.filterIsInstance<RecommendationSongItem>().map { it.transientSong }
+                    if (songs.isNotEmpty()) feedSongsBySectionId[section.id] = songs.take(MAX_SECTION_SONGS)
+                }
+                if (feedSections.isNotEmpty()) {
+                    onPartialPage(page(feedSections + chartSection(chartEntries)))
+                }
+                val enrichedFeed = async { enrichQqHomeFeedPlaylistCounts(feedSections) }
+                val otherSections = buildList {
+                    newSongs.await().getOrNull()?.let { raw ->
+                        val songs = RecommendationJson.parseQqSongs(raw).take(6)
+                        if (songs.isNotEmpty()) add(songSection("new", "新歌速递", RecommendationSectionKind.NEW_SONGS, songs))
+                    }
+                    playlists.await().getOrNull()?.let { raw ->
+                        val references = RecommendationJson.parseQqPlaylists(raw).take(4)
+                        if (references.isNotEmpty()) add(
+                            RecommendationSection("playlists", "推荐歌单", RecommendationSectionKind.RECOMMENDED_PLAYLISTS, references, hasMore = false)
+                        )
                     }
                 }
-                newSongsResult.getOrNull()?.let { raw ->
-                    val songs = RecommendationJson.parseQqSongs(raw).take(6)
-                    if (songs.isNotEmpty()) add(songSection("new", "新歌速递", RecommendationSectionKind.NEW_SONGS, songs))
-                }
-                playlistResult.getOrNull()?.let { raw ->
-                    val playlists = RecommendationJson.parseQqPlaylists(raw).take(4)
-                    if (playlists.isNotEmpty()) add(
-                        RecommendationSection("playlists", "推荐歌单", RecommendationSectionKind.RECOMMENDED_PLAYLISTS, playlists, hasMore = false)
-                    )
-                }
-                add(
-                    RecommendationSection(
-                        id = "charts",
-                        title = "榜单",
-                        kind = RecommendationSectionKind.CHART_ENTRY,
-                        items = chartReferences
-                    )
-                )
+                onPartialPage(page(feedSections + otherSections + chartSection(chartEntries)))
+                page(enrichedFeed.await() + otherSections + chartSection(chartPreviews.await()))
             }
-            RecommendationPage(
-                platform = platform,
-                authState = if (loggedIn) RecommendationAuthState.LOGGED_IN else RecommendationAuthState.LOGGED_OUT,
-                sections = sections,
-                fetchedAt = System.currentTimeMillis()
-            )
         }
     }
 
@@ -313,6 +322,7 @@ class QqMusicRecommendationProvider @Inject constructor(
         val playlists = sections
             .flatMap { it.items }
             .filterIsInstance<RemotePlaylistReference>()
+            .filter { it.songCount <= 0 && knownQqPlaylistCount(it.title) <= 0 }
             .distinctBy { it.remoteId }
 
         val counts = playlists.map { playlist ->

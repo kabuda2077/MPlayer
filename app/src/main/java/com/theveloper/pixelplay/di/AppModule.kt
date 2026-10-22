@@ -151,27 +151,12 @@ object AppModule {
             context.applicationContext,
             PixelPlayDatabase::class.java,
             "pixelplay_database"
+        ).fallbackToDestructiveMigrationFrom(
+            dropAllTables = true,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            21, 22
         ).addMigrations(
-            PixelPlayDatabase.MIGRATION_3_4,
-            PixelPlayDatabase.MIGRATION_4_5,
-            PixelPlayDatabase.MIGRATION_5_6,
-            PixelPlayDatabase.MIGRATION_6_7,
-            PixelPlayDatabase.MIGRATION_7_8,
-            PixelPlayDatabase.MIGRATION_8_9,
-            PixelPlayDatabase.MIGRATION_9_10,
-            PixelPlayDatabase.MIGRATION_10_11,
-            PixelPlayDatabase.MIGRATION_11_12,
-            PixelPlayDatabase.MIGRATION_12_13,
-            PixelPlayDatabase.MIGRATION_13_14,
-            PixelPlayDatabase.MIGRATION_14_15,
-            PixelPlayDatabase.MIGRATION_15_16,
-            PixelPlayDatabase.MIGRATION_16_17,
-            PixelPlayDatabase.MIGRATION_17_18,
-            PixelPlayDatabase.MIGRATION_18_19,
-            PixelPlayDatabase.MIGRATION_19_20,
-            PixelPlayDatabase.MIGRATION_20_21,
-            PixelPlayDatabase.MIGRATION_21_22,
-            PixelPlayDatabase.MIGRATION_22_23,
             PixelPlayDatabase.MIGRATION_23_24,
             PixelPlayDatabase.MIGRATION_24_25,
             PixelPlayDatabase.MIGRATION_25_26,
@@ -198,7 +183,8 @@ object AppModule {
             PixelPlayDatabase.MIGRATION_46_47,
             PixelPlayDatabase.MIGRATION_47_48,
             PixelPlayDatabase.MIGRATION_48_49,
-            PixelPlayDatabase.MIGRATION_49_50
+            PixelPlayDatabase.MIGRATION_49_50,
+            PixelPlayDatabase.MIGRATION_50_51
         )
             .addCallback(PixelPlayDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)

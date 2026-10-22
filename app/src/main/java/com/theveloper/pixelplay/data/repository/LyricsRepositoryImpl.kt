@@ -9,7 +9,9 @@ import android.util.Log
 import androidx.core.net.toUri
 import com.google.gson.JsonParser
 import com.google.gson.Gson
-import com.kyant.taglib.TagLib
+import com.theveloper.pixelplay.data.netease.NeteaseLyricsParser
+import com.theveloper.pixelplay.data.repository.lyrics.AmlldbLyricsParser
+import com.theveloper.pixelplay.data.repository.lyrics.EmbeddedLyricsExtractor
 import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.Lyrics
 import com.theveloper.pixelplay.data.model.LyricsMediaKey
@@ -58,28 +60,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
-private val EMBEDDED_LYRICS_KEYS = listOf("LYRICS", "SYNCEDLYRICS", "TTML", "UNSYNCEDLYRICS")
-
 private fun Lyrics.isValid(): Boolean = !synced.isNullOrEmpty() || !plain.isNullOrEmpty()
 
-internal fun parseBestEmbeddedLyricsField(propertyMap: Map<String, Array<String>>?): Lyrics? {
-    var firstPlainLyrics: Lyrics? = null
-
-    EMBEDDED_LYRICS_KEYS.forEach { key ->
-        propertyMap?.get(key).orEmpty().forEach { field ->
-            if (field.isBlank()) return@forEach
-
-            val parsedLyrics = LyricsUtils.parseLyrics(field)
-            if (!parsedLyrics.isValid()) return@forEach
-
-            val localLyrics = parsedLyrics.copy(areFromRemote = false)
-            if (!localLyrics.synced.isNullOrEmpty()) return localLyrics
-            if (firstPlainLyrics == null) firstPlainLyrics = localLyrics
-        }
-    }
-
-    return firstPlainLyrics
-}
+internal fun parseBestEmbeddedLyricsField(propertyMap: Map<String, Array<String>>?): Lyrics? =
+    EmbeddedLyricsExtractor.parseBestEmbeddedLyricsField(propertyMap)
 
 /**
  * LyricsData for JSON disk cache (matches Rhythm's format)
@@ -118,8 +102,6 @@ class LyricsRepositoryImpl @Inject constructor(
         private const val NETWORK_RETRY_ATTEMPTS = 3
         private const val NETWORK_RETRY_INITIAL_DELAY_MS = 500L
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
-        private val NETEASE_YRC_LINE_REGEX = Regex("""^\[(\d+),(\d+)](.*)$""")
-        private val NETEASE_YRC_WORD_REGEX = Regex("""(.*?)\((\d+),(\d+)\)""")
     }
 
     // Gson for JSON cache
@@ -512,8 +494,8 @@ class LyricsRepositoryImpl @Inject constructor(
 
     private fun parseRawLyricsContent(rawLyrics: String, areFromRemote: Boolean): Lyrics? {
         val parsed = rawLyrics
-            .takeIf(::looksLikeNeteaseOfficialLyricsPayload)
-            ?.let(::parseNeteaseLyricsPayload)
+            .takeIf(NeteaseLyricsParser::looksLikeNeteaseOfficialLyricsPayload)
+            ?.let(NeteaseLyricsParser::parseNeteaseLyricsPayload)
             ?: qqLyricsFetcher.parsePersistedRaw(rawLyrics)
             ?: LyricsUtils.parseLyrics(rawLyrics)
 
@@ -523,133 +505,8 @@ class LyricsRepositoryImpl @Inject constructor(
             ?.copy(areFromRemote = areFromRemote)
     }
 
-    private fun looksLikeNeteaseOfficialLyricsPayload(rawLyrics: String): Boolean {
-        val trimmed = rawLyrics.trimStart()
-        if (!trimmed.startsWith("{")) return false
-        if (!trimmed.contains("\"lyric\"")) return false
-        return listOf("\"lrc\"", "\"tlyric\"", "\"romalrc\"", "\"yrc\"", "\"ytlrc\"", "\"yromalrc\"")
-            .any(trimmed::contains)
-    }
-
-    internal fun parseNeteaseLyricsPayload(rawPayload: String): Lyrics? {
-        val root = runCatching { JsonParser.parseString(rawPayload).asJsonObject }.getOrNull()
-            ?: return null
-
-        fun nestedLyric(key: String): String {
-            val nested = root.get(key)
-            if (nested == null || !nested.isJsonObject) return ""
-            val lyricElement = nested.asJsonObject.get("lyric") ?: return ""
-            return runCatching { lyricElement.asString }.getOrDefault("")
-        }
-
-        val lrc = nestedLyric("lrc")
-        val tlyric = nestedLyric("tlyric")
-        val romalrc = nestedLyric("romalrc")
-        val yrc = nestedLyric("yrc")
-        val ytlrc = nestedLyric("ytlrc")
-        val yromalrc = nestedLyric("yromalrc")
-
-        buildNeteaseWordLevelLyrics(
-            yrc = yrc,
-            translatedLyric = ytlrc,
-            romanizedLyric = yromalrc
-        )?.takeIf { it.isValid() }
-            ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
-            ?.let { return it.copy(areFromRemote = true) }
-
-        return buildNeteaseLineLyrics(
-            lyric = lrc,
-            translatedLyric = tlyric,
-            romanizedLyric = romalrc
-        )?.takeIf { it.isValid() }
-            ?.takeUnless(LyricsUtils::hasNeteaseJsonLyricGarbage)
-            ?.copy(areFromRemote = true)
-    }
-
-    private fun buildNeteaseLineLyrics(
-        lyric: String,
-        translatedLyric: String,
-        romanizedLyric: String
-    ): Lyrics? {
-        if (lyric.isBlank()) return null
-        var parsed = LyricsUtils.parseLyrics(lyric)
-
-        if (parsed.synced.isNullOrEmpty() && parsed.plain.isNullOrEmpty()) return null
-
-        parsed = parsed.copy(
-            synced = LyricsUtils.mergeSupplementalLines(
-                baseLines = parsed.synced.orEmpty(),
-                translationLines = LyricsUtils.parseSameTimestampBilingualLrc(translatedLyric).synced.orEmpty(),
-                romanizationLines = LyricsUtils.parseLyrics(romanizedLyric).synced.orEmpty()
-            )
-        )
-
-        return parsed.copy(
-            plain = LyricsUtils.rebuildPlainFromSynced(parsed.synced.orEmpty()).ifEmpty { parsed.plain },
-            areFromRemote = true
-        )
-    }
-
-    private fun buildNeteaseWordLevelLyrics(
-        yrc: String,
-        translatedLyric: String,
-        romanizedLyric: String
-    ): Lyrics? {
-        if (yrc.isBlank()) return null
-        val parsedYrc = parseNeteaseYrc(yrc) ?: return null
-        val merged = LyricsUtils.mergeSupplementalLines(
-            baseLines = parsedYrc.synced.orEmpty(),
-            translationLines = LyricsUtils.parseSameTimestampBilingualLrc(translatedLyric).synced.orEmpty(),
-            romanizationLines = LyricsUtils.parseLyrics(romanizedLyric).synced.orEmpty()
-        )
-
-        return parsedYrc.copy(
-            synced = merged,
-            plain = LyricsUtils.rebuildPlainFromSynced(merged),
-            areFromRemote = true
-        )
-    }
-
-    private fun parseNeteaseYrc(raw: String): Lyrics? {
-        val syncedLines = raw.lines().mapNotNull { rawLine ->
-            val line = rawLine.trim()
-            if (line.isEmpty()) return@mapNotNull null
-            val match = NETEASE_YRC_LINE_REGEX.matchEntire(line) ?: return@mapNotNull null
-            val lineTime = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
-            val body = match.groupValues[3]
-            val words = mutableListOf<com.theveloper.pixelplay.data.model.SyncedWord>()
-            val plainText = StringBuilder()
-            var previousEndsWithSpace = true
-
-            NETEASE_YRC_WORD_REGEX.findAll(body).forEach { wordMatch ->
-                val text = wordMatch.groupValues[1]
-                val wordOffset = wordMatch.groupValues[2].toIntOrNull() ?: 0
-                val cleaned = text.trim()
-                plainText.append(text)
-                if (cleaned.isNotEmpty()) {
-                    val startsNew = previousEndsWithSpace || text.firstOrNull()?.isWhitespace() == true || words.isEmpty()
-                    words += com.theveloper.pixelplay.data.model.SyncedWord(
-                        time = lineTime + wordOffset,
-                        word = cleaned,
-                        startsNewWord = startsNew
-                    )
-                }
-                previousEndsWithSpace = text.lastOrNull()?.isWhitespace() == true
-            }
-
-            val lineText = plainText.toString().trim()
-            if (lineText.isEmpty() && words.isEmpty()) return@mapNotNull null
-            SyncedLine(
-                time = lineTime,
-                line = lineText,
-                words = words.takeIf { it.isNotEmpty() }
-            )
-        }
-
-        if (syncedLines.isEmpty()) return null
-        val plain = syncedLines.map { it.line }
-        return Lyrics(synced = syncedLines, plain = plain, areFromRemote = true)
-    }
+    internal fun parseNeteaseLyricsPayload(rawPayload: String): Lyrics? =
+        NeteaseLyricsParser.parseNeteaseLyricsPayload(rawPayload)
 
     private fun isNeteaseSong(song: Song): Boolean =
         song.neteaseId != null || MediaSourceClassifier.classify(song.contentUriString) == MediaSourceKind.NETEASE
@@ -919,113 +776,10 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     private fun normalizeAmlldbMatchText(value: String): String =
-        value
-            .lowercase(Locale.ROOT)
-            .replace("&", " ")
-            .replace(Regex("""[\p{Punct}\p{IsPunctuation}]+"""), " ")
-            .trim()
-            .replace(Regex("""\s+"""), " ")
+        AmlldbLyricsParser.normalizeAmlldbMatchText(value)
 
-    private fun parseAmlldbTtml(ttml: String): Lyrics? {
-        val lrc = convertAmlTtmlToLrc(ttml) ?: return null
-        val parsed = LyricsUtils.parseLyrics(lrc)
-        return parsed
-            .takeIf { it.isValid() }
-            ?.copy(areFromRemote = true)
-    }
-
-    private fun convertAmlTtmlToLrc(ttml: String): String? {
-        val lineRegex = Regex(
-            "<p\\b[^>]*\\bbegin=\"([^\"]+)\"[^>]*>(.*?)</p>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-        )
-        val spanRegex = Regex(
-            "<span\\b([^>]*)>(.*?)</span>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-        )
-        val beginAttrRegex = Regex("\\bbegin=\"([^\"]+)\"")
-        val roleAttrRegex = Regex("\\bttm:role=\"([^\"]+)\"")
-
-        val lrcLines = mutableListOf<String>()
-        lineRegex.findAll(ttml).forEach { lineMatch ->
-            val lineStartMs = parseTtmlTimeToMs(lineMatch.groupValues[1]) ?: return@forEach
-            var inner = lineMatch.groupValues[2]
-            val translationLines = mutableListOf<String>()
-            val markerRegex = Regex("§§TS\\(([^)]+)\\)§§")
-
-            inner = spanRegex.replace(inner) { spanMatch ->
-                val attributes = spanMatch.groupValues[1]
-                val role = roleAttrRegex.find(attributes)?.groupValues?.getOrNull(1)?.lowercase()
-                if (role == "x-roman") {
-                    return@replace ""
-                }
-                val wordStartMs = beginAttrRegex
-                    .find(attributes)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.let(::parseTtmlTimeToMs)
-                val text = decodeXmlEntities(spanMatch.groupValues[2])
-
-                if (role == "x-translation") {
-                    text.trim().takeIf { it.isNotBlank() }?.let(translationLines::add)
-                    return@replace ""
-                }
-
-                if (wordStartMs == null) {
-                    // Keep visible non-timed text but do not inject word timing.
-                    return@replace text
-                }
-
-                "§§TS(${formatTimestamp(wordStartMs.toInt())})§§$text"
-            }
-
-            val withoutXmlTags = decodeXmlEntities(inner.replace(Regex("<[^>]+>"), ""))
-            val lrcInlineTagged = markerRegex.replace(withoutXmlTags, "<$1>")
-            if (lrcInlineTagged.isBlank()) return@forEach
-
-            lrcLines += "[${formatTimestamp(lineStartMs.toInt())}]$lrcInlineTagged"
-            translationLines.forEach { translation ->
-                lrcLines += "[${formatTimestamp(lineStartMs.toInt())}]$translation"
-            }
-        }
-
-        return lrcLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
-    }
-
-    private fun parseTtmlTimeToMs(value: String): Long? {
-        val raw = value.trim()
-        if (raw.isEmpty()) return null
-
-        if (raw.endsWith("s")) {
-            val seconds = raw.removeSuffix("s").toDoubleOrNull() ?: return null
-            return (seconds * 1000.0).toLong()
-        }
-
-        val parts = raw.split(":")
-        val secondsPart = parts.lastOrNull()?.toDoubleOrNull() ?: return null
-        return when (parts.size) {
-            3 -> {
-                val hours = parts[0].toLongOrNull() ?: return null
-                val minutes = parts[1].toLongOrNull() ?: return null
-                (hours * 3_600_000L) + (minutes * 60_000L) + (secondsPart * 1000.0).toLong()
-            }
-            2 -> {
-                val minutes = parts[0].toLongOrNull() ?: return null
-                (minutes * 60_000L) + (secondsPart * 1000.0).toLong()
-            }
-            1 -> (secondsPart * 1000.0).toLong()
-            else -> null
-        }
-    }
-
-    private fun decodeXmlEntities(value: String): String =
-        value
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&apos;", "'")
-            .replace("&#39;", "'")
+    private fun parseAmlldbTtml(ttml: String): Lyrics? =
+        AmlldbLyricsParser.parseAmlldbTtml(ttml)
 
     /**
      * Find local .lrc file next to the music file (matching Rhythm)
@@ -1130,47 +884,11 @@ class LyricsRepositoryImpl @Inject constructor(
     /**
      * Load embedded lyrics from audio file metadata
      */
-    private suspend fun loadEmbeddedLyricsFromMetadata(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-        // Embedded lyrics are only available from local files/content URIs. Cloud provider
-        // schemes are resolved at playback time and cannot be copied through ContentResolver.
-        if (!isLocalMetadataReadableUri(song.contentUriString)) {
-            return@withContext null
-        }
+    private suspend fun loadEmbeddedLyricsFromMetadata(song: Song): Lyrics? =
+        EmbeddedLyricsExtractor.loadEmbeddedLyricsFromMetadata(context, song)
 
-        // Then try to read from file metadata
-        return@withContext try {
-            val uri = song.contentUriString.toUri()
-            val tempFile = createTempFileFromUri(uri)
-            if (tempFile == null) {
-                LogUtils.w(this@LyricsRepositoryImpl, "Could not create temp file from URI: ${song.contentUriString}")
-                return@withContext null
-            }
-
-            try {
-                ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
-                    val metadata = TagLib.getMetadata(fd.detachFd())
-                    val propertyMap = metadata?.propertyMap
-                    val parsedLyrics = parseBestEmbeddedLyricsField(propertyMap)
-
-                    if (parsedLyrics != null) {
-                        Log.d(TAG, "===== FOUND EMBEDDED LYRICS =====")
-                        parsedLyrics
-                    } else {
-                        null
-                    }
-                }
-            } finally {
-                tempFile.delete()
-            }
-        } catch (e: Exception) {
-            LogUtils.e(this@LyricsRepositoryImpl, e, "Error reading lyrics from file metadata")
-            null
-        }
-    }
-
-    private fun isLocalMetadataReadableUri(contentUriString: String): Boolean {
-        return contentUriString.isNotBlank() && MediaSourceClassifier.isLocal(contentUriString)
-    }
+    private fun isLocalMetadataReadableUri(contentUriString: String): Boolean =
+        EmbeddedLyricsExtractor.isLocalMetadataReadableUri(contentUriString)
 
     private suspend fun loadStoredLyrics(
         song: Song,
@@ -1546,27 +1264,7 @@ class LyricsRepositoryImpl @Inject constructor(
 
     private fun generateCacheKey(song: Song): String = LyricsMediaKey.fromSong(song).value
 
-    private fun createTempFileFromUri(uri: Uri): File? {
-        return try {
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        if (nameIndex >= 0) cursor.getString(nameIndex) else "temp_audio"
-                    } else "temp_audio"
-                } ?: "temp_audio"
 
-                val tempFile = File.createTempFile("lyrics_", "_$fileName", context.cacheDir)
-                FileOutputStream(tempFile).use { output ->
-                    inputStream.copyTo(output)
-                }
-                tempFile
-            }
-        } catch (e: Exception) {
-            LogUtils.e(this, e, "Error creating temp file from URI")
-            null
-        }
-    }
 
 }
 

@@ -62,6 +62,15 @@ data class Song(
             ?: artists.firstOrNull()
             ?: ArtistRef(id = artistId, name = artist, isPrimary = true)
 
+    val sourceOrigin: MediaSourceOrigin
+        get() = MediaSourceOrigin.fromSong(this)
+
+    val isOnline: Boolean
+        get() = sourceOrigin.isOnline
+
+    val isLocal: Boolean
+        get() = sourceOrigin.isLocal
+
     companion object {
         fun emptySong(): Song {
             return Song(

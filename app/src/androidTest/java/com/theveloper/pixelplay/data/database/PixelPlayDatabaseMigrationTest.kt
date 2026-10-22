@@ -27,7 +27,7 @@ class PixelPlayDatabaseMigrationTest {
     @After
     fun tearDown() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        for (version in 25..49) {
+        for (version in 25..50) {
             context.deleteDatabase(databaseNameFor(version))
         }
         context.deleteDatabase(DB_NAME_33_TO_34)
@@ -38,11 +38,12 @@ class PixelPlayDatabaseMigrationTest {
         context.deleteDatabase(DB_NAME_47_TO_48)
         context.deleteDatabase(DB_NAME_48_TO_49)
         context.deleteDatabase(DB_NAME_49_TO_50)
+        context.deleteDatabase(DB_NAME_50_TO_51)
     }
 
     @Test
     fun migrateEveryExportedSchemaToLatest() {
-        for (startVersion in 25..49) {
+        for (startVersion in 25..50) {
             helper.createDatabase(databaseNameFor(startVersion), startVersion).close()
 
             helper.runMigrationsAndValidate(
@@ -153,6 +154,26 @@ class PixelPlayDatabaseMigrationTest {
                 assertTrue("index_songs_parent_directory_path_source_type_id" in indexes)
             } finally {
                 db.close()
+            }
+        }
+    }
+
+    @Test
+    fun migration50To51PreservesPluginsAndAddsOptionalSourceUrl() {
+        helper.createDatabase(DB_NAME_50_TO_51, 50).use { db ->
+            db.execSQL("""
+                INSERT INTO audio_source_plugins
+                (id, name, description, author, version, homepage, enabled, script, created_at, updated_at)
+                VALUES ('existing', 'Existing plugin', '', '', '1', '', 1, 'script', 1, 2)
+            """.trimIndent())
+        }
+        helper.runMigrationsAndValidate(DB_NAME_50_TO_51, 51, true, PixelPlayDatabase.MIGRATION_50_51).use { db ->
+            db.query("SELECT name, enabled, script, source_url FROM audio_source_plugins WHERE id = 'existing'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Existing plugin", cursor.getString(0))
+                assertEquals(1, cursor.getInt(1))
+                assertEquals("script", cursor.getString(2))
+                assertTrue(cursor.isNull(3))
             }
         }
     }
@@ -533,7 +554,7 @@ class PixelPlayDatabaseMigrationTest {
     }
 
     private object PixelPlayDatabaseVersion {
-        const val LATEST = 50
+        const val LATEST = 51
     }
 
     companion object {
@@ -545,6 +566,7 @@ class PixelPlayDatabaseMigrationTest {
         private const val DB_NAME_47_TO_48 = "migration-test-47-to-48"
         private const val DB_NAME_48_TO_49 = "migration-test-48-to-49"
         private const val DB_NAME_49_TO_50 = "migration-test-49-to-50"
+        private const val DB_NAME_50_TO_51 = "migration-test-50-to-51"
 
         private val ALL_MIGRATIONS = arrayOf(
             PixelPlayDatabase.MIGRATION_25_26,
@@ -571,7 +593,8 @@ class PixelPlayDatabaseMigrationTest {
             PixelPlayDatabase.MIGRATION_46_47,
             PixelPlayDatabase.MIGRATION_47_48,
             PixelPlayDatabase.MIGRATION_48_49,
-            PixelPlayDatabase.MIGRATION_49_50
+            PixelPlayDatabase.MIGRATION_49_50,
+            PixelPlayDatabase.MIGRATION_50_51
         )
     }
 }
