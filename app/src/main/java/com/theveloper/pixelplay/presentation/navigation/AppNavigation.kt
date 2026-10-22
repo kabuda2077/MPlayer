@@ -71,8 +71,7 @@ fun AppNavigation(
     navController: NavHostController,
     paddingValues: PaddingValues,
     userPreferencesRepository: UserPreferencesRepository,
-    onSearchBarActiveChange: (Boolean) -> Unit,
-    onOpenSidebar: () -> Unit
+    onSearchBarActiveChange: (Boolean) -> Unit
 ) {
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -126,8 +125,7 @@ fun AppNavigation(
                     HomeScreen(
                         navController = navController, 
                         paddingValuesParent = paddingValues, 
-                        playerViewModel = playerViewModel,
-                        onOpenSidebar = onOpenSidebar
+                        playerViewModel = playerViewModel
                     )
                 }
             }

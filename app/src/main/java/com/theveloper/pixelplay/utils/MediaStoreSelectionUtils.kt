@@ -2,16 +2,6 @@ package com.theveloper.pixelplay.utils
 
 import android.provider.MediaStore
 
-private val MIDI_MIME_SELECTION_ARGS = arrayOf(
-    "audio/midi",
-    "audio/x-midi",
-    "audio/sp-midi",
-    "audio/x-mid"
-)
-private val MIDI_EXTENSION_SELECTION_ARGS = arrayOf(
-    "%.mid",
-    "%.midi"
-)
 /**
  * Builds the baseline MediaStore selection for user-facing local audio.
  *
@@ -22,28 +12,17 @@ private val MIDI_EXTENSION_SELECTION_ARGS = arrayOf(
  * Some Android MediaStore implementations index valid FLAC/MP3/etc. entries with null/zero
  * duration. Those entries are allowed through the first query and their real duration is recovered
  * during sync before they are inserted into the app database.
- *
- * MIDI files may be indexed with incomplete duration metadata, so explicit MIDI MIME/path
- * matches always bypass the duration floor and are left to playback capability checks.
  */
 fun buildLocalAudioSelection(minDurationMs: Int): Pair<String, Array<String>> {
     val clampedMinDurationMs = minDurationMs.coerceAtLeast(0)
-    val midiMimePlaceholders = MIDI_MIME_SELECTION_ARGS.joinToString(",") { "?" }
-    val midiExtensionSelection = MIDI_EXTENSION_SELECTION_ARGS.joinToString(" OR ") {
-        "LOWER(${MediaStore.Audio.Media.DATA}) LIKE ?"
-    }
     val selection = buildString {
         append("(")
         append("${MediaStore.Audio.Media.DURATION} >= ?")
         append(" OR ${MediaStore.Audio.Media.DURATION} IS NULL")
         append(" OR ${MediaStore.Audio.Media.DURATION} <= 0")
-        append(" OR LOWER(COALESCE(${MediaStore.Audio.Media.MIME_TYPE}, '')) IN ($midiMimePlaceholders)")
-        append(" OR $midiExtensionSelection")
         append(")")
         append(" AND COALESCE(${MediaStore.Audio.Media.TITLE}, '') != ''")
         append(" AND ${MediaStore.Audio.Media.DATA} IS NOT NULL")
     }
-    return selection to arrayOf(clampedMinDurationMs.toString()) +
-        MIDI_MIME_SELECTION_ARGS +
-        MIDI_EXTENSION_SELECTION_ARGS
+    return selection to arrayOf(clampedMinDurationMs.toString())
 }

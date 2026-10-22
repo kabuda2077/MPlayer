@@ -135,11 +135,6 @@
 
 -dontwarn kotlinx.coroutines.**
 
-# Kuromoji
--keep class com.atilika.kuromoji.** { *; }
--keepnames class com.atilika.kuromoji.** { *; }
--dontwarn com.atilika.kuromoji.**
-
 # Pinyin4J
 -keep class net.sourceforge.pinyin4j.** { *; }
 -keepclassmembers class net.sourceforge.pinyin4j.** { *; }

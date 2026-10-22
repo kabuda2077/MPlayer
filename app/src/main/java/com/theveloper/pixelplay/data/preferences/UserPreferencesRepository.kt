@@ -90,7 +90,6 @@ class UserPreferencesRepository @Inject constructor(
     // ─── Preference keys ────────────────────────────────────────────────────
 
     private object PreferencesKeys {
-        val APP_REBRAND_DIALOG_SHOWN = booleanPreferencesKey("app_rebrand_dialog_shown")
         val ALLOWED_DIRECTORIES = stringSetPreferencesKey("allowed_directories")
         val BLOCKED_DIRECTORIES = stringSetPreferencesKey("blocked_directories")
         val INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
@@ -158,8 +157,6 @@ class UserPreferencesRepository @Inject constructor(
             booleanPreferencesKey("full_player_switch_on_drag_release")
         val FULL_PLAYER_DELAY_THRESHOLD = intPreferencesKey("full_player_delay_threshold_percent")
         val FULL_PLAYER_CLOSE_THRESHOLD = intPreferencesKey("full_player_close_threshold_percent")
-        // Kept only for one-time cleanup after removing the legacy player sheet.
-        val USE_PLAYER_SHEET_V2 = booleanPreferencesKey("use_player_sheet_v2")
 
         // Multi-artist
         val ARTIST_DELIMITERS = stringPreferencesKey("artist_delimiters")
@@ -271,13 +268,6 @@ class UserPreferencesRepository @Inject constructor(
     }
 
     // ─── Onboarding / dialogs ─────────────────────────────────────────────────
-
-    val appRebrandDialogShownFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.APP_REBRAND_DIALOG_SHOWN] ?: false }
-
-    suspend fun setAppRebrandDialogShown(wasShown: Boolean) {
-        dataStore.edit { it[PreferencesKeys.APP_REBRAND_DIALOG_SHOWN] = wasShown }
-    }
 
     val backupInfoDismissedFlow: Flow<Boolean> =
         pref { it[PreferencesKeys.BACKUP_INFO_DISMISSED] ?: false }
@@ -479,11 +469,6 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit {
             it[PreferencesKeys.FULL_PLAYER_CLOSE_THRESHOLD] = thresholdPercent.coerceIn(0, 100)
         }
-    }
-
-    /** Removes the deprecated player sheet V2 preference key. */
-    suspend fun clearDeprecatedPlayerSheetPreference() {
-        dataStore.edit { it.remove(PreferencesKeys.USE_PLAYER_SHEET_V2) }
     }
 
     // ─── Transitions ──────────────────────────────────────────────────────────

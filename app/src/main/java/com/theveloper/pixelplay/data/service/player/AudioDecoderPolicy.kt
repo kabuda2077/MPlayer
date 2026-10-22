@@ -6,11 +6,8 @@ import java.util.Locale
 
 @UnstableApi
 internal object AudioDecoderPolicy {
-    private const val AUDIO_MIDI = "audio/midi"
     private val extensionOnlyMimeTypes = setOf(
-        MimeTypes.AUDIO_ALAC,
-        MimeTypes.AUDIO_EXOPLAYER_MIDI,
-        AUDIO_MIDI
+        MimeTypes.AUDIO_ALAC
     )
 
     fun shouldUseExtensionRenderer(mimeType: String): Boolean {

@@ -102,7 +102,6 @@ fun HomeGradientTopBar(
     onMoreOptionsClick: () -> Unit,
     onBetaClick: () -> Unit,
     onCloudClick: () -> Unit,
-    onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
     showBetaEntry: Boolean = false,
     showChangelogEntry: Boolean = false,

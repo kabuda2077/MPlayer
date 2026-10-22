@@ -41,10 +41,6 @@ android {
         }
     }
 
-    androidResources {
-        noCompress.add("tflite")
-    }
-
     packaging {
         resources {
             excludes += listOf(
@@ -237,7 +233,6 @@ dependencies {
     implementation(libs.androidx.media3.datasource.okhttp)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer.ffmpeg)
-    implementation(libs.androidx.media3.exoplayer.midi)
     implementation(libs.androidx.media)
     implementation(libs.coil.compose)
     implementation(libs.taglib)
@@ -260,13 +255,11 @@ dependencies {
 
     // UI Utilities & Extra
     implementation(libs.timber)
-    implementation(libs.generativeai)
     implementation(libs.smooth.corner.rect.android.compose)
     implementation(libs.reorderables)
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
-    implementation(libs.kuromoji.ipadic)
     implementation(libs.pinyin4j.core)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.accompanist.permissions)

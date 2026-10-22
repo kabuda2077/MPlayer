@@ -16,15 +16,6 @@ class AudioDecoderPolicyTest {
     }
 
     @Test
-    fun selectPlatformDecoders_routesMidiToExtensionRenderer() {
-        val decoders = listOf("platform-midi-decoder")
-
-        val selected = AudioDecoderPolicy.selectPlatformDecoders(MimeTypes.AUDIO_EXOPLAYER_MIDI, decoders)
-
-        assertThat(selected).isEmpty()
-    }
-
-    @Test
     fun selectPlatformDecoders_preservesMedia3OrderForCoreFormats() {
         val decoders = listOf("c2.android.aac.decoder", "c2.qti.aac.decoder")
 

@@ -104,8 +104,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.theveloper.pixelplay.data.github.GitHubAnnouncementPropertiesService
-import com.theveloper.pixelplay.data.github.PlayStoreAnnouncementRemoteConfig
 import com.theveloper.pixelplay.data.preferences.AppThemeMode
 import com.theveloper.pixelplay.data.preferences.NavBarStyle
 import com.theveloper.pixelplay.data.preferences.sanitizeNavBarCornerRadius
@@ -114,19 +112,13 @@ import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.service.MusicService
 import com.theveloper.pixelplay.data.worker.SyncManager
 import com.theveloper.pixelplay.data.worker.SyncProgress
-import com.theveloper.pixelplay.presentation.components.AllFilesAccessDialog
-import com.theveloper.pixelplay.presentation.components.AppSidebarDrawer
 import com.theveloper.pixelplay.presentation.components.CrashReportDialog
 import com.theveloper.pixelplay.presentation.components.DismissUndoBar
-import com.theveloper.pixelplay.presentation.components.DrawerDestination
 import com.theveloper.pixelplay.presentation.components.FloatingGlassNavigationBar
 import com.theveloper.pixelplay.presentation.components.FloatingNavBarBottomSpacing
 import com.theveloper.pixelplay.presentation.components.MiniPlayerBottomSpacer
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.PlayerInternalNavigationBar
-import com.theveloper.pixelplay.presentation.components.PlayStoreAnnouncementDefaults
-import com.theveloper.pixelplay.presentation.components.PlayStoreAnnouncementDialog
-import com.theveloper.pixelplay.presentation.components.PlayStoreAnnouncementUiModel
 import com.theveloper.pixelplay.presentation.components.UnifiedPlayerSheetV2
 import com.theveloper.pixelplay.presentation.components.calculatePlayerSheetCollapsedTargetY
 import com.theveloper.pixelplay.presentation.components.resolveNavBarOccupiedHeight
@@ -489,19 +481,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun PlayStoreAnnouncementRemoteConfig.toUiModel(context: Context): PlayStoreAnnouncementUiModel {
-        val fallback = PlayStoreAnnouncementDefaults.localizedTemplate(context)
-        return fallback.copy(
-            enabled = enabled,
-            playStoreUrl = playStoreUrl ?: fallback.playStoreUrl,
-            title = title ?: fallback.title,
-            body = body ?: fallback.body,
-            primaryActionLabel = primaryActionLabel ?: fallback.primaryActionLabel,
-            dismissActionLabel = dismissActionLabel ?: fallback.dismissActionLabel,
-            linkPendingMessage = linkPendingMessage ?: fallback.linkPendingMessage,
-        )
-    }
-
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     private fun SetupGateLoadingScreen() {
@@ -752,60 +731,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-        val scope = rememberCoroutineScope()
-        val announcementService = remember { GitHubAnnouncementPropertiesService() }
-        val context = LocalContext.current
-        var playStoreAnnouncement by remember {
-            mutableStateOf(PlayStoreAnnouncementDefaults.localizedTemplate(context))
-        }
-        var showPlayStoreAnnouncement by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-            if (PlayStoreAnnouncementDefaults.LOCAL_PREVIEW_ENABLED) {
-                playStoreAnnouncement = PlayStoreAnnouncementDefaults.hardcodedPreview(this@MainActivity)
-                showPlayStoreAnnouncement = true
-                return@LaunchedEffect
-            }
-
-            announcementService.fetchPlayStoreAnnouncement()
-                .onSuccess { remoteConfig ->
-                    val resolvedAnnouncement = remoteConfig.toUiModel(this@MainActivity)
-                    playStoreAnnouncement = resolvedAnnouncement
-                    showPlayStoreAnnouncement = resolvedAnnouncement.enabled
-                }
-                .onFailure { throwable ->
-                    LogUtils.w(
-                        this@MainActivity,
-                        "Remote announcement unavailable. Keeping popup disabled. ${throwable.message ?: ""}",
-                    )
-                }
-        }
-
-        LaunchedEffect(userPreferencesRepository) {
-            userPreferencesRepository.clearDeprecatedPlayerSheetPreference()
-        }
-
         CompositionLocalProvider(
             LocalAppHapticsConfig provides appHapticsConfig,
             LocalHapticFeedback provides scopedHapticFeedback
         ) {
-            AppSidebarDrawer(
-                drawerState = drawerState,
-                selectedRoute = currentRoute ?: Screen.Home.route,
-                onDestinationSelected = { destination ->
-                    scope.launch { drawerState.close() }
-                    when (destination) {
-                        DrawerDestination.Home -> navController.navigateSafely(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                        DrawerDestination.Equalizer -> navController.navigateSafely(Screen.Equalizer.route)
-                        DrawerDestination.Settings -> navController.navigateSafely(Screen.Settings.route)
-                    }
-                }
-        ) {
-
-                Scaffold(
+            Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 bottomBar = {
                     if (shouldRenderNavigationBar) {
@@ -997,8 +927,7 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 paddingValues = innerPadding,
                                 userPreferencesRepository = userPreferencesRepository,
-                                onSearchBarActiveChange = { isSearchBarActive = it },
-                                onOpenSidebar = { scope.launch { drawerState.open() } }
+                                onSearchBarActiveChange = { isSearchBarActive = it }
                             )
                         }
 
@@ -1076,22 +1005,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (showPlayStoreAnnouncement) {
-                            PlayStoreAnnouncementDialog(
-                                announcement = playStoreAnnouncement,
-                                onDismiss = { showPlayStoreAnnouncement = false },
-                                onOpenPlayStore = { url ->
-                                    showPlayStoreAnnouncement = false
-                                    openExternalUrl(url)
-                                }
-                            )
-                        }
                     }
                 }
             }
         }
-
-    }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable

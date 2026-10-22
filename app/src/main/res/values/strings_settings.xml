@@ -611,13 +611,10 @@
     <string name="about_signal_open_source">Open source</string>
     <string name="about_signal_community_first">Community-first</string>
     <string name="about_signal_material3">Material 3 expressive</string>
-    <string name="about_no_contributors">No contributors found right now. Please try again later.</string>
     <string name="about_maintainer_title">Maintainer</string>
     <string name="about_maintainer_subtitle">The person behind PixelPlayer.</string>
     <string name="about_spotlight_title">Community spotlight</string>
     <string name="about_spotlight_subtitle">Recognition for collaborators with major impact.</string>
-    <string name="about_contributors_section_title">Open source contributors</string>
-    <string name="about_contributors_section_subtitle">Live contributor list from GitHub.</string>
     <string name="about_contributions_format">%1$d contrib.</string>
     <string name="about_cd_open_github_profile">Open GitHub profile</string>
     <string name="about_cd_contributor_avatar">Avatar of %1$s</string>

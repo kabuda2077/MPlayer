@@ -84,7 +84,7 @@
         <item>常规错误修复与代码清理</item>
     </string-array>
     <string-array name="changelog_060_whats_new">
-        <item>扩展了云端集成，改进了对 Telegram、网易云音乐、QQ 音乐和 Google Drive 的支持。</item>
+        <item>扩展了音乐集成，改进了对网易云音乐和 QQ 音乐的支持。</item>
         <item>“最近播放”和持久化队列恢复功能，让您的听歌会话随时就绪。</item>
         <item>现已包含备份与恢复 v3 以及账号管理工具。</item>
         <item>歌词功能更加智能，增加了手动搜索备用方案和存储优化。</item>
@@ -108,10 +108,9 @@
         <item>云端：新增了 Jellyfin 支持。</item>
         <item>歌词：带有专属开关的同步翻译，支持酷狗 LRC 格式，自定义文本对齐方式，以及改进了远程加载。</item>
         <item>UI/UX：紧凑的导航栏模式，从专辑封面提取调色板的动态主题，长标题跑马灯效果，以及全新的排序选项。</item>
-        <item>Telegram：原生话题 (Topics) 支持和增强的显示模式。</item>
     </string-array>
     <string-array name="changelog_070_improvements">
-        <item>音频引擎：全面重构，支持更多格式（MIDI、ALAC、M4A）并进行了解码器优化。</item>
+        <item>音频引擎：全面重构，支持更多格式（ALAC、M4A）并进行了解码器优化。</item>
         <item>效率：大幅降低能耗，修复设备发热问题，以及后台任务优化 (SyncWorker)。</item>
         <item>数据库：大规模的查询优化，并重新设计了封面缓存以防止数据丢失。</item>
         <item>启动：通过基线配置文件 (Baseline Profile) 优化了加载时间。</item>

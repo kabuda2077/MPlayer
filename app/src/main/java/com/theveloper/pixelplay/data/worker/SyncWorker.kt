@@ -1219,15 +1219,7 @@ constructor(
         ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaId).toString()
 
     private fun shouldKeepProcessedLocalSong(song: SongEntity): Boolean {
-        if (song.duration >= minSongDurationMs) return true
-        val path = song.filePath.lowercase()
-        val mimeType = song.mimeType?.lowercase().orEmpty()
-        return path.endsWith(".mid") ||
-            path.endsWith(".midi") ||
-            mimeType == "audio/midi" ||
-            mimeType == "audio/x-midi" ||
-            mimeType == "audio/sp-midi" ||
-            mimeType == "audio/x-mid"
+        return song.duration >= minSongDurationMs
     }
 
     /**

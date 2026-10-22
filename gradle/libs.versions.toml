@@ -52,7 +52,6 @@ vorbisjava = "0.8"
 datastore = "1.2.1"
 androidxTestCore = "1.7.0"
 junit5 = "6.1.0"
-kuromoji = "0.9.0"
 pinyin4j = "2.5.1"
 securityCrypto = "1.1.0"
 bouncycastle = "1.84"
@@ -71,7 +70,6 @@ smoothCornerRectAndroidCompose = "v1.0.0"
 workRuntimeKtx = "2.11.2"
 composeTesting = "1.0.0-alpha03"
 timber = "5.0.1"
-generativeai = "0.9.0"
 mockk = "1.14.11"
 turbine = "1.2.1"
 truth = "1.4.5"
@@ -112,7 +110,6 @@ androidx-material-icons-core = { module = "androidx.compose.material:material-ic
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "composeMaterialIcons" }
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Session" }
 androidx-media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3Session" }
-androidx-media3-exoplayer-midi = { module = "androidx.media3:media3-exoplayer-midi", version.ref = "media3Session" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3Session" }
 androidx-media3-exoplayer-ffmpeg = { module = "org.jellyfin.media3:media3-ffmpeg-decoder", version = "1.9.0+1" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
@@ -166,7 +163,6 @@ taglib = { group = "io.github.kyant0", name = "taglib", version.ref = "taglib" }
 jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 vorbisjava-core = { group = "org.gagravarr", name = "vorbis-java-core", version.ref = "vorbisjava" }
 reorderables = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderables" }
-generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
@@ -188,9 +184,6 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "roomRuntime" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
-
-# Kuromoji
-kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromoji" }
 
 # Pinyin
 pinyin4j-core = { module = "com.belerweb:pinyin4j", version.ref = "pinyin4j" }

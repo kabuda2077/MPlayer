@@ -47,7 +47,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,7 +96,6 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import com.theveloper.pixelplay.R
-import com.theveloper.pixelplay.data.github.GitHubContributorService
 import com.theveloper.pixelplay.presentation.components.CollapsibleCommonTopBar
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
 import com.theveloper.pixelplay.presentation.components.SmartImage
@@ -161,13 +159,6 @@ private val PinnedCommunityMembers = listOf(
     ),
 )
 
-private val PinnedAliases = mapOf(
-    "cromaguy" to setOf("chroma"),
-)
-
-private fun normalizeHandle(handle: String): String {
-    return handle.trim().removePrefix("@").lowercase()
-}
 
 // AboutTopBar removed, replaced by CollapsibleCommonTopBar
 
@@ -187,73 +178,7 @@ fun AboutScreen(
         "N/A"
     }
 
-    var contributors by remember { mutableStateOf<List<Contributor>>(emptyList()) }
-    var isLoadingContributors by remember { mutableStateOf(true) }
-    val githubService = remember { GitHubContributorService() }
-
-    LaunchedEffect(Unit) {
-        try {
-            val result = githubService.fetchContributors()
-            result.onSuccess { githubContributors ->
-                contributors = githubContributors
-                    .filter { normalizeHandle(it.login) != CoreMaintainer.id }
-                    .map { github ->
-                        Contributor(
-                            id = normalizeHandle(github.login),
-                            displayName = "@${github.login}",
-                            role = "Community contributor",
-                            avatarUrl = github.avatar_url,
-                            iconRes = R.drawable.rounded_person_24,
-                            githubUrl = github.html_url,
-                            contributions = github.contributions,
-                        )
-                    }
-            }
-            result.onFailure { exception ->
-                Timber.e(exception, "Failed to fetch contributors from GitHub")
-                contributors = emptyList()
-            }
-        } finally {
-            isLoadingContributors = false
-        }
-    }
-
-    val contributorsById = remember(contributors) {
-        contributors.associateBy { it.id }
-    }
-
-    val spotlightContributors = remember(contributorsById) {
-        PinnedCommunityMembers.map { pinned ->
-            val primaryMatch = contributorsById[pinned.id]
-            val aliasMatch = PinnedAliases[pinned.id]
-                ?.firstNotNullOfOrNull { alias -> contributorsById[alias] }
-            val match = primaryMatch ?: aliasMatch
-
-            if (match == null) {
-                pinned
-            } else {
-                pinned.copy(
-                    avatarUrl = match.avatarUrl ?: pinned.avatarUrl,
-                    contributions = match.contributions ?: pinned.contributions,
-                    githubUrl = match.githubUrl ?: pinned.githubUrl,
-                )
-            }
-        }
-    }
-
-    val excludedIds = remember(spotlightContributors) {
-        buildSet {
-            add(CoreMaintainer.id)
-            spotlightContributors.forEach { spotlight ->
-                add(spotlight.id)
-                addAll(PinnedAliases[spotlight.id].orEmpty())
-            }
-        }
-    }
-
-    val communityContributors = remember(contributors, excludedIds) {
-        contributors.filterNot { it.id in excludedIds }
-    }
+    val spotlightContributors = remember { PinnedCommunityMembers }
 
     val transitionState = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
@@ -413,60 +338,6 @@ fun AboutScreen(
                 )
             }
 
-            item(key = "contributors_title") {
-                AboutSectionHeader(
-                    title = stringResource(R.string.about_contributors_section_title),
-                    subtitle = stringResource(R.string.about_contributors_section_subtitle),
-                    modifier = Modifier.padding(top = 24.dp),
-                )
-            }
-
-            if (isLoadingContributors) {
-                item(key = "contributors_loading") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 28.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            } else if (communityContributors.isEmpty()) {
-                item(key = "contributors_empty") {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        shape = expressiveListShape(index = 0, count = 1),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        tonalElevation = 1.dp,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.about_no_contributors),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            } else {
-                itemsIndexed(
-                    items = communityContributors,
-                    key = { _, contributor -> "contributor_${contributor.id}" },
-                ) { index, contributor ->
-                    ContributorCard(
-                        contributor = contributor,
-                        shape = expressiveListShape(index = index, count = communityContributors.size),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(top = if (index == 0) 0.dp else 3.dp),
-                        showContributionCount = true,
-                        onCardClick = contributor.githubUrl?.let { url -> { openUrl(context, url) } },
-                    )
-                }
-            }
 
             item(key = "bottom_spacer") {
                 Spacer(modifier = Modifier.height(24.dp))

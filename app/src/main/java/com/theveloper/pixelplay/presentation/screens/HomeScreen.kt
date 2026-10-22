@@ -41,7 +41,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -128,8 +127,7 @@ fun HomeScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     neteaseViewModel: NeteaseDashboardViewModel = hiltViewModel(),
-    qqMusicViewModel: QqMusicDashboardViewModel = hiltViewModel(),
-    onOpenSidebar: () -> Unit
+    qqMusicViewModel: QqMusicDashboardViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // DETECTAR MODO BENCHMARK
@@ -292,8 +290,6 @@ fun HomeScreen(
         needsScrollRestore = false
     }
 
-    // Drawer state for sidebar
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -312,9 +308,6 @@ fun HomeScreen(
                     },
                     onCloudClick = {
                          showStreamingProviderSheet = true
-                    },
-                    onMenuClick = {
-                        // onOpenSidebar() // Disabled
                     },
                     isScrolled = isScrolledPastThreshold.value
                 )
