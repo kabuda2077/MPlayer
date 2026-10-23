@@ -9,6 +9,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.tween
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
 import com.theveloper.pixelplay.ui.theme.LocalPixelPlayDarkTheme
 
@@ -290,13 +292,19 @@ fun PlaylistDetailScreen(
         albumColorSchemePair?.let { pair -> if (isDarkTheme) pair.dark else pair.light } ?: baseColorScheme
     }
 
-    val isScrolled by remember {
+    val density = LocalDensity.current
+    val titleScrollThresholdPx = remember(density) {
+        with(density) { 180.dp.roundToPx() }
+    }
+    val isScrolled by remember(titleScrollThresholdPx) {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 240
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titleScrollThresholdPx
         }
     }
+    val surfaceColor = dynamicColorScheme.surface
     val topBarBgColor by animateColorAsState(
-        targetValue = if (isScrolled) MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (isScrolled) surfaceColor.copy(alpha = 0.98f) else surfaceColor.copy(alpha = 0f),
+        animationSpec = tween(durationMillis = 200),
         label = "topBarBg"
     )
 
@@ -383,7 +391,7 @@ fun PlaylistDetailScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = topBarBgColor,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        scrolledContainerColor = topBarBgColor
                     )
                 )
             }
