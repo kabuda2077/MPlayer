@@ -25,8 +25,7 @@ data class OnlineBrowseUiState(
     val isLoading: Boolean = false,
     val loadingPlatforms: Set<OnlineBrowsePlatform> = emptySet(),
     val platformErrors: Map<OnlineBrowsePlatform, String> = emptyMap(),
-    val error: String? = null,
-    val selectedPlatform: OnlineBrowsePlatform? = null
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -84,10 +83,6 @@ class OnlineBrowseViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    fun selectPlatform(platform: OnlineBrowsePlatform?) {
-        _uiState.update { it.copy(selectedPlatform = platform) }
     }
 
     private fun publishPage(page: RecommendationPage) {

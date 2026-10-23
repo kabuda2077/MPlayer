@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -123,55 +122,12 @@ fun OnlineBrowseScreen(
                 )
             )
         },
-        afterSearchBar = {
-            val tabs = listOf("全部", "网易云", "QQ 音乐")
-            val selectedIndex = when (state.selectedPlatform) {
-                null -> 0
-                OnlineBrowsePlatform.NETEASE -> 1
-                OnlineBrowsePlatform.QQ -> 2
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = LibraryHeaderHorizontalPadding,
-                        top = 0.dp,
-                        end = LibraryHeaderHorizontalPadding,
-                        bottom = 8.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    TabAnimation(
-                        modifier = Modifier.weight(1f),
-                        index = index,
-                        title = title,
-                        selectedIndex = selectedIndex,
-                        outerPadding = PaddingValues(vertical = 4.dp),
-                        onClick = {
-                            val newPlatform = when (index) {
-                                1 -> OnlineBrowsePlatform.NETEASE
-                                2 -> OnlineBrowsePlatform.QQ
-                                else -> null
-                            }
-                            viewModel.selectPlatform(newPlatform)
-                        }
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (index == selectedIndex) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
-            }
-        },
         bottomOverlay = {}
     ) {
         Crossfade(
-            targetState = Triple(state.isLoading && state.pages.isEmpty(), state.pages.isEmpty() && state.error != null, state.selectedPlatform),
+            targetState = Pair(state.isLoading && state.pages.isEmpty(), state.pages.isEmpty() && state.error != null),
             label = "browse_crossfade"
-        ) { (showShimmer, showError, _) ->
+        ) { (showShimmer, showError) ->
             when {
                 showShimmer -> {
                     OnlineBrowseShimmer(paddingValues)
@@ -182,7 +138,6 @@ fun OnlineBrowseScreen(
                 else -> {
                     RecommendationPageContent(
                         pages = state.pages,
-                        selectedPlatform = state.selectedPlatform,
                         loadingPlatforms = state.loadingPlatforms,
                         platformErrors = state.platformErrors,
                         onRetry = { viewModel.refresh(true) },
@@ -288,7 +243,6 @@ private data class PendingDailyTile(
 @Composable
 private fun RecommendationPageContent(
     pages: List<RecommendationPage>,
-    selectedPlatform: OnlineBrowsePlatform?,
     loadingPlatforms: Set<OnlineBrowsePlatform>,
     platformErrors: Map<OnlineBrowsePlatform, String>,
     onRetry: () -> Unit,
@@ -296,14 +250,8 @@ private fun RecommendationPageContent(
     playerViewModel: PlayerViewModel,
     paddingValues: PaddingValues
 ) {
-    val filteredPages = if (selectedPlatform != null) {
-        pages.filter { it.platform == selectedPlatform }
-    } else {
-        pages
-    }
-
     val dailyTiles = buildList<RecommendationTile> {
-        filteredPages.forEach { page ->
+        pages.forEach { page ->
             page.sections
                 .filter { it.kind == RecommendationSectionKind.DAILY_SONGS }
                 .filter { it.items.any { item -> item is RecommendationSongItem } }
@@ -316,8 +264,7 @@ private fun RecommendationPageContent(
                 .filter(::isQqDaily30)
                 .forEach { add(PlaylistTile(page, it)) }
         }
-        val targetPlatforms = if (selectedPlatform != null) listOf(selectedPlatform) else OnlineBrowsePlatform.entries.toList()
-        targetPlatforms.forEach { platform ->
+        OnlineBrowsePlatform.entries.forEach { platform ->
             val hasDailyTile = any { tile ->
                 when (tile) {
                     is SectionTile -> tile.page.platform == platform
@@ -338,16 +285,15 @@ private fun RecommendationPageContent(
     }
 
     val playlistTiles = buildList<RecommendationTile> {
-        val targetPlatforms = if (selectedPlatform != null) listOf(selectedPlatform) else OnlineBrowsePlatform.entries.toList()
-        targetPlatforms.forEach { platform ->
-            filteredPages.filter { it.platform == platform }.forEach { page ->
+        OnlineBrowsePlatform.entries.forEach { platform ->
+            pages.filter { it.platform == platform }.forEach { page ->
                 page.sections
                     .filter { it.kind == RecommendationSectionKind.NEW_SONGS }
                     .filter { it.items.any { item -> item is RecommendationSongItem } }
                     .forEach { add(SectionTile(page, it)) }
             }
 
-            filteredPages.flatMap { page ->
+            pages.flatMap { page ->
                 page.sections.flatMap { section ->
                     section.items
                         .filterIsInstance<RemotePlaylistReference>()
@@ -361,14 +307,13 @@ private fun RecommendationPageContent(
         }
     }.distinctBy { it.key }
 
-    val charts = filteredPages.flatMap { page ->
+    val charts = pages.flatMap { page ->
         page.sections.flatMap { section ->
             section.items.filterIsInstance<RemoteChartReference>().map { page to it }
         }
     }.distinctBy { "${it.first.platform.name}_${it.second.remoteId}" }
 
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
-    val showPlatformBadge = selectedPlatform == null
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -380,11 +325,8 @@ private fun RecommendationPageContent(
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Daily Recommendation Banner Carousel (Option A)
+        // 1. Daily Recommendation Banner Carousel (Option A - No outer duplicate title)
         if (dailyTiles.isNotEmpty()) {
-            item(key = "daily_section_title") {
-                RecommendationSectionTitle("每日推荐")
-            }
             item(key = "daily_section_pager") {
                 DailyRecommendationPager(
                     tiles = dailyTiles,
@@ -406,7 +348,7 @@ private fun RecommendationPageContent(
                         RecommendationTileCard(
                             tile = entry,
                             modifier = Modifier.weight(1f),
-                            showPlatformBadge = showPlatformBadge
+                            showPlatformBadge = true
                         ) {
                             navigateToRecommendationTile(navController, entry)
                         }
@@ -424,7 +366,7 @@ private fun RecommendationPageContent(
             items(charts, key = { (page, chart) -> "chart_${page.platform.name}_${chart.remoteId}" }) { (page, chart) ->
                 RecommendationChartCard(
                     chart = chart,
-                    showPlatformBadge = showPlatformBadge,
+                    showPlatformBadge = true,
                     onClick = {
                         navController.navigateSafely(
                             Screen.OnlineCollection.createRoute(
