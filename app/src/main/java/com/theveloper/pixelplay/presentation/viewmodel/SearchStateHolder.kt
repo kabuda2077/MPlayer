@@ -5,6 +5,7 @@ import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
 import com.theveloper.pixelplay.data.model.SearchFilterType
 import com.theveloper.pixelplay.data.model.SearchResultItem
 import com.theveloper.pixelplay.data.model.StorageFilter
+import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.data.search.OnlineSearchRepository
 import java.util.concurrent.atomic.AtomicLong
@@ -40,13 +41,15 @@ data class UnifiedSearchState(
     val onlineLoading: Boolean = false,
     val libraryError: String? = null,
     val onlineError: String? = null,
-    val popularSearchTerms: ImmutableList<String> = persistentListOf()
+    val popularSearchTerms: ImmutableList<String> = persistentListOf(),
+    val searchHistory: ImmutableList<String> = persistentListOf()
 )
 
 @Singleton
 class SearchStateHolder @Inject constructor(
     private val onlineSearchRepository: OnlineSearchRepository,
     private val musicRepository: MusicRepository,
+    private val searchHistoryDao: SearchHistoryDao
 ) {
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
@@ -92,6 +95,9 @@ class SearchStateHolder @Inject constructor(
     private val _librarySearchError = MutableStateFlow<String?>(null)
     val librarySearchError = _librarySearchError.asStateFlow()
 
+    private val _searchHistory = MutableStateFlow<ImmutableList<String>>(persistentListOf())
+    val searchHistory = _searchHistory.asStateFlow()
+
     private val _unifiedState = MutableStateFlow(UnifiedSearchState())
     val unifiedState = _unifiedState.asStateFlow()
     private var lastLibraryQuery: String = ""
@@ -112,6 +118,36 @@ class SearchStateHolder @Inject constructor(
         this.scope = scope
         observeSearchRequests()
         loadPopularSearchTerms(_onlineSearchPlatform.value)
+        observeSearchHistory()
+    }
+
+    private fun observeSearchHistory() {
+        scope?.launch {
+            searchHistoryDao.getRecentSearches(limit = 20).collect { list ->
+                _searchHistory.value = list.map { it.query }.toImmutableList()
+                publishUnifiedState(_unifiedState.value.query)
+            }
+        }
+    }
+
+    fun recordSearchHistory(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return
+        scope?.launch(Dispatchers.IO) {
+            searchHistoryDao.recordSearch(trimmed)
+        }
+    }
+
+    fun deleteSearchHistoryItem(query: String) {
+        scope?.launch(Dispatchers.IO) {
+            searchHistoryDao.deleteByQuery(query.trim())
+        }
+    }
+
+    fun clearSearchHistory() {
+        scope?.launch(Dispatchers.IO) {
+            searchHistoryDao.clearAll()
+        }
     }
 
     @OptIn(FlowPreview::class)
@@ -286,7 +322,8 @@ class SearchStateHolder @Inject constructor(
             onlineLoading = _onlineSearchLoading.value,
             libraryError = _librarySearchError.value,
             onlineError = _onlineSearchError.value,
-            popularSearchTerms = popularSearchTerms
+            popularSearchTerms = popularSearchTerms,
+            searchHistory = _searchHistory.value
         )
     }
 

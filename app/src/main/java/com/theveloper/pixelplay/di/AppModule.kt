@@ -28,6 +28,7 @@ import com.theveloper.pixelplay.data.database.MusicDao
 import com.theveloper.pixelplay.data.database.PixelPlayDatabase
 import com.theveloper.pixelplay.data.database.PluginDao
 import com.theveloper.pixelplay.data.database.TransitionDao
+import com.theveloper.pixelplay.data.database.SearchHistoryDao
 import com.theveloper.pixelplay.data.download.DownloadDao
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
@@ -268,6 +269,12 @@ object AppModule {
     @Provides
     fun provideDownloadDao(database: PixelPlayDatabase): DownloadDao {
         return database.downloadDao()
+    }
+
+    @Singleton
+    @Provides
+    fun provideSearchHistoryDao(database: PixelPlayDatabase): SearchHistoryDao {
+        return database.searchHistoryDao()
     }
 
     @Provides

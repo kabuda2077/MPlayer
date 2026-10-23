@@ -1651,6 +1651,7 @@ class PlayerViewModel @Inject constructor(
                         librarySearchLoading = search.libraryLoading,
                         librarySearchError = search.libraryError,
                         popularSearchTerms = search.popularSearchTerms,
+                        searchHistory = search.searchHistory
                     )
                 }
             }
@@ -2525,6 +2526,18 @@ class PlayerViewModel @Inject constructor(
 
     fun performSearch(query: String) {
         searchStateHolder.performSearch(query)
+    }
+
+    fun recordSearchHistory(query: String) {
+        searchStateHolder.recordSearchHistory(query)
+    }
+
+    fun deleteSearchHistory(query: String) {
+        searchStateHolder.deleteSearchHistoryItem(query)
+    }
+
+    fun clearSearchHistory() {
+        searchStateHolder.clearSearchHistory()
     }
 
     // --- AI Playlist Generation ---

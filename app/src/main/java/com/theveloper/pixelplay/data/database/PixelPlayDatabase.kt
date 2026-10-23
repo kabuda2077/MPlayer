@@ -48,6 +48,7 @@ abstract class PixelPlayDatabase : RoomDatabase() {
     abstract fun aiUsageDao(): AiUsageDao
     abstract fun pluginDao(): PluginDao
     abstract fun downloadDao(): DownloadDao
+    abstract fun searchHistoryDao(): SearchHistoryDao
 
     companion object {
         val MIGRATION_50_51 = object : Migration(50, 51) {
