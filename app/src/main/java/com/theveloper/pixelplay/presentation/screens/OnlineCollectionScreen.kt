@@ -3,8 +3,11 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -122,11 +125,21 @@ fun OnlineCollectionScreen(
 
     val collectionSongs = remember(state.songs) { state.songs.map { it.song } }
     val lazyListState = rememberLazyListState()
-    val showCollapsedTitle by remember {
+    val density = LocalDensity.current
+    val titleScrollThresholdPx = remember(density) {
+        with(density) { 180.dp.roundToPx() }
+    }
+    val isScrolled by remember(titleScrollThresholdPx) {
         derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 300
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > titleScrollThresholdPx
         }
     }
+    val surfaceColor = dynamicColorScheme.surface
+    val topBarBgColor by animateColorAsState(
+        targetValue = if (isScrolled) surfaceColor.copy(alpha = 0.98f) else surfaceColor.copy(alpha = 0f),
+        animationSpec = tween(durationMillis = 200),
+        label = "topBarBg"
+    )
 
     MaterialTheme(colorScheme = dynamicColorScheme) {
         Scaffold(
@@ -136,7 +149,7 @@ fun OnlineCollectionScreen(
                 TopAppBar(
                     title = {
                         AnimatedVisibility(
-                            visible = showCollapsedTitle,
+                            visible = isScrolled,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
@@ -214,8 +227,8 @@ fun OnlineCollectionScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        containerColor = topBarBgColor,
+                        scrolledContainerColor = topBarBgColor
                     )
                 )
             }
