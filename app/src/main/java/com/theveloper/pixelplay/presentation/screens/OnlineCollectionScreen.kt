@@ -274,11 +274,8 @@ fun OnlineCollectionScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 // Full Width Cover Backdrop
-                                val headerHeight = 360.dp
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(headerHeight)
+                                    modifier = Modifier.matchParentSize()
                                 ) {
                                     if (!state.coverUrl.isNullOrBlank()) {
                                         SmartImage(
@@ -319,7 +316,7 @@ fun OnlineCollectionScreen(
                                                     )
                                                 )
                                             )
-                                        )
+                                    )
                                 }
 
                                 // Header Content Column
@@ -330,7 +327,7 @@ fun OnlineCollectionScreen(
                                         .padding(horizontal = 20.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Spacer(Modifier.height(32.dp))
+                                    Spacer(Modifier.height(28.dp))
 
                                     // 1. Eyebrow Tag (Scheme 3 style)
                                     val eyebrow = when {
@@ -377,7 +374,7 @@ fun OnlineCollectionScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
+                                            .padding(bottom = 2.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         Button(
@@ -432,9 +429,6 @@ fun OnlineCollectionScreen(
                                             Text("随机播放", maxLines = 1, fontWeight = FontWeight.Bold)
                                         }
                                     }
-
-                                    // Clear breathing room before the song list
-                                    Spacer(Modifier.height(8.dp))
                                 }
                             }
                         }
