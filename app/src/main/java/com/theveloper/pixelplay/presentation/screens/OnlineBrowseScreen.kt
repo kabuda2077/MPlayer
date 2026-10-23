@@ -86,6 +86,7 @@ import com.theveloper.pixelplay.data.model.RecommendationSongItem
 import com.theveloper.pixelplay.data.model.RemoteChartReference
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
 import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
+import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
 import com.theveloper.pixelplay.presentation.components.LibraryHeaderHorizontalPadding
 import com.theveloper.pixelplay.presentation.components.LibraryHeaderScaffold
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -198,6 +199,7 @@ fun OnlineBrowseScreen(
 @Composable
 private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
+    val reserveScrollbarSpace = LocalShowScrollbar.current
     val heroShape = remember {
         AbsoluteSmoothCornerShape(
             cornerRadiusTL = 20.dp,
@@ -215,7 +217,7 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             .fillMaxSize()
             .padding(
                 start = 14.dp,
-                end = 14.dp,
+                end = if (reserveScrollbarSpace) 24.dp else 14.dp,
                 top = 8.dp,
                 bottom = bottomContentPadding
             ),
@@ -414,6 +416,8 @@ private fun RecommendationPageContent(
 
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
     val listState = rememberLazyListState()
+    val reserveScrollbarSpace = LocalShowScrollbar.current
+    val showScrollBar = reserveScrollbarSpace && (listState.canScrollForward || listState.canScrollBackward)
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 0. Action & Filter Row (Aligned with LibraryActionRow layout)
@@ -442,7 +446,7 @@ private fun RecommendationPageContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 14.dp,
-                    end = 14.dp,
+                    end = if (reserveScrollbarSpace) 24.dp else 14.dp,
                     top = 8.dp,
                     bottom = bottomContentPadding
                 ),
@@ -531,12 +535,14 @@ private fun RecommendationPageContent(
                 }
             }
 
-            ExpressiveScrollBar(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 4.dp, top = 16.dp, bottom = bottomContentPadding),
-                listState = listState
-            )
+            if (showScrollBar) {
+                ExpressiveScrollBar(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp, top = 16.dp, bottom = bottomContentPadding),
+                    listState = listState
+                )
+            }
         }
     }
 }
