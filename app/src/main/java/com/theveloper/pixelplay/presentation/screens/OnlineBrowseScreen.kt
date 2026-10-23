@@ -821,8 +821,8 @@ private fun DailyHeroCard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 22.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(start = 16.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -841,24 +841,23 @@ private fun DailyHeroCard(
                     )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontFamily = GoogleSansRounded,
-                            fontWeight = FontWeight.Black
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "专属个性化推荐 · 每日随心听",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.Black
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = "专属个性化推荐 · 每日随心听",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
             }
 
             if (tile !is PendingDailyTile) {
