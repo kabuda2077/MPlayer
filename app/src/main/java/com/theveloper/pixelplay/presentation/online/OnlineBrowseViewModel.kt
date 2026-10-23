@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.RecommendationPage
+import com.theveloper.pixelplay.data.model.RecommendationSectionKind
+import com.theveloper.pixelplay.data.model.RecommendationSongItem
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
 import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
@@ -112,6 +114,36 @@ class OnlineBrowseViewModel @Inject constructor(
                 )
             } finally {
                 _uiState.update { it.copy(loadingPlayTileKey = null) }
+            }
+        }
+    }
+
+    fun playDailyMixShuffled(playerViewModel: PlayerViewModel) {
+        viewModelScope.launch {
+            val currentPages = _uiState.value.pages
+            val dailySongs = currentPages.flatMap { page ->
+                page.sections
+                    .filter { it.kind == RecommendationSectionKind.DAILY_SONGS }
+                    .flatMap { it.items }
+                    .filterIsInstance<RecommendationSongItem>()
+                    .map { it.transientSong }
+            }
+
+            if (dailySongs.isNotEmpty()) {
+                val shuffled = dailySongs.shuffled()
+                playerViewModel.showAndPlayTransientSong(
+                    song = shuffled.first(),
+                    contextSongs = shuffled,
+                    queueName = "今日漫听"
+                )
+            } else {
+                val qqDaily = currentPages.flatMap { it.sections }
+                    .flatMap { it.items }
+                    .filterIsInstance<RemotePlaylistReference>()
+                    .firstOrNull { it.platform == OnlineBrowsePlatform.QQ && it.title.contains("每日30") }
+                if (qqDaily != null) {
+                    playPlaylist(qqDaily, "daily_shuffle", playerViewModel)
+                }
             }
         }
     }
