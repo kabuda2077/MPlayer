@@ -235,13 +235,13 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             ShimmerBox(
                 modifier = Modifier
                     .weight(1f)
-                    .aspectRatio(0.78f)
+                    .aspectRatio(0.85f)
                     .clip(RoundedCornerShape(20.dp))
             )
             ShimmerBox(
                 modifier = Modifier
                     .weight(1f)
-                    .aspectRatio(0.78f)
+                    .aspectRatio(0.85f)
                     .clip(RoundedCornerShape(20.dp))
             )
         }
@@ -382,119 +382,129 @@ private fun RecommendationPageContent(
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
     val listState = rememberLazyListState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 0. Action & Filter Row (Expressive Action Bar, fixed at top matching LibraryActionRow)
+        OnlineActionBar(
+            onShuffleClick = onPlayDailyShuffle,
+            selectedPlatform = selectedPlatformFilter,
+            onPlatformSelect = { selectedPlatformFilter = it },
+            modifier = Modifier.padding(
                 start = LibraryHeaderHorizontalPadding,
                 end = LibraryHeaderHorizontalPadding,
-                top = 14.dp,
-                bottom = bottomContentPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                top = 12.dp,
+                bottom = 4.dp
+            )
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
-            // 0. Action & Filter Row (Expressive Action Bar)
-            item(key = "online_action_bar") {
-                OnlineActionBar(
-                    onShuffleClick = onPlayDailyShuffle,
-                    selectedPlatform = selectedPlatformFilter,
-                    onPlatformSelect = { selectedPlatformFilter = it }
-                )
-            }
-
-            // 1. Daily Recommendation (Figure 3 Style Horizontal Cards)
-            if (dailyTiles.isNotEmpty()) {
-                item(key = "daily_section_title") {
-                    RecommendationSectionTitle("今日推荐")
-                }
-                items(dailyTiles, key = { it.key }) { tile ->
-                    DailyMixItemCard(
-                        tile = tile,
-                        isLoadingPlay = tile.key == loadingPlayTileKey,
-                        onClick = {
-                            if (tile is PendingDailyTile) onRetry()
-                            else navigateToRecommendationTile(navController, tile)
-                        },
-                        onPlayClick = {
-                            when (tile) {
-                                is SectionTile -> {
-                                    val songs = tile.section.items.filterIsInstance<RecommendationSongItem>().map { it.transientSong }
-                                    if (songs.isNotEmpty()) {
-                                        playerViewModel.showAndPlayTransientSong(
-                                            song = songs.first(),
-                                            contextSongs = songs,
-                                            queueName = tile.section.title
-                                        )
-                                    } else {
-                                        navigateToRecommendationTile(navController, tile)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = LibraryHeaderHorizontalPadding,
+                    end = LibraryHeaderHorizontalPadding,
+                    top = 8.dp,
+                    bottom = bottomContentPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // 1. Daily Recommendation (Figure 3 Style Horizontal Cards)
+                if (dailyTiles.isNotEmpty()) {
+                    item(key = "daily_section_title") {
+                        RecommendationSectionTitle("今日推荐")
+                    }
+                    items(dailyTiles, key = { it.key }) { tile ->
+                        DailyMixItemCard(
+                            tile = tile,
+                            isLoadingPlay = tile.key == loadingPlayTileKey,
+                            onClick = {
+                                if (tile is PendingDailyTile) onRetry()
+                                else navigateToRecommendationTile(navController, tile)
+                            },
+                            onPlayClick = {
+                                when (tile) {
+                                    is SectionTile -> {
+                                        val songs = tile.section.items.filterIsInstance<RecommendationSongItem>().map { it.transientSong }
+                                        if (songs.isNotEmpty()) {
+                                            playerViewModel.showAndPlayTransientSong(
+                                                song = songs.first(),
+                                                contextSongs = songs,
+                                                queueName = tile.section.title
+                                            )
+                                        } else {
+                                            navigateToRecommendationTile(navController, tile)
+                                        }
                                     }
+                                    is PlaylistTile -> {
+                                        onPlayPlaylist(tile.playlist, tile.key)
+                                    }
+                                    is PendingDailyTile -> onRetry()
                                 }
-                                is PlaylistTile -> {
-                                    onPlayPlaylist(tile.playlist, tile.key)
-                                }
-                                is PendingDailyTile -> onRetry()
                             }
-                        }
-                    )
+                        )
+                    }
                 }
-            }
 
-            // 2. Playlists 2-Column Grid (Figure 2 Style AlbumGridItemRedesigned)
-            if (playlistTiles.isNotEmpty()) {
-                item(key = "playlist_section_title") {
-                    RecommendationSectionTitle("推荐歌单")
-                }
-                items(playlistTiles.chunked(2), key = { row -> row.joinToString { it.key } }) { row ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        row.forEach { entry ->
-                            RecommendationTileCard(
-                                tile = entry,
-                                playerViewModel = playerViewModel,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                navigateToRecommendationTile(navController, entry)
+                // 2. Playlists 2-Column Grid (Figure 2 Style AlbumGridItemRedesigned)
+                if (playlistTiles.isNotEmpty()) {
+                    item(key = "playlist_section_title") {
+                        RecommendationSectionTitle("推荐歌单")
+                    }
+                    items(playlistTiles.chunked(2), key = { row -> row.joinToString { it.key } }) { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            row.forEach { entry ->
+                                RecommendationTileCard(
+                                    tile = entry,
+                                    playerViewModel = playerViewModel,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    navigateToRecommendationTile(navController, entry)
+                                }
                             }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+
+                // 3. Ranked Charts (Full-width Horizontal Cards with Top 3)
+                if (charts.isNotEmpty()) {
+                    item(key = "charts_section_title") {
+                        RecommendationSectionTitle("排行榜单")
+                    }
+                    items(charts, key = { (page, chart) -> "chart_${page.platform.name}_${chart.remoteId}" }) { (page, chart) ->
+                        RecommendationChartCard(
+                            chart = chart,
+                            showPlatformBadge = true,
+                            onClick = {
+                                navController.navigateSafely(
+                                    Screen.OnlineCollection.createRoute(
+                                        kind = "chart",
+                                        platform = page.platform.name,
+                                        id = chart.remoteId,
+                                        title = chart.title,
+                                        coverUrl = chart.previewArtworkUris.firstOrNull() ?: chart.artworkUri
+                                    )
+                                )
+                            }
+                        )
                     }
                 }
             }
 
-            // 3. Ranked Charts (Full-width Horizontal Cards with Top 3)
-            if (charts.isNotEmpty()) {
-                item(key = "charts_section_title") {
-                    RecommendationSectionTitle("排行榜单")
-                }
-                items(charts, key = { (page, chart) -> "chart_${page.platform.name}_${chart.remoteId}" }) { (page, chart) ->
-                    RecommendationChartCard(
-                        chart = chart,
-                        showPlatformBadge = true,
-                        onClick = {
-                            navController.navigateSafely(
-                                Screen.OnlineCollection.createRoute(
-                                    kind = "chart",
-                                    platform = page.platform.name,
-                                    id = chart.remoteId,
-                                    title = chart.title,
-                                    coverUrl = chart.previewArtworkUris.firstOrNull() ?: chart.artworkUri
-                                )
-                            )
-                        }
-                    )
-                }
-            }
+            ExpressiveScrollBar(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp, top = 16.dp, bottom = bottomContentPadding),
+                listState = listState
+            )
         }
-
-        ExpressiveScrollBar(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 4.dp, top = 16.dp, bottom = bottomContentPadding),
-            listState = listState
-        )
     }
 }
 
@@ -776,11 +786,6 @@ private fun RecommendationTileCard(
         is PendingDailyTile -> ""
     }
 
-    val platformLabel = when (platform) {
-        OnlineBrowsePlatform.NETEASE -> "网易云音乐"
-        OnlineBrowsePlatform.QQ -> "QQ 音乐"
-    }
-
     val albumColorSchemePairFlow = remember(artworkUri) {
         playerViewModel.themeStateHolder.getAlbumColorSchemeFlow(artworkUri ?: "")
     }
@@ -863,8 +868,8 @@ private fun RecommendationTileCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .height(68.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
@@ -880,14 +885,6 @@ private fun RecommendationTileCard(
                     text = songCountText,
                     style = MaterialTheme.typography.bodySmall,
                     color = onGradientColor.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = platformLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = onGradientColor.copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
