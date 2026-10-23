@@ -41,6 +41,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -154,64 +156,78 @@ fun OnlineBrowseScreen(
 @Composable
 private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
+    val heroShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 34.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusTR = 34.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBL = 34.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBR = 34.dp,
+            smoothnessAsPercentBR = 60
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(
-                start = LibraryHeaderHorizontalPadding,
-                end = LibraryHeaderHorizontalPadding,
-                top = 18.dp,
-                bottom = bottomContentPadding
-            ),
+            .padding(bottom = bottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Daily Recommendation Hero Shimmer
+        // Daily Recommendation Hero Shimmer (Full-width with 34dp smooth corners)
         ShimmerBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(156.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .height(160.dp)
+                .clip(heroShape)
         )
 
-        // Section Title Shimmer
-        ShimmerBox(
+        Column(
             modifier = Modifier
-                .width(100.dp)
-                .height(24.dp)
-                .clip(RoundedCornerShape(6.dp))
-        )
-
-        // Playlists Grid Shimmer (2 columns)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                .fillMaxWidth()
+                .padding(horizontal = LibraryHeaderHorizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Section Title Shimmer
             ShimmerBox(
                 modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(0.85f)
-                    .clip(RoundedCornerShape(20.dp))
+                    .width(100.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(6.dp))
             )
+
+            // Playlists Grid Shimmer (2 columns)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShimmerBox(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(0.85f)
+                        .clip(RoundedCornerShape(20.dp))
+                )
+                ShimmerBox(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(0.85f)
+                        .clip(RoundedCornerShape(20.dp))
+                )
+            }
+
+            // Charts Title Shimmer
             ShimmerBox(
                 modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(0.85f)
+                    .width(80.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(6.dp))
+            )
+
+            // Chart Card Shimmer (horizontal)
+            ShimmerBox(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(108.dp)
                     .clip(RoundedCornerShape(20.dp))
             )
         }
-
-        // Charts Title Shimmer
-        ShimmerBox(
-            modifier = Modifier
-                .width(80.dp)
-                .height(24.dp)
-                .clip(RoundedCornerShape(6.dp))
-        )
-
-        // Chart Card Shimmer (horizontal)
-        ShimmerBox(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(108.dp)
-                .clip(RoundedCornerShape(20.dp))
-        )
     }
 }
 
@@ -314,18 +330,17 @@ private fun RecommendationPageContent(
     }.distinctBy { "${it.first.platform.name}_${it.second.remoteId}" }
 
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
+    val topPadding = if (dailyTiles.isNotEmpty()) 0.dp else 18.dp
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = LibraryHeaderHorizontalPadding,
-            end = LibraryHeaderHorizontalPadding,
-            top = 18.dp,
+            top = topPadding,
             bottom = bottomContentPadding
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Daily Recommendation Banner Carousel (Option A - No outer duplicate title)
+        // 1. Daily Recommendation Banner Carousel (Scheme A - Full-bleed top banner)
         if (dailyTiles.isNotEmpty()) {
             item(key = "daily_section_pager") {
                 DailyRecommendationPager(
@@ -340,10 +355,18 @@ private fun RecommendationPageContent(
         // 2. Playlists 2-Column Grid
         if (playlistTiles.isNotEmpty()) {
             item(key = "playlist_section_title") {
-                RecommendationSectionTitle("推荐歌单")
+                RecommendationSectionTitle(
+                    title = "推荐歌单",
+                    modifier = Modifier.padding(horizontal = LibraryHeaderHorizontalPadding)
+                )
             }
             items(playlistTiles.chunked(2), key = { row -> row.joinToString { it.key } }) { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = LibraryHeaderHorizontalPadding)
+                ) {
                     row.forEach { entry ->
                         RecommendationTileCard(
                             tile = entry,
@@ -361,12 +384,16 @@ private fun RecommendationPageContent(
         // 3. Ranked Charts (Full-width Horizontal Cards with Top 3)
         if (charts.isNotEmpty()) {
             item(key = "charts_section_title") {
-                RecommendationSectionTitle("排行榜单")
+                RecommendationSectionTitle(
+                    title = "排行榜单",
+                    modifier = Modifier.padding(horizontal = LibraryHeaderHorizontalPadding)
+                )
             }
             items(charts, key = { (page, chart) -> "chart_${page.platform.name}_${chart.remoteId}" }) { (page, chart) ->
                 RecommendationChartCard(
                     chart = chart,
                     showPlatformBadge = true,
+                    modifier = Modifier.padding(horizontal = LibraryHeaderHorizontalPadding),
                     onClick = {
                         navController.navigateSafely(
                             Screen.OnlineCollection.createRoute(
@@ -436,7 +463,7 @@ private fun DailyRecommendationPager(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 2.dp),
+                    .padding(top = 4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -493,16 +520,29 @@ private fun DailyHeroCard(
         OnlineBrowsePlatform.NETEASE -> "DAILY MIX · 网易云音乐"
     }
 
+    val heroShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 34.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusTR = 34.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBL = 34.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBR = 34.dp,
+            smoothnessAsPercentBR = 60
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(156.dp)
+            .height(160.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
+        shape = heroShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (!artworkUri.isNullOrBlank()) {
@@ -533,7 +573,7 @@ private fun DailyHeroCard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(start = 24.dp, top = 20.dp, end = 20.dp, bottom = 18.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Box(
@@ -580,7 +620,7 @@ private fun DailyHeroCard(
                     onClick = onPlayClick,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(16.dp)
+                        .padding(end = 22.dp, bottom = 18.dp)
                         .size(46.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -656,7 +696,10 @@ private fun RecommendationTileCard(
 }
 
 @Composable
-private fun RecommendationSectionTitle(title: String) {
+private fun RecommendationSectionTitle(
+    title: String,
+    modifier: Modifier = Modifier
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge.copy(
@@ -664,7 +707,7 @@ private fun RecommendationSectionTitle(title: String) {
             fontWeight = FontWeight.Bold
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+        modifier = modifier.padding(top = 4.dp, bottom = 2.dp)
     )
 }
 
