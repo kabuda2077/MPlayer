@@ -178,7 +178,7 @@ fun OnlineCollectionScreen(
                         }
                     },
                     actions = {
-                        if (state.songs.isNotEmpty() && state.kind == "playlist") {
+                        if (state.songs.isNotEmpty()) {
                             FilledTonalIconButton(
                                 modifier = Modifier.padding(end = 4.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(

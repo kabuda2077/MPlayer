@@ -48,11 +48,13 @@ class OnlineCollectionViewModel @Inject constructor(
     val initialTitle: String = savedStateHandle.get<String>("title").orEmpty().ifBlank { "在线内容" }
     val initialCoverUrl: String? = savedStateHandle.get<String>("coverUrl")
 
+    val effectiveRemoteId: String = if (kind.isNotBlank() && kind != "playlist") "$kind:$remoteId" else remoteId
+
     val stablePlaylistId: String = buildString {
         append("saved-online:")
         append(platform.name.lowercase())
         append(':')
-        append(remoteId)
+        append(effectiveRemoteId)
     }
 
     private val _uiState = MutableStateFlow(
@@ -72,7 +74,6 @@ class OnlineCollectionViewModel @Inject constructor(
     }
 
     private fun observeSavedStatus() {
-        if (kind != "playlist") return
         viewModelScope.launch {
             playlistPreferencesRepository.userPlaylistsFlow.collectLatest { playlists ->
                 val saved = playlists.any { it.id == stablePlaylistId }
@@ -171,7 +172,7 @@ class OnlineCollectionViewModel @Inject constructor(
                 val detail = RemotePlaylistDetail(
                     reference = RemotePlaylistReference(
                         platform = platform,
-                        remoteId = remoteId,
+                        remoteId = effectiveRemoteId,
                         title = currentState.title,
                         artworkUri = currentState.coverUrl,
                         songCount = currentState.songs.size
