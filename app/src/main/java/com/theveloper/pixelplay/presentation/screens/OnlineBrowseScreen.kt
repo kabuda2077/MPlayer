@@ -29,18 +29,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Dataset
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
@@ -67,6 +65,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +75,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
+import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.RecommendationPage
 import com.theveloper.pixelplay.data.model.RecommendationSection
@@ -134,8 +135,20 @@ fun OnlineBrowseScreen(
                     )
                 },
                 actions = {
-                    androidx.compose.material3.IconButton(onClick = { navController.navigateSafely(Screen.Settings.route) }) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                    FilledIconButton(
+                        modifier = Modifier.padding(end = 14.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        onClick = {
+                            navController.navigateSafely(Screen.Settings.route)
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_settings_24),
+                            contentDescription = stringResource(R.string.library_cd_open_settings)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -429,7 +442,7 @@ private fun RecommendationPageContent(
                     top = 8.dp,
                     bottom = bottomContentPadding
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // 1. Daily Recommendation Banner Carousel (Card format, swipe to switch platforms, no title)
                 if (dailyTiles.isNotEmpty()) {
@@ -575,105 +588,58 @@ private fun OnlineActionBar(
             }
         }
 
-        // Option 2 Segmented Pair: [ Filter ▾ ] + [ Refresh ↻ ]
+        // Option 2 Segmented Pair: [ Platform Cycle Toggle ] + [ Refresh ↻ ]
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box {
-                val isFilterActive = selectedPlatform != null
-                FilledTonalIconButton(
-                    onClick = { showFilterMenu = true },
-                    shape = RoundedCornerShape(
-                        topStart = 26.dp,
-                        bottomStart = 26.dp,
-                        topEnd = 8.dp,
-                        bottomEnd = 8.dp
-                    ),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (isFilterActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = if (isFilterActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.size(42.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FilterList,
-                        contentDescription = "筛选平台",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            val isFilterActive = selectedPlatform != null
+            val tooltipText = when (selectedPlatform) {
+                null -> "全部平台"
+                OnlineBrowsePlatform.NETEASE -> "网易云音乐"
+                OnlineBrowsePlatform.QQ -> "QQ 音乐"
+            }
 
-                DropdownMenu(
-                    expanded = showFilterMenu,
-                    onDismissRequest = { showFilterMenu = false },
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "全部平台",
-                                fontWeight = if (selectedPlatform == null) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedPlatform == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        trailingIcon = {
-                            if (selectedPlatform == null) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        onClick = {
-                            onPlatformSelect(null)
-                            showFilterMenu = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "网易云音乐",
-                                fontWeight = if (selectedPlatform == OnlineBrowsePlatform.NETEASE) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedPlatform == OnlineBrowsePlatform.NETEASE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        trailingIcon = {
-                            if (selectedPlatform == OnlineBrowsePlatform.NETEASE) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        onClick = {
-                            onPlatformSelect(OnlineBrowsePlatform.NETEASE)
-                            showFilterMenu = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "QQ 音乐",
-                                fontWeight = if (selectedPlatform == OnlineBrowsePlatform.QQ) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedPlatform == OnlineBrowsePlatform.QQ) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        trailingIcon = {
-                            if (selectedPlatform == OnlineBrowsePlatform.QQ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        onClick = {
-                            onPlatformSelect(OnlineBrowsePlatform.QQ)
-                            showFilterMenu = false
-                        }
-                    )
+            FilledTonalIconButton(
+                onClick = {
+                    val nextPlatform = when (selectedPlatform) {
+                        null -> OnlineBrowsePlatform.NETEASE
+                        OnlineBrowsePlatform.NETEASE -> OnlineBrowsePlatform.QQ
+                        OnlineBrowsePlatform.QQ -> null
+                    }
+                    onPlatformSelect(nextPlatform)
+                },
+                shape = RoundedCornerShape(
+                    topStart = 26.dp,
+                    bottomStart = 26.dp,
+                    topEnd = 8.dp,
+                    bottomEnd = 8.dp
+                ),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (isFilterActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (isFilterActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.size(42.dp)
+            ) {
+                when (selectedPlatform) {
+                    null -> {
+                        Icon(
+                            imageVector = Icons.Rounded.Dataset,
+                            contentDescription = tooltipText,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    OnlineBrowsePlatform.NETEASE -> {
+                        Icon(
+                            painter = painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_),
+                            contentDescription = tooltipText,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                    OnlineBrowsePlatform.QQ -> {
+                        Icon(
+                            painter = painterResource(R.drawable.qq_music),
+                            contentDescription = tooltipText,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
 
@@ -719,7 +685,7 @@ private fun DailyRecommendationPager(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         HorizontalPager(
             state = pagerState,
@@ -737,9 +703,7 @@ private fun DailyRecommendationPager(
 
         if (tiles.size > 1) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -850,8 +814,8 @@ private fun DailyHeroCard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 22.dp, top = 18.dp, end = 20.dp, bottom = 18.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .padding(start = 22.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -870,7 +834,7 @@ private fun DailyHeroCard(
                     )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall.copy(
@@ -888,8 +852,6 @@ private fun DailyHeroCard(
                         maxLines = 1
                     )
                 }
-
-                Spacer(Modifier.height(2.dp))
             }
 
             if (tile !is PendingDailyTile) {
@@ -1120,7 +1082,7 @@ private fun RecommendationSectionTitle(
             fontWeight = FontWeight.Bold
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.padding(top = 6.dp, bottom = 2.dp)
+        modifier = modifier.padding(top = 2.dp, bottom = 0.dp)
     )
 }
 
