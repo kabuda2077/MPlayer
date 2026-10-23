@@ -174,7 +174,7 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             .padding(
                 start = LibraryHeaderHorizontalPadding,
                 end = LibraryHeaderHorizontalPadding,
-                top = 18.dp,
+                top = LibraryHeaderHorizontalPadding,
                 bottom = bottomContentPadding
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -334,7 +334,7 @@ private fun RecommendationPageContent(
         contentPadding = PaddingValues(
             start = LibraryHeaderHorizontalPadding,
             end = LibraryHeaderHorizontalPadding,
-            top = 18.dp,
+            top = LibraryHeaderHorizontalPadding,
             bottom = bottomContentPadding
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
