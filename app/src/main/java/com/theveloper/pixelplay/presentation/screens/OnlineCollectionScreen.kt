@@ -515,6 +515,10 @@ fun OnlineCollectionScreen(
         OnlineSongActionsSheet(
             song = onlineSong,
             onDismiss = { selectedSongForActions = null },
+            onPlay = {
+                playerViewModel.showAndPlayTransientSong(onlineSong, state.songs, state.title)
+                selectedSongForActions = null
+            },
             onPlayNext = {
                 playerViewModel.addTransientSongNextToQueue(onlineSong)
                 selectedSongForActions = null

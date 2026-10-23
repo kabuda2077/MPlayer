@@ -951,6 +951,9 @@ fun PlaylistDetailScreen(
                 onAddToPlayList = {
                     showPlaylistBottomSheet = true;
                 },
+                onDownload = {
+                    playerViewModel.downloadSelectedSongs(listOf(currentSong))
+                },
                 onDeleteFromDevice = playerViewModel::deleteFromDevice,
                 onNavigateToAlbum = {
                     navController.navigateSafelyReplacing(

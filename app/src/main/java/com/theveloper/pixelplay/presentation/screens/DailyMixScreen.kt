@@ -194,6 +194,9 @@ fun DailyMixScreen(
             onAddToPlayList = {
                 showPlaylistBottomSheet = true;
             },
+            onDownload = {
+                playerViewModel.downloadSelectedSongs(listOf(song))
+            },
             onDeleteFromDevice = playerViewModel::deleteFromDevice,
             onNavigateToAlbum = {
                 // Assuming Screen object has a method to create a route

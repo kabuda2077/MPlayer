@@ -231,6 +231,9 @@ internal fun UnifiedPlayerSongInfoLayer(
                 onAddToPlayList = {
                     showPlaylistBottomSheet = true
                 },
+                onDownload = {
+                    playerViewModel.downloadSelectedSongs(listOf(liveSong))
+                },
                 onDeleteFromDevice = { activity, songToDelete, onResult ->
                     playerViewModel.deleteFromDevice(activity, songToDelete, onResult)
                     onDismissSongInfo()

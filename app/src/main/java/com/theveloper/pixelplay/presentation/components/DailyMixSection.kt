@@ -129,6 +129,9 @@ fun DailyMixSection(
             onAddToPlayList = {
                 showPlaylistBottomSheet = true
             },
+            onDownload = {
+                playerViewModel.downloadSelectedSongs(listOf(song))
+            },
             onDeleteFromDevice = playerViewModel::deleteFromDevice,
             onNavigateToAlbum = {
                 onNavigateToAlbum(song)

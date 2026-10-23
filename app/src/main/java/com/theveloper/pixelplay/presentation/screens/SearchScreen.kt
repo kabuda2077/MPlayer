@@ -415,6 +415,14 @@ fun SearchScreen(
         OnlineSongActionsSheet(
             song = onlineSong,
             onDismiss = { selectedOnlineSongForActions = null },
+            onPlay = {
+                playerViewModel.showAndPlayTransientSong(
+                    onlineSong,
+                    listOf(onlineSong),
+                    "搜索单曲"
+                )
+                selectedOnlineSongForActions = null
+            },
             onPlayNext = {
                 playerViewModel.addTransientSongNextToQueue(onlineSong)
                 selectedOnlineSongForActions = null

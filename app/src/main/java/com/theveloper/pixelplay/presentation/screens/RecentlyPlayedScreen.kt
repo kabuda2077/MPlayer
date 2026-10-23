@@ -297,6 +297,9 @@ fun RecentlyPlayedScreen(
                 onAddToPlayList = {
                     showPlaylistBottomSheet = true
                 },
+                onDownload = {
+                    playerViewModel.downloadSelectedSongs(listOf(song))
+                },
                 onDeleteFromDevice = playerViewModel::deleteFromDevice,
                 onNavigateToAlbum = {
                     navController.navigateSafely(Screen.AlbumDetail.createRoute(song.albumId))

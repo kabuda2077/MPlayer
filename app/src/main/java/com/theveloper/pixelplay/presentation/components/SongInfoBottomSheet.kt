@@ -28,6 +28,7 @@ import androidx.compose.runtime.withFrameNanos
 
 
 import androidx.compose.foundation.clickable
+import com.theveloper.pixelplay.data.download.DownloadTarget
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -123,7 +124,8 @@ fun SongInfoBottomSheet(
     onAddToQueue: () -> Unit,
     onAddNextToQueue: () -> Unit,
     onAddToPlayList: () -> Unit,
-    onDeleteFromDevice: (activity: Activity, song: Song, onResult: (Boolean) -> Unit) -> Unit,
+    onDownload: (() -> Unit)? = null,
+    onDeleteFromDevice: (activity: Activity, song: Song, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onNavigateToAlbum: () -> Unit,
     onNavigateToArtist: () -> Unit,
     onNavigateToArtistById: (Long) -> Unit = { onNavigateToArtist() },
@@ -352,16 +354,28 @@ fun SongInfoBottomSheet(
                                 modifier = Modifier.size(80.dp),
                                 contentScale = ContentScale.Crop
                             )
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight(),
-                                contentAlignment = Alignment.CenterStart
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                AutoSizingTextToFill(
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    fontWeight = FontWeight.Light,
-                                    text = song.title
+                                Text(
+                                    text = song.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = GoogleSansRounded,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = song.displayArtist.ifBlank { song.artist }.ifBlank { "Unknown Artist" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = GoogleSansRounded,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             val isEditable = remember(song) { songInfoViewModel.isSongEditable(song) }
@@ -435,11 +449,11 @@ fun SongInfoBottomSheet(
                                             .padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Row1Actions(
+                                        SongActionsLayout(
                                             isFavorite = isFavorite,
-                                            onPlaySong = onPlaySong,
+                                            onPlay = onPlaySong,
                                             onToggleFavorite = onToggleFavorite,
-                                            onShareClick = {
+                                            onShare = {
                                                 try {
                                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                                         type = "audio/*"
@@ -460,38 +474,26 @@ fun SongInfoBottomSheet(
                                                     ).show()
                                                 }
                                             },
-                                            playButtonShape = playButtonShape,
-                                            evenCornerRadiusElems = evenCornerRadiusElems
-                                        )
-
-                                        Row2Actions(
                                             onAddToQueue = onAddToQueue,
-                                            onAddNextToQueue = onAddNextToQueue
-                                        )
-
-                                        Row3Actions(
+                                            onAddNextToQueue = onAddNextToQueue,
                                             onAddToPlaylist = onAddToPlayList,
-                                            onDelete = {
-                                                (context as? Activity)?.let { activity ->
-                                                    onDeleteFromDevice(activity, song) { result ->
-                                                        if (result) {
-                                                            removeFromListTrigger()
-                                                            onDismiss()
-                                                        }
+                                            onDownload = {
+                                                if (onDownload != null) {
+                                                    onDownload()
+                                                } else {
+                                                    val target = DownloadTarget.fromSong(song)
+                                                    if (target != null) {
+                                                        Toast.makeText(context, "下载任务已提交", Toast.LENGTH_SHORT).show()
+                                                    } else {
+                                                        Toast.makeText(context, "该歌曲已在本地设备", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
+                                                onDismiss()
                                             }
                                         )
 
-                                        RingtoneActionButton(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(min = 66.dp),
-                                            showText = true,
-                                            onClick = { showTonePickerDialog = true },
-                                        )
-
-                                        Spacer(Modifier.height(80.dp))
+                                        Spacer(Modifier.height(76.dp))
+                                        Spacer(Modifier.navigationBarsPadding())
                                     }
                                 }
                                 1 -> { // Details / Info
@@ -1043,476 +1045,5 @@ private fun SongInfoSegmentedListItem(
     }
 }
 
-@Composable
-private fun Row1Actions(
-    isFavorite: Boolean,
-    onPlaySong: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onShareClick: () -> Unit,
-    playButtonShape: Shape,
-    evenCornerRadiusElems: androidx.compose.ui.unit.Dp
-) {
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    var clickPending by remember { mutableStateOf(false) }
 
-    val playInteractionSource = remember { MutableInteractionSource() }
-    val isPlayPressed by playInteractionSource.collectIsPressedAsState()
-    var playVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isPlayPressed) {
-        if (isPlayPressed) {
-            playVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            playVisualPressed = false
-        }
-    }
-
-    val favoriteInteractionSource = remember { MutableInteractionSource() }
-    val isFavoritePressed by favoriteInteractionSource.collectIsPressedAsState()
-    var favoriteVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isFavoritePressed) {
-        if (isFavoritePressed) {
-            favoriteVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            favoriteVisualPressed = false
-        }
-    }
-
-    val shareInteractionSource = remember { MutableInteractionSource() }
-    val isSharePressed by shareInteractionSource.collectIsPressedAsState()
-    var shareVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isSharePressed) {
-        if (isSharePressed) {
-            shareVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            shareVisualPressed = false
-        }
-    }
-
-    val pressSpec = spring<Float>(
-        dampingRatio = 0.8f,
-        stiffness = 300f
-    )
-
-    val pressFractionPlay by animateFloatAsState(
-        targetValue = if (playVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "PlayPressFraction"
-    )
-    val pressFractionFavorite by animateFloatAsState(
-        targetValue = if (favoriteVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "FavoritePressFraction"
-    )
-    val pressFractionShare by animateFloatAsState(
-        targetValue = if (shareVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "SharePressFraction"
-    )
-
-    val weightPlay = (0.5f + 0.08f * pressFractionPlay - 0.05f * pressFractionFavorite - 0.05f * pressFractionShare).coerceAtLeast(0.1f)
-    val weightFavorite = (0.25f + 0.08f * pressFractionFavorite - 0.04f * pressFractionPlay - 0.03f * pressFractionShare).coerceAtLeast(0.05f)
-    val weightShare = (0.25f + 0.08f * pressFractionShare - 0.04f * pressFractionPlay - 0.03f * pressFractionFavorite).coerceAtLeast(0.05f)
-
-    // Local favorite button animations
-    val favoriteButtonCornerRadius by animateDpAsState(
-        targetValue = if (isFavorite) evenCornerRadiusElems else 60.dp,
-        animationSpec = tween(durationMillis = 300), label = "FavoriteCornerAnimation"
-    )
-    val favoriteButtonContainerColor by animateColorAsState(
-        targetValue = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        animationSpec = tween(durationMillis = 300), label = "FavoriteContainerColorAnimation"
-    )
-    val favoriteButtonContentColor by animateColorAsState(
-        targetValue = if (isFavorite) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(durationMillis = 300), label = "FavoriteContentColorAnimation"
-    )
-
-    val favoriteButtonShape = remember(favoriteButtonCornerRadius) {
-        AbsoluteSmoothCornerShape(
-            cornerRadiusTR = favoriteButtonCornerRadius, smoothnessAsPercentBR = 60, cornerRadiusBR = favoriteButtonCornerRadius,
-            smoothnessAsPercentTL = 60, cornerRadiusTL = favoriteButtonCornerRadius, smoothnessAsPercentBL = 60,
-            cornerRadiusBL = favoriteButtonCornerRadius, smoothnessAsPercentTR = 60
-        )
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        FilledTonalButton(
-            modifier = Modifier
-                .weight(weightPlay)
-                .heightIn(min = 80.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            shape = playButtonShape,
-            interactionSource = playInteractionSource,
-            onClick = {
-                if (clickPending) return@FilledTonalButton
-                clickPending = true
-                playVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Play clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    playVisualPressed = false
-                    clickPending = false
-                    onPlaySong()
-                }
-            }
-        ) {
-            Icon(
-                Icons.Rounded.PlayArrow,
-                contentDescription = stringResource(R.string.song_info_cd_play),
-            )
-            Spacer(Modifier.width(6.dp))
-            TightWrapText(
-                text = stringResource(R.string.song_info_action_play),
-                modifier = Modifier.padding(end = 4.dp),
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                lineHeight = 22.sp,
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
-
-        FilledIconButton(
-            modifier = Modifier
-                .weight(weightFavorite)
-                .fillMaxHeight(),
-            onClick = {
-                if (clickPending) return@FilledIconButton
-                clickPending = true
-                favoriteVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Favorite clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    favoriteVisualPressed = false
-                    clickPending = false
-                    onToggleFavorite()
-                }
-            },
-            shape = favoriteButtonShape,
-            interactionSource = favoriteInteractionSource,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = favoriteButtonContainerColor,
-                contentColor = favoriteButtonContentColor
-            )
-        ) {
-            Icon(
-                modifier = Modifier.size(FloatingActionButtonDefaults.LargeIconSize),
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = stringResource(
-                    if (isFavorite) R.string.song_info_cd_remove_from_favorites else R.string.song_info_cd_add_to_favorites
-                )
-            )
-        }
-
-        FilledTonalIconButton(
-            modifier = Modifier
-                .weight(weightShare)
-                .fillMaxHeight(),
-            onClick = {
-                if (clickPending) return@FilledTonalIconButton
-                clickPending = true
-                shareVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row1Actions: Share clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    shareVisualPressed = false
-                    clickPending = false
-                    onShareClick()
-                }
-            },
-            shape = CircleShape,
-            interactionSource = shareInteractionSource
-        ) {
-            Icon(
-                modifier = Modifier.size(FloatingActionButtonDefaults.LargeIconSize),
-                imageVector = Icons.Rounded.Share,
-                contentDescription = stringResource(R.string.song_info_cd_share_song_file)
-            )
-        }
-    }
-}
-
-@Composable
-private fun Row2Actions(
-    onAddToQueue: () -> Unit,
-    onAddNextToQueue: () -> Unit
-) {
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    var clickPending by remember { mutableStateOf(false) }
-
-    val queueInteractionSource = remember { MutableInteractionSource() }
-    val isQueuePressed by queueInteractionSource.collectIsPressedAsState()
-    var queueVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isQueuePressed) {
-        if (isQueuePressed) {
-            queueVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            queueVisualPressed = false
-        }
-    }
-
-    val nextInteractionSource = remember { MutableInteractionSource() }
-    val isNextPressed by nextInteractionSource.collectIsPressedAsState()
-    var nextVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isNextPressed) {
-        if (isNextPressed) {
-            nextVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            nextVisualPressed = false
-        }
-    }
-
-    val pressSpec = spring<Float>(
-        dampingRatio = 0.8f,
-        stiffness = 300f
-    )
-
-    val pressFractionQueue by animateFloatAsState(
-        targetValue = if (queueVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "QueuePressFraction"
-    )
-    val pressFractionNext by animateFloatAsState(
-        targetValue = if (nextVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "NextPressFraction"
-    )
-
-    val weightQueue = (0.6f + 0.08f * pressFractionQueue - 0.08f * pressFractionNext).coerceAtLeast(0.1f)
-    val weightNext = (0.4f + 0.08f * pressFractionNext - 0.08f * pressFractionQueue).coerceAtLeast(0.1f)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        FilledTonalButton(
-            modifier = Modifier
-                .weight(weightQueue)
-                .heightIn(min = 66.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            shape = CircleShape,
-            interactionSource = queueInteractionSource,
-            onClick = {
-                if (clickPending) return@FilledTonalButton
-                clickPending = true
-                queueVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row2Actions: AddToQueue clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    queueVisualPressed = false
-                    clickPending = false
-                    onAddToQueue()
-                }
-            }
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.QueueMusic,
-                contentDescription = stringResource(R.string.song_info_cd_add_to_queue),
-            )
-            Spacer(Modifier.width(6.dp))
-            TightWrapText(
-                text = stringResource(R.string.song_info_action_add_to_queue),
-                modifier = Modifier.padding(end = 4.dp),
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                lineHeight = 20.sp
-            )
-        }
-
-        FilledTonalButton(
-            modifier = Modifier
-                .weight(weightNext)
-                .heightIn(min = 66.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            shape = CircleShape,
-            interactionSource = nextInteractionSource,
-            onClick = {
-                if (clickPending) return@FilledTonalButton
-                clickPending = true
-                nextVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row2Actions: AddNextToQueue clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    nextVisualPressed = false
-                    clickPending = false
-                    onAddNextToQueue()
-                }
-            }
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.QueueMusic,
-                contentDescription = stringResource(R.string.song_info_cd_queue_next)
-            )
-            Spacer(Modifier.width(6.dp))
-            TightWrapText(
-                text = stringResource(R.string.song_info_action_queue_next),
-                modifier = Modifier.padding(end = 4.dp),
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                lineHeight = 20.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun Row3Actions(
-    onAddToPlaylist: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    var clickPending by remember { mutableStateOf(false) }
-
-    val playlistInteractionSource = remember { MutableInteractionSource() }
-    val isPlaylistPressed by playlistInteractionSource.collectIsPressedAsState()
-    var playlistVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isPlaylistPressed) {
-        if (isPlaylistPressed) {
-            playlistVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            playlistVisualPressed = false
-        }
-    }
-
-    val deleteInteractionSource = remember { MutableInteractionSource() }
-    val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
-    var deleteVisualPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(isDeletePressed) {
-        if (isDeletePressed) {
-            deleteVisualPressed = true
-        } else {
-            kotlinx.coroutines.delay(180)
-            deleteVisualPressed = false
-        }
-    }
-
-    val pressSpec = spring<Float>(
-        dampingRatio = 0.8f,
-        stiffness = 300f
-    )
-
-    val pressFractionPlaylist by animateFloatAsState(
-        targetValue = if (playlistVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "PlaylistPressFraction"
-    )
-    val pressFractionDelete by animateFloatAsState(
-        targetValue = if (deleteVisualPressed) 1f else 0f,
-        animationSpec = pressSpec,
-        label = "DeletePressFraction"
-    )
-
-    val weightPlaylist = (0.5f + 0.08f * pressFractionPlaylist - 0.08f * pressFractionDelete).coerceAtLeast(0.1f)
-    val weightDelete = (0.5f + 0.08f * pressFractionDelete - 0.08f * pressFractionPlaylist).coerceAtLeast(0.1f)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        FilledTonalButton(
-            modifier = Modifier
-                .weight(weightPlaylist)
-                .heightIn(min = 66.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            shape = CircleShape,
-            interactionSource = playlistInteractionSource,
-            onClick = {
-                if (clickPending) return@FilledTonalButton
-                clickPending = true
-                playlistVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row3Actions: AddToPlaylist clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    playlistVisualPressed = false
-                    clickPending = false
-                    onAddToPlaylist()
-                }
-            }
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.PlaylistAdd,
-                contentDescription = stringResource(R.string.song_info_cd_add_to_playlist)
-            )
-            Spacer(Modifier.width(6.dp))
-            TightWrapText(
-                text = stringResource(R.string.common_playlist),
-                modifier = Modifier.padding(end = 4.dp),
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                lineHeight = 20.sp
-            )
-        }
-
-        FilledTonalButton(
-            modifier = Modifier
-                .weight(weightDelete)
-                .heightIn(min = 66.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            shape = CircleShape,
-            interactionSource = deleteInteractionSource,
-            onClick = {
-                if (clickPending) return@FilledTonalButton
-                clickPending = true
-                deleteVisualPressed = true
-                android.util.Log.d("PixelPlayerDebug", "Row3Actions: Delete clicked")
-                coroutineScope.launch {
-                    kotlinx.coroutines.delay(180)
-                    deleteVisualPressed = false
-                    clickPending = false
-                    onDelete()
-                }
-            }
-        ) {
-            Icon(
-                Icons.Default.DeleteForever,
-                contentDescription = stringResource(R.string.song_info_action_delete)
-            )
-            Spacer(Modifier.width(6.dp))
-            TightWrapText(
-                text = stringResource(R.string.song_info_action_delete),
-                modifier = Modifier.padding(end = 4.dp),
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                lineHeight = 20.sp
-            )
-        }
-    }
-}
 

@@ -1,7 +1,7 @@
 package com.theveloper.pixelplay.presentation.components
 
+import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -33,13 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.theveloper.pixelplay.R
 import com.theveloper.pixelplay.data.model.TransientOnlineSong
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
 
@@ -52,8 +44,12 @@ fun OnlineSongActionsSheet(
     onAddToQueue: () -> Unit,
     onDownload: () -> Unit,
     onFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit
+    onAddToPlaylist: () -> Unit,
+    onPlay: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
+    isFavorite: Boolean = false
 ) {
+    val context = LocalContext.current
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
 
     ModalBottomSheet(
@@ -63,20 +59,20 @@ fun OnlineSongActionsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp)
         ) {
             // Header with artwork + title + artist
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(68.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {
@@ -93,99 +89,65 @@ fun OnlineSongActionsSheet(
                             imageVector = Icons.Rounded.MusicNote,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
                         text = song.song.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         fontFamily = GoogleSansRounded,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = song.song.displayArtist,
+                        text = song.song.displayArtist.ifBlank { "Unknown Artist" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = GoogleSansRounded,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            HorizontalDivider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3-Row Capsule Actions
+            SongActionsLayout(
+                isFavorite = isFavorite,
+                onPlay = {
+                    onPlay?.invoke() ?: onPlayNext()
+                },
+                onToggleFavorite = onFavorite,
+                onShare = {
+                    if (onShare != null) {
+                        onShare()
+                    } else {
+                        try {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "${song.song.title} - ${song.song.displayArtist}")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享歌曲"))
+                        } catch (_: Exception) {}
+                    }
+                },
+                onAddToQueue = onAddToQueue,
+                onAddNextToQueue = onPlayNext,
+                onAddToPlaylist = onAddToPlaylist,
+                onDownload = onDownload
             )
 
-            // Actions list
-            ActionRow(
-                icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
-                label = stringResource(R.string.search_online_action_play_next),
-                onClick = onPlayNext
-            )
-            ActionRow(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                label = stringResource(R.string.search_online_action_add_to_queue),
-                onClick = onAddToQueue
-            )
-            ActionRow(
-                icon = Icons.Rounded.Download,
-                label = stringResource(R.string.download_action),
-                onClick = onDownload
-            )
-            if (song.canSaveToLibrary) {
-                ActionRow(
-                    icon = Icons.Rounded.FavoriteBorder,
-                    label = stringResource(R.string.search_online_action_favorite),
-                    onClick = onFavorite
-                )
-                ActionRow(
-                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                    label = stringResource(R.string.search_online_action_add_to_playlist),
-                    onClick = onAddToPlaylist
-                )
-            }
-
+            Spacer(modifier = Modifier.height(16.dp))
             Spacer(modifier = Modifier.navigationBarsPadding())
-            Spacer(modifier = Modifier.height(8.dp))
         }
-    }
-}
-
-@Composable
-private fun ActionRow(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(22.dp)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
