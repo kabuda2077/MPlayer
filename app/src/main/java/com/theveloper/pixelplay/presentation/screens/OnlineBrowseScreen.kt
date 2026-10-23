@@ -1,6 +1,10 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,20 +23,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +55,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -120,8 +134,8 @@ fun OnlineBrowseScreen(
                     )
                 },
                 actions = {
-                    androidx.compose.material3.IconButton(onClick = { viewModel.refresh(force = true) }) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "刷新推荐")
+                    androidx.compose.material3.IconButton(onClick = { navController.navigateSafely(Screen.Settings.route) }) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -169,6 +183,18 @@ fun OnlineBrowseScreen(
 @Composable
 private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
+    val heroShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 20.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusTR = 20.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBL = 20.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBR = 20.dp,
+            smoothnessAsPercentBR = 60
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -180,7 +206,7 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Action bar shimmer
+        // Action bar shimmer: Left capsule button (120x42), Right segmented pair (42x42 each)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -188,39 +214,31 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
         ) {
             ShimmerBox(
                 modifier = Modifier
-                    .width(130.dp)
+                    .width(120.dp)
                     .height(42.dp)
                     .clip(RoundedCornerShape(26.dp))
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                repeat(3) {
-                    ShimmerBox(
-                        modifier = Modifier
-                            .width(50.dp)
-                            .height(36.dp)
-                            .clip(CircleShape)
-                    )
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ShimmerBox(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(topStart = 26.dp, bottomStart = 26.dp, topEnd = 8.dp, bottomEnd = 8.dp))
+                )
+                ShimmerBox(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 26.dp, bottomEnd = 26.dp))
+                )
             }
         }
 
-        // Section Title Shimmer
+        // Daily Hero Card Shimmer (160dp)
         ShimmerBox(
             modifier = Modifier
-                .width(100.dp)
-                .height(26.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(heroShape)
         )
-
-        // Daily Mix Cards Shimmer (Figure 3 style)
-        repeat(2) {
-            ShimmerBox(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(78.dp)
-                    .clip(AbsoluteSmoothCornerShape(22.dp, 60))
-            )
-        }
 
         // Section Title Shimmer
         ShimmerBox(
@@ -383,11 +401,12 @@ private fun RecommendationPageContent(
     val listState = rememberLazyListState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 0. Action & Filter Row (Expressive Action Bar, fixed at top matching LibraryActionRow)
+        // 0. Action & Filter Row (Option 2: 随机播放 + Segmented Filter / Refresh)
         OnlineActionBar(
             onShuffleClick = onPlayDailyShuffle,
             selectedPlatform = selectedPlatformFilter,
             onPlatformSelect = { selectedPlatformFilter = it },
+            onRefresh = onRetry,
             modifier = Modifier.padding(
                 start = LibraryHeaderHorizontalPadding,
                 end = LibraryHeaderHorizontalPadding,
@@ -412,20 +431,17 @@ private fun RecommendationPageContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 1. Daily Recommendation (Figure 3 Style Horizontal Cards)
+                // 1. Daily Recommendation Banner Carousel (Card format, swipe to switch platforms, no title)
                 if (dailyTiles.isNotEmpty()) {
-                    item(key = "daily_section_title") {
-                        RecommendationSectionTitle("今日推荐")
-                    }
-                    items(dailyTiles, key = { it.key }) { tile ->
-                        DailyMixItemCard(
-                            tile = tile,
-                            isLoadingPlay = tile.key == loadingPlayTileKey,
-                            onClick = {
+                    item(key = "daily_section_pager") {
+                        DailyRecommendationPager(
+                            tiles = dailyTiles,
+                            loadingPlayTileKey = loadingPlayTileKey,
+                            onClick = { tile ->
                                 if (tile is PendingDailyTile) onRetry()
                                 else navigateToRecommendationTile(navController, tile)
                             },
-                            onPlayClick = {
+                            onPlayClick = { tile ->
                                 when (tile) {
                                     is SectionTile -> {
                                         val songs = tile.section.items.filterIsInstance<RecommendationSongItem>().map { it.transientSong }
@@ -513,8 +529,17 @@ private fun OnlineActionBar(
     onShuffleClick: () -> Unit,
     selectedPlatform: OnlineBrowsePlatform?,
     onPlatformSelect: (OnlineBrowsePlatform?) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var refreshRotation by remember { mutableFloatStateOf(0f) }
+    val animatedRotation by animateFloatAsState(
+        targetValue = refreshRotation,
+        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+        label = "refresh_rotation"
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -539,63 +564,215 @@ private fun OnlineActionBar(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
-                    contentDescription = "今日漫听",
+                    contentDescription = "随机播放",
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "今日漫听",
+                    text = "随机播放",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val filterOptions = listOf(
-                null to "全部",
-                OnlineBrowsePlatform.NETEASE to "网易云",
-                OnlineBrowsePlatform.QQ to "QQ"
-            )
-            filterOptions.forEach { (platform, label) ->
-                val isSelected = selectedPlatform == platform
-                Surface(
-                    shape = CircleShape,
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .height(36.dp)
-                        .clip(CircleShape)
-                        .clickable { onPlatformSelect(platform) }
+        // Option 2 Segmented Pair: [ Filter ▾ ] + [ Refresh ↻ ]
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                val isFilterActive = selectedPlatform != null
+                FilledTonalIconButton(
+                    onClick = { showFilterMenu = true },
+                    shape = RoundedCornerShape(
+                        topStart = 26.dp,
+                        bottomStart = 26.dp,
+                        topEnd = 8.dp,
+                        bottomEnd = 8.dp
+                    ),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (isFilterActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = if (isFilterActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.size(42.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Rounded.FilterList,
+                        contentDescription = "筛选平台",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showFilterMenu,
+                    onDismissRequest = { showFilterMenu = false },
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "全部平台",
+                                fontWeight = if (selectedPlatform == null) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedPlatform == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        trailingIcon = {
+                            if (selectedPlatform == null) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            onPlatformSelect(null)
+                            showFilterMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "网易云音乐",
+                                fontWeight = if (selectedPlatform == OnlineBrowsePlatform.NETEASE) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedPlatform == OnlineBrowsePlatform.NETEASE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        trailingIcon = {
+                            if (selectedPlatform == OnlineBrowsePlatform.NETEASE) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            onPlatformSelect(OnlineBrowsePlatform.NETEASE)
+                            showFilterMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "QQ 音乐",
+                                fontWeight = if (selectedPlatform == OnlineBrowsePlatform.QQ) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedPlatform == OnlineBrowsePlatform.QQ) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        trailingIcon = {
+                            if (selectedPlatform == OnlineBrowsePlatform.QQ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            onPlatformSelect(OnlineBrowsePlatform.QQ)
+                            showFilterMenu = false
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            FilledTonalIconButton(
+                onClick = {
+                    refreshRotation += 360f
+                    onRefresh()
+                },
+                shape = RoundedCornerShape(
+                    topStart = 8.dp,
+                    bottomStart = 8.dp,
+                    topEnd = 26.dp,
+                    bottomEnd = 26.dp
+                ),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.size(42.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = "刷新内容",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .rotate(animatedRotation)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyRecommendationPager(
+    tiles: List<RecommendationTile>,
+    loadingPlayTileKey: String?,
+    onClick: (RecommendationTile) -> Unit,
+    onPlayClick: (RecommendationTile) -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { tiles.size })
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            pageSpacing = 12.dp
+        ) { pageIndex ->
+            val tile = tiles[pageIndex]
+            DailyHeroCard(
+                tile = tile,
+                isLoadingPlay = tile.key == loadingPlayTileKey,
+                onClick = { onClick(tile) },
+                onPlayClick = { onPlayClick(tile) }
+            )
+        }
+
+        if (tiles.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(tiles.size) { index ->
+                    val isSelected = pagerState.currentPage == index
+                    val width by animateDpAsState(
+                        targetValue = if (isSelected) 18.dp else 6.dp,
+                        animationSpec = tween(300),
+                        label = "indicator_width"
+                    )
+                    val color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
                     Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(6.dp)
+                            .width(width)
+                            .clip(CircleShape)
+                            .background(color)
+                    )
                 }
             }
         }
     }
 }
 
-/**
- * Figure 3 Style Daily Mix Item Card (Modeled after CollapsibleAlbumSectionHeader)
- */
 @Composable
-private fun DailyMixItemCard(
+private fun DailyHeroCard(
     tile: RecommendationTile,
     isLoadingPlay: Boolean,
     onClick: () -> Unit,
-    onPlayClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onPlayClick: () -> Unit
 ) {
     val artworkUri = when (tile) {
         is SectionTile -> tile.section.items.filterIsInstance<RecommendationSongItem>().firstOrNull()?.artworkUri
@@ -615,105 +792,143 @@ private fun DailyMixItemCard(
         is PendingDailyTile -> if (tile.platform == OnlineBrowsePlatform.QQ) "每日30首" else "每日推荐"
     }
 
-    val subtitle = when (platform) {
-        OnlineBrowsePlatform.QQ -> "QQ 音乐 · 每日为你推荐 30 首精选好歌"
-        OnlineBrowsePlatform.NETEASE -> "网易云音乐 · 根据听歌偏好量身定制"
+    val eyebrow = when (platform) {
+        OnlineBrowsePlatform.QQ -> "DAILY 30 · QQ 音乐"
+        OnlineBrowsePlatform.NETEASE -> "DAILY MIX · 网易云音乐"
     }
 
-    val cardShape = remember { AbsoluteSmoothCornerShape(22.dp, 60) }
+    val heroShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 20.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusTR = 20.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBL = 20.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBR = 20.dp,
+            smoothnessAsPercentBR = 60
+        )
+    }
 
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .clip(cardShape)
+            .height(160.dp)
             .clickable(onClick = onClick),
-        shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = heroShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (!artworkUri.isNullOrBlank()) {
+                SmartImage(
+                    model = artworkUri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            val surfaceContainer = MaterialTheme.colorScheme.surfaceContainerHigh
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0.0f to surfaceContainer.copy(alpha = 0.95f),
+                                0.52f to surfaceContainer.copy(alpha = 0.88f),
+                                0.82f to surfaceContainer.copy(alpha = 0.45f),
+                                1.0f to Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 22.dp, top = 18.dp, end = 20.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                if (!artworkUri.isNullOrBlank()) {
-                    SmartImage(
-                        model = artworkUri,
-                        contentDescription = title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (tile is PendingDailyTile && tile.failed) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = "重试",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = eyebrow,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.sp,
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.Bold
+                        ),
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.Black
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "专属个性化推荐 · 每日随心听",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(Modifier.height(2.dp))
             }
 
             if (tile !is PendingDailyTile) {
                 FilledIconButton(
                     onClick = onPlayClick,
                     enabled = !isLoadingPlay,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 18.dp, bottom = 16.dp)
+                        .size(46.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    modifier = Modifier.size(42.dp)
+                    shape = CircleShape
                 ) {
                     if (isLoadingPlay) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
+                            modifier = Modifier.size(22.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.5.dp
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = "播放",
-                            modifier = Modifier.size(24.dp)
+                            contentDescription = "立即播放",
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
+            } else if (tile.failed) {
+                Text(
+                    text = "加载失败，点击重试",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                )
             }
         }
     }
