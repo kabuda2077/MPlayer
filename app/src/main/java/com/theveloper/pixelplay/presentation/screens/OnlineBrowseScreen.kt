@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -212,9 +214,9 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
         modifier = Modifier
             .fillMaxSize()
             .padding(
-                start = LibraryHeaderHorizontalPadding,
-                end = LibraryHeaderHorizontalPadding,
-                top = 14.dp,
+                start = 14.dp,
+                end = 14.dp,
+                top = 8.dp,
                 bottom = bottomContentPadding
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -414,18 +416,20 @@ private fun RecommendationPageContent(
     val listState = rememberLazyListState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 0. Action & Filter Row (Option 2: 随机播放 + Segmented Filter / Refresh)
+        // 0. Action & Filter Row (Aligned with LibraryActionRow layout)
         OnlineActionBar(
             onShuffleClick = onPlayDailyShuffle,
             selectedPlatform = selectedPlatformFilter,
             onPlatformSelect = { selectedPlatformFilter = it },
             onRefresh = onRetry,
-            modifier = Modifier.padding(
-                start = LibraryHeaderHorizontalPadding,
-                end = LibraryHeaderHorizontalPadding,
-                top = 12.dp,
-                bottom = 4.dp
-            )
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    top = 6.dp,
+                    start = 10.dp,
+                    end = 10.dp
+                )
+                .heightIn(min = 56.dp)
         )
 
         Box(
@@ -437,8 +441,8 @@ private fun RecommendationPageContent(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = LibraryHeaderHorizontalPadding,
-                    end = LibraryHeaderHorizontalPadding,
+                    start = 14.dp,
+                    end = 14.dp,
                     top = 8.dp,
                     bottom = bottomContentPadding
                 ),
@@ -556,18 +560,18 @@ private fun OnlineActionBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 2.dp),
+            .padding(start = 4.dp, end = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         FilledTonalButton(
             onClick = onShuffleClick,
             shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
+            colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
             ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 6.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             modifier = Modifier.height(42.dp)
         ) {
@@ -577,20 +581,20 @@ private fun OnlineActionBar(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
-                    contentDescription = "随机播放",
+                    contentDescription = stringResource(R.string.common_shuffle_play),
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "随机播放",
+                    text = stringResource(R.string.common_shuffle),
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
 
-        // Option 2 Segmented Pair: [ Platform Cycle Toggle ] + [ Refresh ↻ ]
+        // Option 2 Segmented Pair: [ Platform Cycle Toggle ] + [ Refresh ↻ ] (matching LibraryActionRow)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val isFilterActive = selectedPlatform != null
             val tooltipText = when (selectedPlatform) {
                 null -> "全部平台"
                 OnlineBrowsePlatform.NETEASE -> "网易云音乐"
@@ -611,10 +615,6 @@ private fun OnlineActionBar(
                     bottomStart = 26.dp,
                     topEnd = 8.dp,
                     bottomEnd = 8.dp
-                ),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (isFilterActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = if (isFilterActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 modifier = Modifier.size(42.dp)
             ) {
@@ -656,10 +656,6 @@ private fun OnlineActionBar(
                     topEnd = 26.dp,
                     bottomEnd = 26.dp
                 ),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
                 modifier = Modifier.size(42.dp)
             ) {
                 Icon(
@@ -683,9 +679,8 @@ private fun DailyRecommendationPager(
 ) {
     val pagerState = rememberPagerState(pageCount = { tiles.size })
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth()
     ) {
         HorizontalPager(
             state = pagerState,
@@ -703,7 +698,9 @@ private fun DailyRecommendationPager(
 
         if (tiles.size > 1) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
