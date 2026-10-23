@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -142,7 +143,11 @@ fun OnlineBrowseScreen(
                         pages = state.pages,
                         loadingPlatforms = state.loadingPlatforms,
                         platformErrors = state.platformErrors,
+                        loadingPlayTileKey = state.loadingPlayTileKey,
                         onRetry = { viewModel.refresh(true) },
+                        onPlayPlaylist = { playlist, tileKey ->
+                            viewModel.playPlaylist(playlist, tileKey, playerViewModel)
+                        },
                         navController = navController,
                         playerViewModel = playerViewModel,
                         paddingValues = paddingValues
@@ -259,7 +264,9 @@ private fun RecommendationPageContent(
     pages: List<RecommendationPage>,
     loadingPlatforms: Set<OnlineBrowsePlatform>,
     platformErrors: Map<OnlineBrowsePlatform, String>,
+    loadingPlayTileKey: String?,
     onRetry: () -> Unit,
+    onPlayPlaylist: (RemotePlaylistReference, String) -> Unit,
     navController: NavController,
     playerViewModel: PlayerViewModel,
     paddingValues: PaddingValues
@@ -344,8 +351,10 @@ private fun RecommendationPageContent(
             item(key = "daily_section_pager") {
                 DailyRecommendationPager(
                     tiles = dailyTiles,
+                    loadingPlayTileKey = loadingPlayTileKey,
                     navController = navController,
                     playerViewModel = playerViewModel,
+                    onPlayPlaylist = onPlayPlaylist,
                     onRetry = onRetry
                 )
             }
@@ -404,8 +413,10 @@ private fun RecommendationPageContent(
 @Composable
 private fun DailyRecommendationPager(
     tiles: List<RecommendationTile>,
+    loadingPlayTileKey: String?,
     navController: NavController,
     playerViewModel: PlayerViewModel,
+    onPlayPlaylist: (RemotePlaylistReference, String) -> Unit,
     onRetry: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tiles.size })
@@ -422,6 +433,7 @@ private fun DailyRecommendationPager(
             val tile = tiles[pageIndex]
             DailyHeroCard(
                 tile = tile,
+                isLoadingPlay = tile.key == loadingPlayTileKey,
                 onClick = {
                     if (tile is PendingDailyTile) onRetry()
                     else navigateToRecommendationTile(navController, tile)
@@ -441,7 +453,7 @@ private fun DailyRecommendationPager(
                             }
                         }
                         is PlaylistTile -> {
-                            navigateToRecommendationTile(navController, tile)
+                            onPlayPlaylist(tile.playlist, tile.key)
                         }
                         is PendingDailyTile -> onRetry()
                     }
@@ -484,6 +496,7 @@ private fun DailyRecommendationPager(
 @Composable
 private fun DailyHeroCard(
     tile: RecommendationTile,
+    isLoadingPlay: Boolean,
     onClick: () -> Unit,
     onPlayClick: () -> Unit
 ) {
@@ -608,6 +621,7 @@ private fun DailyHeroCard(
             if (tile !is PendingDailyTile) {
                 FilledIconButton(
                     onClick = onPlayClick,
+                    enabled = !isLoadingPlay,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 18.dp, bottom = 16.dp)
@@ -618,11 +632,19 @@ private fun DailyHeroCard(
                     ),
                     shape = CircleShape
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = "立即播放",
-                        modifier = Modifier.size(26.dp)
-                    )
+                    if (isLoadingPlay) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.5.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = "立即播放",
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
             } else if (tile.failed) {
                 Text(

@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.RecommendationPage
+import com.theveloper.pixelplay.data.model.RemotePlaylistReference
 import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository
+import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,8 @@ data class OnlineBrowseUiState(
     val isLoading: Boolean = false,
     val loadingPlatforms: Set<OnlineBrowsePlatform> = emptySet(),
     val platformErrors: Map<OnlineBrowsePlatform, String> = emptyMap(),
-    val error: String? = null
+    val error: String? = null,
+    val loadingPlayTileKey: String? = null
 )
 
 @HiltViewModel
@@ -81,6 +84,34 @@ class OnlineBrowseViewModel @Inject constructor(
                     isLoading = false,
                     error = errors.firstOrNull().takeIf { successCount == 0 }
                 )
+            }
+        }
+    }
+
+    fun playPlaylist(
+        playlist: RemotePlaylistReference,
+        tileKey: String,
+        playerViewModel: PlayerViewModel
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingPlayTileKey = tileKey) }
+            try {
+                repository.loadPlaylist(playlist).fold(
+                    onSuccess = { detail ->
+                        if (detail.songs.isNotEmpty()) {
+                            playerViewModel.showAndPlayTransientSong(
+                                song = detail.songs.first(),
+                                contextSongs = detail.songs,
+                                queueName = playlist.title
+                            )
+                        }
+                    },
+                    onFailure = {
+                        // ignore or fail silently
+                    }
+                )
+            } finally {
+                _uiState.update { it.copy(loadingPlayTileKey = null) }
             }
         }
     }
