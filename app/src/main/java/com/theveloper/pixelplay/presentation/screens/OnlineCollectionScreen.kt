@@ -17,11 +17,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -33,13 +37,16 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -55,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -116,26 +124,14 @@ fun OnlineCollectionScreen(
     val lazyListState = rememberLazyListState()
     val showCollapsedTitle by remember {
         derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 200
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 300
         }
     }
 
     MaterialTheme(colorScheme = dynamicColorScheme) {
-        val gradientBrush = remember(dynamicColorScheme, isDarkTheme) {
-            Brush.verticalGradient(
-                colors = listOf(
-                    dynamicColorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.50f else 0.30f),
-                    dynamicColorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.15f else 0.08f),
-                    dynamicColorScheme.surface
-                )
-            )
-        }
-
         Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(gradientBrush),
-            containerColor = Color.Transparent,
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 TopAppBar(
                     title = {
@@ -154,7 +150,14 @@ fun OnlineCollectionScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        FilledTonalIconButton(
+                            modifier = Modifier.padding(start = 8.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            onClick = { navController.popBackStack() }
+                        ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back)
@@ -163,7 +166,12 @@ fun OnlineCollectionScreen(
                     },
                     actions = {
                         if (state.songs.isNotEmpty() && state.kind == "playlist") {
-                            IconButton(
+                            FilledTonalIconButton(
+                                modifier = Modifier.padding(end = 4.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+                                    contentColor = if (state.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ),
                                 onClick = {
                                     viewModel.toggleSaveToLibrary(
                                         onSuccess = { saved ->
@@ -184,14 +192,20 @@ fun OnlineCollectionScreen(
                                 } else {
                                     Icon(
                                         imageVector = if (state.isSaved) Icons.Rounded.Check else Icons.AutoMirrored.Rounded.PlaylistAdd,
-                                        contentDescription = if (state.isSaved) "已收藏到本地" else "收藏到本地歌单",
-                                        tint = if (state.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        contentDescription = if (state.isSaved) "已收藏到本地" else "收藏到本地歌单"
                                     )
                                 }
                             }
                         }
                         if (collectionSongs.isNotEmpty()) {
-                            IconButton(onClick = { showDownloadConfirmation = true }) {
+                            FilledTonalIconButton(
+                                modifier = Modifier.padding(end = 8.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                onClick = { showDownloadConfirmation = true }
+                            ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Download,
                                     contentDescription = "下载全部歌曲"
@@ -201,7 +215,7 @@ fun OnlineCollectionScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
@@ -245,180 +259,182 @@ fun OnlineCollectionScreen(
                     }
                 }
                 else -> {
+                    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     LazyColumn(
                         state = lazyListState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 4.dp,
                             bottom = MiniPlayerHeight + 96.dp
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Header: Cover Art + Metadata
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.Top
+                        // Hero Header: Full-width cover with downward gradient and scheme 3 layout
+                        item(key = "hero_header") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
+                                // Full Width Cover Backdrop
+                                val headerHeight = 360.dp
                                 Box(
                                     modifier = Modifier
-                                        .size(130.dp)
-                                        .shadow(elevation = 6.dp, shape = RoundedCornerShape(22.dp))
-                                        .clip(RoundedCornerShape(22.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .height(headerHeight)
                                 ) {
                                     if (!state.coverUrl.isNullOrBlank()) {
                                         SmartImage(
                                             model = state.coverUrl,
-                                            contentDescription = state.title,
-                                            modifier = Modifier.fillMaxSize(),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .alpha(if (isDarkTheme) 0.82f else 0.95f),
                                             contentScale = ContentScale.Crop
                                         )
                                     } else {
-                                        Icon(
-                                            imageVector = Icons.Rounded.MusicNote,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(52.dp),
-                                            tint = MaterialTheme.colorScheme.primary
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.verticalGradient(
+                                                        listOf(
+                                                            dynamicColorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.60f else 0.40f),
+                                                            dynamicColorScheme.surface
+                                                        )
+                                                    )
+                                                )
                                         )
                                     }
+
+                                    // Downward Gradient Fade to Surface Color
+                                    val surfaceColor = MaterialTheme.colorScheme.surface
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colorStops = arrayOf(
+                                                        0.0f to Color.Transparent,
+                                                        0.35f to surfaceColor.copy(alpha = 0.20f),
+                                                        0.68f to surfaceColor.copy(alpha = 0.80f),
+                                                        1.0f to surfaceColor
+                                                    )
+                                                )
+                                            )
+                                        )
                                 }
 
+                                // Header Content Column
                                 Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = statusBarHeight + 56.dp)
+                                        .padding(horizontal = 20.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = when (state.platform) {
-                                            OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFF4A151B) else Color(0xFFFFEBEE)
-                                            OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF0F3E30) else Color(0xFFE8F8F3)
-                                        }
-                                    ) {
-                                        Text(
-                                            text = when (state.platform) {
-                                                OnlineBrowsePlatform.NETEASE -> "网易云音乐"
-                                                OnlineBrowsePlatform.QQ -> "QQ 音乐"
-                                            },
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = when (state.platform) {
-                                                OnlineBrowsePlatform.NETEASE -> if (isDarkTheme) Color(0xFFFF5252) else Color(0xFFD32F2F)
-                                                OnlineBrowsePlatform.QQ -> if (isDarkTheme) Color(0xFF2DD8A5) else Color(0xFF00A86B)
-                                            }
-                                        )
-                                    }
+                                    Spacer(Modifier.height(32.dp))
 
+                                    // 1. Eyebrow Tag (Scheme 3 style)
+                                    val eyebrow = when {
+                                        state.kind == "toplist" -> "TOP CHARTS · 官方榜单"
+                                        state.title.contains("每日") -> "DAILY MIX · 每日推荐"
+                                        else -> "RECOMMENDED · 精选歌单"
+                                    }
+                                    Text(
+                                        text = eyebrow,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            letterSpacing = 1.2.sp,
+                                            fontFamily = GoogleSansRounded
+                                        ),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    // 2. Huge Headline Title (Scheme 3 style)
                                     Text(
                                         text = state.title,
                                         fontFamily = GoogleSansRounded,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        maxLines = 3,
+                                        fontWeight = FontWeight.Black,
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
 
-                                    val songCountText = if (state.songs.isNotEmpty()) {
-                                        formatSongCount(state.songs.size)
-                                    } else if (state.isLoading) {
-                                        "正在加载..."
-                                    } else {
-                                        ""
-                                    }
-                                    if (songCountText.isNotBlank()) {
+                                    // 3. Description / Subtitle
+                                    if (!state.description.isNullOrBlank()) {
                                         Text(
-                                            text = songCountText,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            text = state.description!!,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = if (isDescriptionExpanded) 15 else 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.clickable { isDescriptionExpanded = !isDescriptionExpanded }
                                         )
                                     }
-                                }
-                            }
-                        }
 
-                        // Description (if present)
-                        if (!state.description.isNullOrBlank()) {
-                            item {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { isDescriptionExpanded = !isDescriptionExpanded },
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                    )
-                                ) {
-                                    Text(
-                                        text = state.description!!,
-                                        modifier = Modifier.padding(12.dp),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = if (isDescriptionExpanded) 20 else 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
+                                    Spacer(Modifier.height(4.dp))
 
-                        // Action Buttons: Play All & Shuffle
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        if (collectionSongs.isNotEmpty()) {
-                                            playerViewModel.playSongs(
-                                                songsToPlay = collectionSongs,
-                                                startSong = collectionSongs.first(),
-                                                queueName = state.title
-                                            )
+                                    // 4. Action Buttons (Play Order & Shuffle capsules)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                if (collectionSongs.isNotEmpty()) {
+                                                    playerViewModel.playSongs(
+                                                        songsToPlay = collectionSongs,
+                                                        startSong = collectionSongs.first(),
+                                                        queueName = state.title
+                                                    )
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(48.dp),
+                                            enabled = collectionSongs.isNotEmpty(),
+                                            shape = CircleShape,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 16.dp)
+                                        ) {
+                                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("顺序播放", maxLines = 1, fontWeight = FontWeight.Bold)
                                         }
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp),
-                                    enabled = collectionSongs.isNotEmpty(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp)
-                                ) {
-                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("顺序播放", maxLines = 1, fontWeight = FontWeight.SemiBold)
-                                }
 
-                                FilledTonalButton(
-                                    onClick = {
-                                        if (collectionSongs.isNotEmpty()) {
-                                            playerViewModel.playSongsShuffled(
-                                                songsToPlay = collectionSongs,
-                                                queueName = state.title,
-                                                startAtZero = true
-                                            )
+                                        FilledTonalButton(
+                                            onClick = {
+                                                if (collectionSongs.isNotEmpty()) {
+                                                    playerViewModel.playSongsShuffled(
+                                                        songsToPlay = collectionSongs,
+                                                        queueName = state.title,
+                                                        startAtZero = true
+                                                    )
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(48.dp),
+                                            enabled = collectionSongs.isNotEmpty(),
+                                            shape = CircleShape,
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                contentColor = MaterialTheme.colorScheme.onSurface
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 16.dp)
+                                        ) {
+                                            Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("随机播放", maxLines = 1, fontWeight = FontWeight.Bold)
                                         }
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp),
-                                    enabled = collectionSongs.isNotEmpty(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp)
-                                ) {
-                                    Icon(Icons.Rounded.Shuffle, contentDescription = null, modifier = Modifier.size(20.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("随机播放", maxLines = 1, fontWeight = FontWeight.SemiBold)
+                                    }
+
+                                    // Clear breathing room before the song list
+                                    Spacer(Modifier.height(8.dp))
                                 }
                             }
                         }
@@ -426,12 +442,15 @@ fun OnlineCollectionScreen(
                         // Loading Skeleton Placeholders
                         if (state.isLoading && state.songs.isEmpty()) {
                             items(6) {
-                                SongItemSkeleton()
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    SongItemSkeleton()
+                                }
                             }
                         } else {
                             // Song Items
                             items(state.songs, key = { it.song.id }) { item ->
                                 EnhancedSongListItem(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
                                     song = item.song,
                                     isPlaying = playerState.isPlaying,
                                     isCurrentSong = playerState.currentSong?.id == item.song.id,
