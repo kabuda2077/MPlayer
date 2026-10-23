@@ -96,6 +96,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -186,6 +188,9 @@ fun PlaylistDetailScreen(
     val toastPlayingNext = stringResource(R.string.library_toast_playing_next)
     val currentPlaylist = uiState.currentPlaylistDetails
     val isFolderPlaylist = currentPlaylist?.id?.startsWith(FOLDER_PLAYLIST_PREFIX) == true
+    val isNeteasePlaylist = currentPlaylist?.id?.startsWith("netease_playlist:") == true
+    val isQqMusicPlaylist = currentPlaylist?.id?.startsWith("qqmusic_playlist:") == true
+    val isCloudPlaylist = isNeteasePlaylist || isQqMusicPlaylist
     val songsInPlaylist = uiState.currentPlaylistSongs
     val hasDownloadableSongs = songsInPlaylist.any { song ->
         MediaSourceClassifier.isDownloadable(song.contentUriString)
@@ -304,25 +309,53 @@ fun PlaylistDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            playerViewModel.showSortingSheet() 
+                    if (isReorderModeEnabled) {
+                        TextButton(
+                            onClick = { isReorderModeEnabled = false },
+                            modifier = Modifier.padding(end = 6.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.common_done),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Sort,
-                            contentDescription = sortSongsLabel
-                        )
-                    }
-                    if (!isFolderPlaylist) {
-                        FilledTonalIconButton(
-                            modifier = Modifier.padding(end = 10.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            onClick = { showPlaylistOptionsSheet = true }
-                        ) { Icon(Icons.Filled.MoreVert, moreOptionsLabel) }
+                    } else {
+                        if (hasDownloadableSongs) {
+                            FilledTonalIconButton(
+                                modifier = Modifier.padding(end = 4.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                onClick = { showDownloadPlaylistConfirmation = true }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Download,
+                                    contentDescription = stringResource(R.string.download_action)
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = {
+                                playerViewModel.showSortingSheet()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Sort,
+                                contentDescription = sortSongsLabel
+                            )
+                        }
+                        if (!isFolderPlaylist) {
+                            FilledTonalIconButton(
+                                modifier = Modifier.padding(end = 10.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                onClick = { showPlaylistOptionsSheet = true }
+                            ) { Icon(Icons.Filled.MoreVert, moreOptionsLabel) }
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -354,7 +387,7 @@ fun PlaylistDetailScreen(
                     .padding(top = innerPadding.calculateTopPadding())
             ) {
                 val actionButtonsHeight = 42.dp
-                val playbackControlBottomPadding = if (isFolderPlaylist) 8.dp else 6.dp
+                val playbackControlBottomPadding = 12.dp
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -505,256 +538,7 @@ fun PlaylistDetailScreen(
                             Text(stringResource(R.string.download_action))
                         }
                     }
-                } else if (!isFolderPlaylist) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, bottom = 8.dp, top = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val reorderCornerRadius by animateDpAsState(
-                            targetValue = if (isReorderModeEnabled) 24.dp else 12.dp,
-                            label = "reorderCornerRadius"
-                        )
-                        val reorderButtonColor by animateColorAsState(
-                            targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            label = "reorderButtonColor"
-                        )
-                        val reorderIconColor by animateColorAsState(
-                            targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
-                            label = "reorderIconColor"
-                        )
-
-                        val removeCornerRadius by animateDpAsState(
-                            targetValue = if (isRemoveModeEnabled) 24.dp else 12.dp,
-                            label = "removeCornerRadius"
-                        )
-                        val removeButtonColor by animateColorAsState(
-                            targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            label = "removeButtonColor"
-                        )
-                        val removeIconColor by animateColorAsState(
-                            targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
-                            label = "removeIconColor"
-                        )
-
-                        Button(
-                            onClick = { showAddSongsSheet = true },
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(actionButtonsHeight)
-                                .animateContentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = addSongsCd,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                modifier = Modifier.padding(end = 4.dp),
-                                text = addLabel,
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-
-                        val scrollState = rememberScrollState()
-                        val showStartFade by remember { derivedStateOf { scrollState.value > 0 } }
-                        val showEndFade by remember { derivedStateOf { scrollState.value < scrollState.maxValue } }
-
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .weight(1f)
-                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                                .drawWithContent {
-                                    drawContent()
-                                    val gradientWidth = 8.dp.toPx()
-
-                                    if (showStartFade) {
-                                        drawRect(
-                                            brush = Brush.horizontalGradient(
-                                                colors = listOf(Color.Transparent, Color.Black),
-                                                endX = gradientWidth
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                    }
-
-                                    if (showEndFade) {
-                                        drawRect(
-                                            brush = Brush.horizontalGradient(
-                                                colors = listOf(Color.Black, Color.Transparent),
-                                                startX = this.size.width - gradientWidth
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                    }
-                                }
-                        ) {
-                            val containerWidthPx = constraints.maxWidth
-
-                            Layout(
-                                modifier = Modifier.horizontalScroll(scrollState),
-                                content = {
-                                    Button(
-                                        onClick = { showDownloadPlaylistConfirmation = true },
-                                        enabled = hasDownloadableSongs,
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurface,
-                                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
-                                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        ),
-                                        modifier = Modifier
-                                            .height(actionButtonsHeight)
-                                            .animateContentSize()
-                                            .clip(RoundedCornerShape(12.dp))
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Download,
-                                            contentDescription = stringResource(R.string.download_action),
-                                            modifier = Modifier.size(17.dp)
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            modifier = Modifier.padding(end = 4.dp),
-                                            text = stringResource(R.string.download_action),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            selectedPlaylistSongs.clear()
-                                            isRemoveModeEnabled = !isRemoveModeEnabled
-                                            if (isRemoveModeEnabled) isReorderModeEnabled = false
-                                        },
-                                        shape = RoundedCornerShape(removeCornerRadius),
-                                        contentPadding = PaddingValues(horizontal = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = removeButtonColor,
-                                            contentColor = removeIconColor
-                                        ),
-                                        modifier = Modifier
-                                            .height(actionButtonsHeight)
-                                            .animateContentSize()
-                                            .clip(RoundedCornerShape(removeCornerRadius))
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.RemoveCircleOutline,
-                                            contentDescription = removeSongsCd,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = removeIconColor
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            modifier = Modifier.padding(end = 4.dp),
-                                            text = removeLabel,
-                                            color = removeIconColor,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            selectedPlaylistSongs.clear()
-                                            isReorderModeEnabled = !isReorderModeEnabled
-                                            if (isReorderModeEnabled) isRemoveModeEnabled = false
-                                        },
-                                        shape = RoundedCornerShape(reorderCornerRadius),
-                                        contentPadding = PaddingValues(horizontal = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = reorderButtonColor,
-                                            contentColor = reorderIconColor
-                                        ),
-                                        modifier = Modifier
-                                            .height(actionButtonsHeight)
-                                            .animateContentSize()
-                                            .clip(RoundedCornerShape(reorderCornerRadius))
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.drag_order_icon),
-                                            contentDescription = reorderSongsCd,
-                                            modifier = Modifier.size(22.dp),
-                                            tint = reorderIconColor
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            modifier = Modifier.padding(end = 4.dp),
-                                            text = reorderLabel,
-                                            color = reorderIconColor,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-                            ) { measurables, childConstraints ->
-                                val spacingPx = 8.dp.roundToPx()
-                                val totalSpacing = spacingPx * (measurables.size - 1)
-
-                                // Query maxIntrinsicWidth of each child without measuring
-                                val totalNaturalWidth = measurables.sumOf { measurable ->
-                                    measurable.maxIntrinsicWidth(Constraints.Infinity)
-                                } + totalSpacing
-
-                                val finalPlaceables = if (totalNaturalWidth <= containerWidthPx && containerWidthPx > 0) {
-                                    // Stretch them equally to fill containerWidthPx
-                                    val availableSpace = containerWidthPx - totalSpacing
-                                    val equalWidth = (availableSpace / measurables.size).coerceAtLeast(0)
-                                    measurables.map { measurable ->
-                                        measurable.measure(
-                                            childConstraints.copy(
-                                                minWidth = equalWidth,
-                                                maxWidth = equalWidth
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    // Measure naturally
-                                    measurables.map { measurable ->
-                                        measurable.measure(
-                                            childConstraints.copy(
-                                                minWidth = 0,
-                                                maxWidth = Constraints.Infinity
-                                            )
-                                        )
-                                    }
-                                }
-
-                                val layoutWidth = if (totalNaturalWidth <= containerWidthPx && containerWidthPx > 0) {
-                                    containerWidthPx
-                                } else {
-                                    totalNaturalWidth
-                                }
-
-                                val height = finalPlaceables.maxOfOrNull { it.height } ?: 0
-
-                                layout(layoutWidth, height) {
-                                    var xPosition = 0
-                                    finalPlaceables.forEach { placeable ->
-                                        placeable.placeRelative(x = xPosition, y = 0)
-                                        xPosition += placeable.width + spacingPx
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                } 
 
                 if (localReorderableSongs.isEmpty()) {
                     Box(Modifier
@@ -770,6 +554,14 @@ fun PlaylistDetailScreen(
                                 playlistEmptyAddHint
                             }
                             Text(emptyMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (!isFolderPlaylist && !isCloudPlaylist) {
+                                Spacer(Modifier.height(16.dp))
+                                Button(onClick = { showAddSongsSheet = true }) {
+                                    Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(addLabel)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -777,8 +569,10 @@ fun PlaylistDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .weight(1f)
-                            //.padding(horizontal = 10.dp)
                     ) {
+                        val reserveScrollbarSpace = LocalShowScrollbar.current
+                        val showScrollBar = reserveScrollbarSpace && (listState.canScrollForward || listState.canScrollBackward)
+
                         LazyColumn(
                             state = listState,
                             modifier = Modifier
@@ -796,16 +590,9 @@ fun PlaylistDetailScreen(
                             contentPadding = PaddingValues(
                                 top = 12.dp,
                                 bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
-                                end = 0.dp
-                            ).let {
-                                val showScrollBar = LocalShowScrollbar.current && (listState.canScrollForward || listState.canScrollBackward)
-                                PaddingValues(
-                                    top = it.calculateTopPadding(),
-                                    bottom = it.calculateBottomPadding(),
-                                    start = it.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                                    end = if (showScrollBar) 24.dp else 0.dp
-                                )
-                            }
+                                start = 0.dp,
+                                end = if (reserveScrollbarSpace) 14.dp else 0.dp
+                            )
                         ) {
                             itemsIndexed(
                                 localReorderableSongs,
@@ -902,16 +689,18 @@ fun PlaylistDetailScreen(
                             }
                         }
 
-                        ExpressiveScrollBar(
-                            listState = listState,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(
-                                    bottom = if (playerStableState.currentSong != null) MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
-                                    end = 14.dp,
-                                    top = 18.dp // Increased to 16.dp as requested
-                                )
-                        )
+                        if (showScrollBar) {
+                            ExpressiveScrollBar(
+                                listState = listState,
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(
+                                        bottom = if (playerStableState.currentSong != null) MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
+                                        end = 4.dp,
+                                        top = 16.dp
+                                    )
+                            )
+                        }
                     }
                 }
             }
@@ -966,6 +755,24 @@ fun PlaylistDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+                if (!isCloudPlaylist) {
+                    PlaylistActionItem(
+                        icon = rememberVectorPainter(Icons.Rounded.Add),
+                        label = addLabel,
+                        onClick = {
+                            showPlaylistOptionsSheet = false
+                            showAddSongsSheet = true
+                        }
+                    )
+                    PlaylistActionItem(
+                        icon = painterResource(R.drawable.drag_order_icon),
+                        label = reorderLabel,
+                        onClick = {
+                            showPlaylistOptionsSheet = false
+                            isReorderModeEnabled = true
+                        }
+                    )
                 }
                 PlaylistActionItem(
                     icon = painterResource(R.drawable.rounded_edit_24),
