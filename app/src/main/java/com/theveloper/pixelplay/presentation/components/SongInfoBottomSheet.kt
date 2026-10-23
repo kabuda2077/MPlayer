@@ -3,18 +3,22 @@ package com.theveloper.pixelplay.presentation.components
 import android.app.Activity
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -31,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -46,7 +51,6 @@ import com.theveloper.pixelplay.data.media.CoverArtUpdate
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.presentation.viewmodel.SongInfoBottomSheetViewModel
 import com.theveloper.pixelplay.ui.theme.GoogleSansRounded
-import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +65,7 @@ fun SongInfoBottomSheet(
     onAddNextToQueue: () -> Unit,
     onAddToPlayList: () -> Unit,
     onDownload: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
     onDeleteFromDevice: (activity: Activity, song: Song, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onNavigateToAlbum: () -> Unit = {},
     onNavigateToArtist: () -> Unit = {},
@@ -93,15 +98,6 @@ fun SongInfoBottomSheet(
     val errorShareSongFormat = stringResource(R.string.song_info_error_share_song)
     var showEditSheet by remember { mutableStateOf(false) }
 
-    val evenCornerRadiusElems = 26.dp
-    val albumArtShape = remember(evenCornerRadiusElems) {
-        AbsoluteSmoothCornerShape(
-            cornerRadiusTR = evenCornerRadiusElems, smoothnessAsPercentBR = 60, cornerRadiusBR = evenCornerRadiusElems,
-            smoothnessAsPercentTL = 60, cornerRadiusTL = evenCornerRadiusElems, smoothnessAsPercentBL = 60,
-            cornerRadiusBL = evenCornerRadiusElems, smoothnessAsPercentTR = 60
-        )
-    }
-
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Expanded,
         confirmValueChange = { true }
@@ -118,70 +114,79 @@ fun SongInfoBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Header: Cover + Title + Artist + Edit button
-            Column(
+            // Header: Cover + Title + Artist + Optional Edit button
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(68.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
                 ) {
-                    SmartImage(
-                        model = song.albumArtUriString,
-                        contentDescription = stringResource(R.string.common_album_art),
-                        shape = albumArtShape,
-                        modifier = Modifier.size(80.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = song.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = GoogleSansRounded,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    val artUri = song.albumArtUriString
+                    if (!artUri.isNullOrBlank()) {
+                        SmartImage(
+                            model = artUri,
+                            contentDescription = song.title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = song.displayArtist.ifBlank { song.artist }.ifBlank { "Unknown Artist" },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = GoogleSansRounded,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
-                    val isEditable = remember(song) { songInfoViewModel.isSongEditable(song) }
-                    if (isEditable) {
-                        FilledTonalIconButton(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(vertical = 6.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceBright,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            onClick = { showEditSheet = true },
-                        ) {
-                            Icon(
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                imageVector = Icons.Rounded.Edit,
-                                contentDescription = stringResource(R.string.song_info_cd_edit_metadata)
-                            )
-                        }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = GoogleSansRounded,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = song.displayArtist.ifBlank { song.artist }.ifBlank { "Unknown Artist" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = GoogleSansRounded,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                val isEditable = remember(song) { songInfoViewModel.isSongEditable(song) }
+                if (isEditable) {
+                    FilledTonalIconButton(
+                        modifier = Modifier.size(44.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceBright,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        onClick = { showEditSheet = true },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = stringResource(R.string.song_info_cd_edit_metadata),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -189,17 +194,14 @@ fun SongInfoBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Unified 3-row capsule actions
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SongActionsLayout(
-                    isFavorite = isFavorite,
-                    onPlay = onPlaySong,
-                    onToggleFavorite = onToggleFavorite,
-                    onShare = {
+            SongActionsLayout(
+                isFavorite = isFavorite,
+                onPlay = onPlaySong,
+                onToggleFavorite = onToggleFavorite,
+                onShare = {
+                    if (onShare != null) {
+                        onShare()
+                    } else {
                         try {
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "audio/*"
@@ -219,28 +221,28 @@ fun SongInfoBottomSheet(
                                 Toast.LENGTH_LONG
                             ).show()
                         }
-                    },
-                    onAddToQueue = onAddToQueue,
-                    onAddNextToQueue = onAddNextToQueue,
-                    onAddToPlaylist = onAddToPlayList,
-                    onDownload = {
-                        if (onDownload != null) {
-                            onDownload()
-                        } else {
-                            val target = DownloadTarget.fromSong(song)
-                            if (target != null) {
-                                Toast.makeText(context, "下载任务已提交", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "该歌曲已在本地设备", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        onDismiss()
                     }
-                )
+                },
+                onAddToQueue = onAddToQueue,
+                onAddNextToQueue = onAddNextToQueue,
+                onAddToPlaylist = onAddToPlayList,
+                onDownload = {
+                    if (onDownload != null) {
+                        onDownload()
+                    } else {
+                        val target = DownloadTarget.fromSong(song)
+                        if (target != null) {
+                            Toast.makeText(context, "下载任务已提交", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "该歌曲已在本地设备", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    onDismiss()
+                }
+            )
 
-                Spacer(Modifier.height(8.dp))
-                Spacer(Modifier.navigationBarsPadding())
-            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
 
