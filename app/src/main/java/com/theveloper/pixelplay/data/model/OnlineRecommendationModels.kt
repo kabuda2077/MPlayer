@@ -53,6 +53,12 @@ data class RemotePlaylistReference(
 }
 
 @Immutable
+data class ChartPreviewTrack(
+    val title: String,
+    val artist: String
+)
+
+@Immutable
 data class RemoteChartReference(
     val platform: OnlineBrowsePlatform,
     val remoteId: String,
@@ -60,7 +66,8 @@ data class RemoteChartReference(
     override val subtitle: String? = null,
     override val artworkUri: String? = null,
     /** A small preview assembled from the chart's first few tracks. */
-    val previewArtworkUris: List<String> = emptyList()
+    val previewArtworkUris: List<String> = emptyList(),
+    val previewTracks: List<ChartPreviewTrack> = emptyList()
 ) : RecommendationItem {
     override val key: String = "chart:${platform.name}:$remoteId"
 }

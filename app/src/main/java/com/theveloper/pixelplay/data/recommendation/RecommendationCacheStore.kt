@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.theveloper.pixelplay.data.model.ArtistRef
+import com.theveloper.pixelplay.data.model.ChartPreviewTrack
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.RecommendationAuthState
 import com.theveloper.pixelplay.data.model.RecommendationItem
@@ -120,7 +121,9 @@ class RecommendationCacheStore @Inject constructor(
         val songSourceId: String? = null,
         val song: SongDto? = null,
         val songCount: Int = 0,
-        val previewArtworkUris: List<String> = emptyList()
+        val previewArtworkUris: List<String> = emptyList(),
+        val previewTrackTitles: List<String> = emptyList(),
+        val previewTrackArtists: List<String> = emptyList()
     ) {
         fun toModel(platform: OnlineBrowsePlatform): RecommendationItem? = when (type) {
             "song" -> {
@@ -143,7 +146,10 @@ class RecommendationCacheStore @Inject constructor(
                 title = title,
                 subtitle = subtitle,
                 artworkUri = artworkUri,
-                previewArtworkUris = previewArtworkUris
+                previewArtworkUris = previewArtworkUris,
+                previewTracks = previewTrackTitles.zip(previewTrackArtists).map { (t, a) ->
+                    ChartPreviewTrack(title = t, artist = a)
+                }
             )
             else -> null
         }
@@ -173,7 +179,9 @@ class RecommendationCacheStore @Inject constructor(
                     title = item.title,
                     subtitle = item.subtitle,
                     artworkUri = item.artworkUri,
-                    previewArtworkUris = item.previewArtworkUris
+                    previewArtworkUris = item.previewArtworkUris,
+                    previewTrackTitles = item.previewTracks.map { it.title },
+                    previewTrackArtists = item.previewTracks.map { it.artist }
                 )
             }
         }

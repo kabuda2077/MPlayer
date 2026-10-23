@@ -1,5 +1,6 @@
 package com.theveloper.pixelplay.data.recommendation
 
+import com.theveloper.pixelplay.data.model.ChartPreviewTrack
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.OnlineSongMapper
 import com.theveloper.pixelplay.data.model.RecommendationAuthState
@@ -131,7 +132,10 @@ class NeteaseRecommendationProvider @Inject constructor(
                 runCatching {
                     val id = reference.remoteId.toLongOrNull() ?: return@runCatching reference
                     val songs = RecommendationJson.parseNeteaseSongs(api.getPlaylistDetail(id, songLimit = 6))
-                    reference.copy(previewArtworkUris = songs.mapNotNull { it.song.albumArtUriString }.distinct().take(4))
+                    reference.copy(
+                        previewArtworkUris = songs.mapNotNull { it.song.albumArtUriString }.distinct().take(4),
+                        previewTracks = songs.take(3).map { ChartPreviewTrack(it.song.title, it.song.displayArtist) }
+                    )
                 }.getOrDefault(reference)
             }
         }.awaitAll()
@@ -310,7 +314,10 @@ class QqMusicRecommendationProvider @Inject constructor(
                 runCatching {
                     val id = reference.remoteId.toIntOrNull() ?: return@runCatching reference
                     val songs = RecommendationJson.parseQqSongs(api.getTopListDetail(id, count = 6))
-                    reference.copy(previewArtworkUris = songs.mapNotNull { it.song.albumArtUriString }.distinct().take(4))
+                    reference.copy(
+                        previewArtworkUris = songs.mapNotNull { it.song.albumArtUriString }.distinct().take(4),
+                        previewTracks = songs.take(3).map { ChartPreviewTrack(it.song.title, it.song.displayArtist) }
+                    )
                 }.getOrDefault(reference)
             }
         }.awaitAll()
