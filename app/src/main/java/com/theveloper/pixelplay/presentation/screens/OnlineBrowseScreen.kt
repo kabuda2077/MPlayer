@@ -249,6 +249,8 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Daily Hero Card Shimmer (160dp)
         ShimmerBox(
             modifier = Modifier
@@ -256,6 +258,8 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
                 .height(160.dp)
                 .clip(heroShape)
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Section Title Shimmer
         ShimmerBox(
@@ -447,7 +451,7 @@ private fun RecommendationPageContent(
                 contentPadding = PaddingValues(
                     start = 14.dp,
                     end = if (reserveScrollbarSpace) 24.dp else 14.dp,
-                    top = 8.dp,
+                    top = 16.dp,
                     bottom = bottomContentPadding
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1085,7 +1089,7 @@ private fun RecommendationSectionTitle(
             fontWeight = FontWeight.Bold
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.padding(top = 2.dp, bottom = 0.dp)
+        modifier = modifier.padding(top = 12.dp, bottom = 0.dp)
     )
 }
 
