@@ -158,13 +158,13 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
     val heroShape = remember {
         AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 34.dp,
+            cornerRadiusTL = 20.dp,
             smoothnessAsPercentTL = 60,
-            cornerRadiusTR = 34.dp,
+            cornerRadiusTR = 20.dp,
             smoothnessAsPercentTR = 60,
-            cornerRadiusBL = 34.dp,
+            cornerRadiusBL = 20.dp,
             smoothnessAsPercentBL = 60,
-            cornerRadiusBR = 34.dp,
+            cornerRadiusBR = 20.dp,
             smoothnessAsPercentBR = 60
         )
     }
@@ -512,13 +512,13 @@ private fun DailyHeroCard(
 
     val heroShape = remember {
         AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 34.dp,
+            cornerRadiusTL = 20.dp,
             smoothnessAsPercentTL = 60,
-            cornerRadiusTR = 34.dp,
+            cornerRadiusTR = 20.dp,
             smoothnessAsPercentTR = 60,
-            cornerRadiusBL = 34.dp,
+            cornerRadiusBL = 20.dp,
             smoothnessAsPercentBL = 60,
-            cornerRadiusBR = 34.dp,
+            cornerRadiusBR = 20.dp,
             smoothnessAsPercentBR = 60
         )
     }
