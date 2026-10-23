@@ -213,7 +213,6 @@ fun PlaylistDetailScreen(
     var isReorderModeEnabled by remember { mutableStateOf(false) }
     var isRemoveModeEnabled by remember { mutableStateOf(false) }
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
-    var showPlaylistOptionsSheet by remember { mutableStateOf(false) }
     var showEditPlaylistDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showDownloadPlaylistConfirmation by remember { mutableStateOf(false) }
@@ -350,23 +349,8 @@ fun PlaylistDetailScreen(
                                 )
                             }
                         } else {
-                            if (hasDownloadableSongs) {
-                                FilledTonalIconButton(
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
-                                        contentColor = MaterialTheme.colorScheme.onSurface
-                                    ),
-                                    onClick = { showDownloadPlaylistConfirmation = true }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Download,
-                                        contentDescription = stringResource(R.string.download_action)
-                                    )
-                                }
-                            }
                             FilledTonalIconButton(
-                                modifier = Modifier.padding(end = 4.dp),
+                                modifier = Modifier.padding(end = if (hasDownloadableSongs) 4.dp else 8.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
                                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -380,16 +364,19 @@ fun PlaylistDetailScreen(
                                     contentDescription = sortSongsLabel
                                 )
                             }
-                            if (!isFolderPlaylist) {
+                            if (hasDownloadableSongs) {
                                 FilledTonalIconButton(
                                     modifier = Modifier.padding(end = 8.dp),
                                     colors = IconButtonDefaults.filledIconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
                                         contentColor = MaterialTheme.colorScheme.onSurface
                                     ),
-                                    onClick = { showPlaylistOptionsSheet = true }
+                                    onClick = { showDownloadPlaylistConfirmation = true }
                                 ) {
-                                    Icon(Icons.Filled.MoreVert, moreOptionsLabel)
+                                    Icon(
+                                        imageVector = Icons.Rounded.Download,
+                                        contentDescription = stringResource(R.string.download_action)
+                                    )
                                 }
                             }
                         }
@@ -820,90 +807,6 @@ fun PlaylistDetailScreen(
             }
         )
     }
-    if (showPlaylistOptionsSheet && !isFolderPlaylist) {
-        val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Expanded)
-
-        ModalBottomSheet(
-            onDismissRequest = { showPlaylistOptionsSheet = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            tonalElevation = 4.dp,
-//            dragHandle = {
-//                SheetDefaults.DragHandle(
-//                    color = MaterialTheme.colorScheme.onSurfaceVariant
-//                )
-//            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = playlistOptionsTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    currentPlaylist?.name?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (!isCloudPlaylist) {
-                    PlaylistActionItem(
-                        icon = rememberVectorPainter(Icons.Rounded.Add),
-                        label = addLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            showAddSongsSheet = true
-                        }
-                    )
-                    PlaylistActionItem(
-                        icon = painterResource(R.drawable.drag_order_icon),
-                        label = reorderLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            isReorderModeEnabled = true
-                        }
-                    )
-                }
-                PlaylistActionItem(
-                    icon = painterResource(R.drawable.rounded_edit_24),
-                    label = editPlaylistLabel,
-                    onClick = {
-                        showPlaylistOptionsSheet = false
-                        showEditPlaylistDialog = true
-                    }
-                )
-                PlaylistActionItem(
-                    icon = painterResource(R.drawable.rounded_delete_24),
-                    label = deletePlaylistLabel,
-                    onClick = {
-                        showPlaylistOptionsSheet = false
-                        showDeleteConfirmation = true
-                    }
-                )
-                PlaylistActionItem(
-                    icon = painterResource(R.drawable.outline_graph_1_24),
-                    label = setDefaultTransitionLabel,
-                    onClick = {
-                        showPlaylistOptionsSheet = false
-                        navController.navigateSafely(Screen.EditTransition.createRoute(playlistId))
-                    }
-                )
-            }
-        }
-    }
     
     if (showEditPlaylistDialog && currentPlaylist != null) {
         val initialShapeType = try {
@@ -1158,44 +1061,5 @@ fun PlaylistDetailScreen(
             showViewToggle = false 
         )
     }
-    }
-}
-
-
-@Composable
-private fun PlaylistActionItem(
-    icon: Painter,
-    label: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
