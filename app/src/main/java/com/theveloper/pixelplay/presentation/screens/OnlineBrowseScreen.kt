@@ -316,10 +316,10 @@ private fun RecommendationPageContent(
                 }
             }
                 .distinctBy { it.playlist.remoteId }
-                .take(if (platform == OnlineBrowsePlatform.NETEASE) 6 else 4)
+                .take(5)
                 .forEach { add(it) }
         }
-    }.distinctBy { it.key }
+    }.distinctBy { it.key }.take(10)
 
     val charts = pages.flatMap { page ->
         page.sections.flatMap { section ->
