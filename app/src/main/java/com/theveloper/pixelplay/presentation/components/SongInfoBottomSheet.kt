@@ -9,12 +9,17 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +67,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -262,10 +268,16 @@ fun SongInfoBottomSheet(
         )
     }
 
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Expanded,
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false,
         confirmValueChange = { true }
     )
+
+    val isExpanded by remember {
+        derivedStateOf {
+            sheetState.targetValue == SheetValue.Expanded || sheetState.currentValue == SheetValue.Expanded
+        }
+    }
 
 
     val infoSegmentContainerShape = remember {
@@ -300,6 +312,12 @@ fun SongInfoBottomSheet(
 
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage == 1 && sheetState.currentValue != SheetValue.Expanded) {
+            sheetState.expand()
+        }
+    }
 
     val configuration = LocalConfiguration.current
     val safeInsets = WindowInsets.safeDrawing.asPaddingValues()
@@ -437,8 +455,9 @@ fun SongInfoBottomSheet(
                                     0 -> { // Options / Actions
                                         Column(
                                             modifier = Modifier
-                                            .fillMaxWidth()
-                                            .graphicsLayer {
+                                                .fillMaxWidth()
+                                                .heightIn(min = maxPagerHeight)
+                                                .graphicsLayer {
                                                 val pageOffset = page - (pagerState.currentPage + pagerState.currentPageOffsetFraction)
                                                 val progress = kotlin.math.abs(pageOffset).coerceIn(0f, 1f)
                                                 scaleX = 1f + 0.15f * progress * (1f - progress)
@@ -492,15 +511,18 @@ fun SongInfoBottomSheet(
                                             }
                                         )
 
-                                        Spacer(Modifier.height(76.dp))
-                                        Spacer(Modifier.navigationBarsPadding())
+                                            if (isExpanded) {
+                                                Spacer(Modifier.height(76.dp))
+                                            }
+                                            Spacer(Modifier.navigationBarsPadding())
+                                        }
                                     }
-                                }
-                                1 -> { // Details / Info
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .graphicsLayer {
+                                    1 -> { // Details / Info
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = maxPagerHeight)
+                                                .graphicsLayer {
                                                 val pageOffset = page - (pagerState.currentPage + pagerState.currentPageOffsetFraction)
                                                 val progress = kotlin.math.abs(pageOffset).coerceIn(0f, 1f)
                                                 scaleX = 1f + 0.15f * progress * (1f - progress)
@@ -592,69 +614,84 @@ fun SongInfoBottomSheet(
                 }
 
                 // Bottom Tab Bar
-                PrimaryTabRow(
-                    selectedTabIndex = pagerState.currentPage,
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .padding(5.dp),
-                    containerColor = Color.Transparent,
-                    divider = {},
-                    indicator = {}
                 ) {
-                    TabAnimation(
-                        index = 0,
-                        title = stringResource(R.string.song_info_tab_options),
-                        selectedIndex = pagerState.currentPage,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(0)
-                            }
-                        },
-                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    AnimatedVisibility(
+                        visible = isExpanded,
+                        enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { it },
+                        exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { it },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.Menu,
-                                contentDescription = stringResource(R.string.song_info_tab_options),
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                stringResource(R.string.song_info_tab_options_badge),
-                                fontFamily = GoogleSansRounded,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
+                        PrimaryTabRow(
+                            selectedTabIndex = pagerState.currentPage,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .padding(5.dp),
+                            containerColor = Color.Transparent,
+                            divider = {},
+                            indicator = {}
+                        ) {
+                            TabAnimation(
+                                index = 0,
+                                title = stringResource(R.string.song_info_tab_options),
+                                selectedIndex = pagerState.currentPage,
+                                onClick = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(0)
+                                    }
+                                },
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Rounded.Menu,
+                                        contentDescription = stringResource(R.string.song_info_tab_options),
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        stringResource(R.string.song_info_tab_options_badge),
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
 
-                    TabAnimation(
-                        index = 1,
-                        title = stringResource(R.string.song_info_tab_info),
-                        selectedIndex = pagerState.currentPage,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(1)
+                            TabAnimation(
+                                index = 1,
+                                title = stringResource(R.string.song_info_tab_info),
+                                selectedIndex = pagerState.currentPage,
+                                onClick = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(1)
+                                        if (sheetState.currentValue != SheetValue.Expanded) {
+                                            sheetState.expand()
+                                        }
+                                    }
+                                },
+                                transformOrigin = TransformOrigin(1f, 0.5f)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Rounded.Info,
+                                        contentDescription = stringResource(R.string.song_info_tab_info),
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        stringResource(R.string.song_info_tab_info_badge),
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
-                        },
-                        transformOrigin = TransformOrigin(1f, 0.5f)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.Info,
-                                contentDescription = stringResource(R.string.song_info_tab_info),
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                stringResource(R.string.song_info_tab_info_badge),
-                                fontFamily = GoogleSansRounded,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                 }
