@@ -213,6 +213,12 @@ class QqMusicApiService @Inject constructor(
     }
 
     suspend fun searchSongs(keyword: String, page: Int = 1, pageSize: Int = 20): List<SearchSongResult> = withContext(Dispatchers.IO) {
+        val clientResults = searchSongsFromClientSearch(keyword, page, pageSize)
+        if (clientResults.isNotEmpty()) {
+            return@withContext clientResults
+        }
+
+        // Fallback to legacy musicu endpoint if client search returned nothing
         val searchId = buildSearchId()
         val payload = JSONObject(
             mapOf(
@@ -245,7 +251,8 @@ class QqMusicApiService @Inject constructor(
             )
         )
 
-        val response = JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload))
+        val response = runCatching { JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)) }.getOrNull()
+            ?: return@withContext emptyList()
         val request = response.optJSONObject("request") ?: return@withContext emptyList()
         val data = request.optJSONObject("data") ?: return@withContext emptyList()
         val body = data.optJSONObject("body") ?: return@withContext emptyList()
@@ -273,6 +280,50 @@ class QqMusicApiService @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    private fun searchSongsFromClientSearch(keyword: String, page: Int, pageSize: Int): List<SearchSongResult> {
+        return runCatching {
+            val encodedKeyword = java.net.URLEncoder.encode(keyword, "UTF-8")
+            val url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=$page&n=$pageSize&w=$encodedKeyword&format=json"
+            val responseText = makeGetRequest(url)
+            val jsonStr = if (responseText.startsWith("callback(") || responseText.startsWith("jsonp")) {
+                responseText.substringAfter("(").substringBeforeLast(")")
+            } else {
+                responseText
+            }
+            val response = JSONObject(jsonStr)
+            val data = response.optJSONObject("data") ?: return emptyList()
+            val songObj = data.optJSONObject("song") ?: return emptyList()
+            val items = songObj.optJSONArray("list") ?: return emptyList()
+            buildList {
+                for (index in 0 until items.length()) {
+                    val song = items.optJSONObject(index) ?: continue
+                    val singers = song.optJSONArray("singer")
+                    val artist = buildArtistName(singers)
+                    val albumMid = song.optString("albummid")
+                    val songMid = song.optString("songmid").ifBlank { song.optString("mid") }
+                    val songId = song.opt("songid")?.toString().orEmpty().ifBlank { song.opt("id")?.toString().orEmpty() }
+                    if (songMid.isBlank() && songId.isBlank()) continue
+                    add(
+                        SearchSongResult(
+                            qqSongId = songId,
+                            mid = songMid,
+                            title = song.optString("songname").ifBlank { song.optString("title") },
+                            artist = artist.ifBlank { "Unknown Artist" },
+                            album = song.optString("albumname").ifBlank { song.optString("album") },
+                            albumArtUrl = albumMid
+                                .takeIf { it.isNotBlank() }
+                                ?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" },
+                            durationMs = song.optLong("interval", 0L) * 1000L
+                        )
+                    )
+                }
+            }
+        }.getOrElse { error ->
+            Timber.w(error, "QqMusicApiService: client_search_cp failed")
+            emptyList()
         }
     }
 

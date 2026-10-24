@@ -413,23 +413,13 @@ fun SearchScreen(
             // --- 状态 2：输入了搜索词（仅搜索在线音乐） ---
             if (searchQuery.isNotBlank()) {
                 item(key = "search_online_header") {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
-                            .padding(top = 6.dp, bottom = SearchTitleToContentSpacing)
-                            .heightIn(min = 42.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(top = 4.dp, bottom = SearchTitleToContentSpacing)
                     ) {
-                        Text(
-                            text = stringResource(R.string.search_scope_online),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontFamily = GoogleSansRounded,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SearchPlatformSwitcher(
+                        SearchPlatformCapsuleRow(
                             currentPlatform = currentOnlinePlatform,
                             onPlatformSelected = { platform ->
                                 playerViewModel.updateOnlineSearchPlatform(platform)
@@ -558,6 +548,13 @@ fun SearchPlatformSwitcher(
             platforms.forEach { platform ->
                 val isSelected = platform == currentPlatform
                 DropdownMenuItem(
+                    modifier = Modifier
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            else Color.Transparent
+                        ),
                     leadingIcon = {
                         SearchPlatformIcon(
                             platform = platform,
@@ -573,16 +570,6 @@ fun SearchPlatformSwitcher(
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     },
-                    trailingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else null,
                     onClick = {
                         onPlatformSelected(platform)
                         expanded = false
@@ -612,6 +599,67 @@ fun SearchPlatformIcon(
         tint = tint,
         modifier = modifier
     )
+}
+
+@Composable
+fun SearchPlatformCapsuleRow(
+    currentPlatform: OnlineSearchPlatform,
+    onPlatformSelected: (OnlineSearchPlatform) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val platforms = remember {
+        listOf(
+            OnlineSearchPlatform.NETEASE,
+            OnlineSearchPlatform.QQ,
+            OnlineSearchPlatform.KUGOU,
+            OnlineSearchPlatform.KUWO
+        )
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        platforms.forEach { platform ->
+            val isSelected = platform == currentPlatform
+            val backgroundColor by animateColorAsState(
+                targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                label = "capsuleBg"
+            )
+            val contentColor by animateColorAsState(
+                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                label = "capsuleContent"
+            )
+
+            Surface(
+                onClick = { onPlatformSelected(platform) },
+                shape = CircleShape,
+                color = backgroundColor,
+                contentColor = contentColor,
+                modifier = Modifier.height(38.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SearchPlatformIcon(
+                        platform = platform,
+                        tint = contentColor,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = platform.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
 }
 
 
