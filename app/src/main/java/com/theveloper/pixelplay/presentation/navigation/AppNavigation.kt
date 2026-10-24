@@ -46,6 +46,7 @@ import com.theveloper.pixelplay.presentation.screens.HomeScreen
 import com.theveloper.pixelplay.presentation.screens.LibraryScreen
 import com.theveloper.pixelplay.presentation.screens.OnlineBrowseScreen
 import com.theveloper.pixelplay.presentation.screens.OnlineCollectionScreen
+import com.theveloper.pixelplay.presentation.screens.OnlineCategoryPlaylistsScreen
 import com.theveloper.pixelplay.presentation.screens.NavBarCornerRadiusScreen
 import com.theveloper.pixelplay.presentation.screens.PaletteStyleSettingsScreen
 import com.theveloper.pixelplay.presentation.screens.PlaylistDetailScreen
@@ -255,6 +256,19 @@ fun AppNavigation(
                         titleResId = R.string.local_library_screen_title,
                         playerViewModel = playerViewModel
                     )
+                }
+            }
+            composable(
+                route = Screen.OnlineCategoryPlaylists.route,
+                arguments = listOf(
+                    navArgument("platform") { type = NavType.StringType },
+                    navArgument("categoryKey") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("subtitle") { type = NavType.StringType; defaultValue = "" }
+                )
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel, animatedVisibilityScope = this) {
+                    OnlineCategoryPlaylistsScreen(navController = navController, playerViewModel = playerViewModel)
                 }
             }
             composable(

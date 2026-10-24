@@ -15,6 +15,11 @@ sealed class Screen(val route: String) {
             "online_collection/$kind/$platform/$id?title=${android.net.Uri.encode(title)}" +
                 if (!coverUrl.isNullOrBlank()) "&coverUrl=${android.net.Uri.encode(coverUrl)}" else ""
     }
+    object OnlineCategoryPlaylists : Screen("online_category_playlists/{platform}/{categoryKey}?title={title}&subtitle={subtitle}") {
+        fun createRoute(platform: String, categoryKey: String, title: String, subtitle: String = ""): String =
+            "online_category_playlists/$platform/$categoryKey?title=${android.net.Uri.encode(title)}" +
+                if (subtitle.isNotBlank()) "&subtitle=${android.net.Uri.encode(subtitle)}" else ""
+    }
     object Settings : Screen("settings")
     object Accounts : Screen("settings_accounts")
     object AudioSourcePlugins : Screen("audio_source_plugins")

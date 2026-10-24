@@ -90,6 +90,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.OnlineSearchPlatform
 import com.theveloper.pixelplay.data.model.OnlineSearchResultItem
 import com.theveloper.pixelplay.data.model.SearchResultItem
@@ -391,6 +392,21 @@ fun SearchScreen(
                         },
                         onClearHistory = {
                             playerViewModel.clearSearchHistory()
+                        },
+                        onCategoryClick = { category ->
+                            val targetPlatform = if (currentOnlinePlatform == OnlineSearchPlatform.QQ) {
+                                OnlineBrowsePlatform.QQ
+                            } else {
+                                OnlineBrowsePlatform.NETEASE
+                            }
+                            navController.navigateSafely(
+                                Screen.OnlineCategoryPlaylists.createRoute(
+                                    platform = targetPlatform.name,
+                                    categoryKey = category.title,
+                                    title = category.title,
+                                    subtitle = category.subtitle
+                                )
+                            )
                         }
                     )
                 }
@@ -783,7 +799,8 @@ private fun SearchStartContent(
     onPlatformSelected: (OnlineSearchPlatform) -> Unit,
     onSuggestionClick: (String) -> Unit,
     onDeleteHistoryItem: (String) -> Unit,
-    onClearHistory: () -> Unit
+    onClearHistory: () -> Unit,
+    onCategoryClick: (SearchCategoryItem) -> Unit
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -990,7 +1007,7 @@ private fun SearchStartContent(
                     rowPair.forEach { category ->
                         CategoryCard(
                             category = category,
-                            onClick = { onSuggestionClick(category.queryKeyword) },
+                            onClick = { onCategoryClick(category) },
                             modifier = Modifier.weight(1f)
                         )
                     }

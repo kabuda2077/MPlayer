@@ -276,6 +276,37 @@ class QqMusicApiService @Inject constructor(
         }
     }
 
+    suspend fun searchPlaylists(keyword: String, page: Int = 1, pageSize: Int = 30): String = withContext(Dispatchers.IO) {
+        val searchId = buildSearchId()
+        val payload = JSONObject(
+            mapOf(
+                "comm" to mapOf(
+                    "ct" to 11,
+                    "cv" to "1003006",
+                    "v" to "1003006",
+                    "os_ver" to "15",
+                    "phonetype" to "24122RKC7C",
+                    "tmeAppID" to "qqmusiclight",
+                    "nettype" to "NETWORK_WIFI",
+                    "udid" to "0"
+                ),
+                "request" to mapOf(
+                    "method" to "DoSearchForQQMusicLite",
+                    "module" to "music.search.SearchCgiService",
+                    "param" to mapOf(
+                        "search_id" to searchId,
+                        "remoteplace" to "search.android.keyboard",
+                        "query" to keyword,
+                        "search_type" to 3,
+                        "num_per_page" to pageSize,
+                        "page_num" to page
+                    )
+                )
+            )
+        )
+        makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+    }
+
     suspend fun getHotSearchTerms(limit: Int = 8): List<String> = withContext(Dispatchers.IO) {
         val payload = JSONObject(
             mapOf(
