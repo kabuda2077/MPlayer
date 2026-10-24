@@ -7,6 +7,10 @@ import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +49,8 @@ import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -685,50 +691,6 @@ fun SearchPlatformSwitcher(
     }
 }
 
-@Composable
-private fun TrendingItemRow(
-    rank: Int,
-    term: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isTop3 = rank <= 3
-    Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 38.dp),
-        shape = RoundedCornerShape(10.dp),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 7.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "%02d".format(rank),
-                style = MaterialTheme.typography.labelLarge,
-                fontFamily = GoogleSansRounded,
-                fontWeight = FontWeight.Bold,
-                color = if (isTop3) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                },
-                modifier = Modifier.width(28.dp)
-            )
-            Text(
-                text = term,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isTop3) FontWeight.SemiBold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
 
 @Composable
 private fun CategoryCard(
@@ -918,68 +880,76 @@ private fun SearchStartContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // --- 2. 热门搜索 ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.search_popular_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansRounded,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            SearchPlatformSwitcher(
-                currentPlatform = currentPlatform,
-                onPlatformSelected = onPlatformSelected
-            )
-        }
+        // --- 2. 热门搜索（极简横向热词胶囊 · Apple Music / Spotify 风格） ---
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Whatshot,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.search_popular_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                SearchPlatformSwitcher(
+                    currentPlatform = currentPlatform,
+                    onPlatformSelected = onPlatformSelected
+                )
+            }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // 双列 Top 10 排行榜
-        val terms = suggestions.take(10)
-        val leftColumn = terms.take(5)
-        val rightColumn = if (terms.size > 5) terms.drop(5).take(5) else emptyList()
-        val maxRows = maxOf(leftColumn.size, rightColumn.size)
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            for (i in 0 until maxRows) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    val leftTerm = leftColumn.getOrNull(i)
-                    if (leftTerm != null) {
-                        TrendingItemRow(
-                            rank = i + 1,
-                            term = leftTerm,
-                            onClick = { onSuggestionClick(leftTerm) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-
-                    val rightTerm = rightColumn.getOrNull(i)
-                    if (rightTerm != null) {
-                        TrendingItemRow(
-                            rank = i + 6,
-                            term = rightTerm,
-                            onClick = { onSuggestionClick(rightTerm) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
+            val terms = suggestions.take(10)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                terms.forEachIndexed { index, term ->
+                    Surface(
+                        onClick = { onSuggestionClick(term) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (index < 3) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (index < 3) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (index < 3) {
+                                Text(
+                                    text = "${index + 1}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                            }
+                            Text(
+                                text = term,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (index < 3) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(26.dp))
 
         // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
         Spacer(modifier = Modifier.height(28.dp))
