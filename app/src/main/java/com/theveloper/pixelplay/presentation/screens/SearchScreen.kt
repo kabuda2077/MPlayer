@@ -362,7 +362,7 @@ fun SearchScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                top = 8.dp,
+                top = 0.dp,
                 bottom = MiniPlayerHeight + paddingValues.calculateBottomPadding() + 96.dp
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -415,13 +415,17 @@ fun SearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 6.dp),
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 8.dp, bottom = SearchItemSpacing)
+                            .heightIn(min = 42.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = stringResource(R.string.search_scope_online),
                             style = MaterialTheme.typography.titleMedium,
+                            fontFamily = GoogleSansRounded,
                             fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         SearchPlatformSwitcher(
@@ -502,6 +506,10 @@ fun SearchScreen(
     }
 }
 
+// 规范化间距系统：板块间距（较大，统一）与板块内间距（较小，统一）
+private val SearchSectionSpacing = 22.dp // 板块之间的统一间距
+private val SearchItemSpacing = 8.dp     // 板块内元素之间的统一间距
+
 @Composable
 fun SearchPlatformSwitcher(
     currentPlatform: OnlineSearchPlatform,
@@ -526,21 +534,23 @@ fun SearchPlatformSwitcher(
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Row(
-                modifier = Modifier.padding(start = 12.dp, end = 8.dp, top = 5.dp, bottom = 5.dp),
+                modifier = Modifier
+                    .height(42.dp)
+                    .padding(start = 14.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = currentPlatform.label,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(2.dp))
+                Spacer(modifier = Modifier.width(3.dp))
                 Icon(
                     imageVector = Icons.Rounded.ExpandMore,
                     contentDescription = "切换平台",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -730,11 +740,15 @@ private fun SearchStartContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
-    ) {        // --- 1. 热门搜索（去掉火图标，置于顶部） ---
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 16.dp)
+    ) {
+        // --- 1. 热门搜索（置于顶部，与在线页操作栏高度及按钮大小对齐） ---
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 42.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -751,24 +765,24 @@ private fun SearchStartContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(SearchItemSpacing))
 
             val terms = suggestions.take(10)
             val half = (terms.size + 1) / 2
             val row1 = terms.take(half)
             val row2 = terms.drop(half)
 
-            // 两行独立横滑，行间距 6.dp
+            // 两行独立横滑，行间距统一为 SearchItemSpacing (8.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(SearchItemSpacing)
             ) {
                 // 第一行独立横滑
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
                 ) {
                     row1.forEachIndexed { i, term ->
                         TrendingChip(
@@ -784,7 +798,7 @@ private fun SearchStartContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
                     ) {
                         row2.forEachIndexed { i, term ->
                             TrendingChip(
@@ -800,12 +814,14 @@ private fun SearchStartContent(
 
         // --- 2. 搜索历史（置于热门搜索下方） ---
         if (history.isNotEmpty()) {
-            // 模块间距 14.dp
-            Spacer(modifier = Modifier.height(14.dp))
+            // 板块间距统一为 SearchSectionSpacing (22.dp)
+            Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 42.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -829,13 +845,11 @@ private fun SearchStartContent(
                     }
                 }
 
-                // 箭头 1：标题与第一行历史词之间紧凑为 8.dp
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(SearchItemSpacing))
 
-                // 箭头 2：多行历史词之间紧凑为 6.dp
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing),
+                    verticalArrangement = Arrangement.spacedBy(SearchItemSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     history.forEach { historyItem ->
@@ -880,38 +894,47 @@ private fun SearchStartContent(
         }
 
         // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
-        // 箭头 3：上方区域与探索分类之间为 14.dp
-        Spacer(modifier = Modifier.height(14.dp))
+        // 板块间距统一为 SearchSectionSpacing (22.dp)
+        Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
-        Text(
-            text = stringResource(R.string.search_categories_title),
-            style = MaterialTheme.typography.titleMedium,
-            fontFamily = GoogleSansRounded,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 42.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.search_categories_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(SearchItemSpacing))
 
-        val categoryRows = remember { SEARCH_CATEGORIES.chunked(2) }
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            categoryRows.forEach { rowPair ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    rowPair.forEach { category ->
-                        CategoryCard(
-                            category = category,
-                            onClick = { onCategoryClick(category) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (rowPair.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+            val categoryRows = remember { SEARCH_CATEGORIES.chunked(2) }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+            ) {
+                categoryRows.forEach { rowPair ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                    ) {
+                        rowPair.forEach { category ->
+                            CategoryCard(
+                                category = category,
+                                onClick = { onCategoryClick(category) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (rowPair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
