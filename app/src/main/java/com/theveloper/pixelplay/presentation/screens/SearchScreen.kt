@@ -88,6 +88,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -360,86 +362,97 @@ fun SearchScreen(
             )
         }
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = 0.dp,
-                bottom = MiniPlayerHeight + paddingValues.calculateBottomPadding() + 96.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // --- 状态 1：未输入搜索词（探索中心） ---
-            if (searchQuery.isBlank()) {
-                item(key = "search_start_content") {
-                    SearchStartContent(
-                        history = searchUiState.searchHistory,
-                        suggestions = searchUiState.popularSearchTerms,
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 当输入搜索词时，在顶部固定展示分段大胶囊平台切换栏，位置对齐在线页操作栏 (top = 6.dp, heightIn = 56.dp, 居中 42.dp 胶囊)
+            if (searchQuery.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = 6.dp,
+                            start = 10.dp,
+                            end = 10.dp
+                        )
+                        .heightIn(min = 56.dp)
+                        .padding(start = 4.dp, end = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SearchPlatformCapsuleRow(
                         currentPlatform = currentOnlinePlatform,
                         onPlatformSelected = { platform ->
                             playerViewModel.updateOnlineSearchPlatform(platform)
-                        },
-                        onSuggestionClick = { suggestion ->
-                            searchQuery = suggestion
-                            playerViewModel.updateSearchQuery(suggestion)
-                            playerViewModel.recordSearchHistory(suggestion)
-                            searchInputFocusRequester.requestFocus()
-                            keyboardController?.show()
-                        },
-                        onDeleteHistoryItem = { query ->
-                            playerViewModel.deleteSearchHistory(query)
-                        },
-                        onClearHistory = {
-                            playerViewModel.clearSearchHistory()
-                        },
-                        onCategoryClick = { category ->
-                            val targetPlatform = if (currentOnlinePlatform == OnlineSearchPlatform.QQ) {
-                                OnlineBrowsePlatform.QQ
-                            } else {
-                                OnlineBrowsePlatform.NETEASE
-                            }
-                            navController.navigateSafely(
-                                Screen.OnlineCategoryPlaylists.createRoute(
-                                    platform = targetPlatform.name,
-                                    categoryKey = category.title,
-                                    title = category.title,
-                                    subtitle = category.subtitle
-                                )
-                            )
                         }
                     )
                 }
             }
 
-            // --- 状态 2：输入了搜索词（仅搜索在线音乐） ---
-            if (searchQuery.isNotBlank()) {
-                item(key = "search_online_header") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(top = 4.dp, bottom = SearchTitleToContentSpacing)
-                    ) {
-                        SearchPlatformCapsuleRow(
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(
+                    top = 0.dp,
+                    bottom = MiniPlayerHeight + paddingValues.calculateBottomPadding() + 96.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // --- 状态 1：未输入搜索词（探索模式） ---
+                if (searchQuery.isBlank()) {
+                    item(key = "search_start_content") {
+                        SearchStartContent(
+                            history = searchUiState.searchHistory,
+                            suggestions = searchUiState.popularSearchTerms,
                             currentPlatform = currentOnlinePlatform,
                             onPlatformSelected = { platform ->
                                 playerViewModel.updateOnlineSearchPlatform(platform)
+                            },
+                            onSuggestionClick = { suggestion ->
+                                searchQuery = suggestion
+                                playerViewModel.updateSearchQuery(suggestion)
+                                playerViewModel.recordSearchHistory(suggestion)
+                                searchInputFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            },
+                            onDeleteHistoryItem = { query ->
+                                playerViewModel.deleteSearchHistory(query)
+                            },
+                            onClearHistory = {
+                                playerViewModel.clearSearchHistory()
+                            },
+                            onCategoryClick = { category ->
+                                val targetPlatform = if (currentOnlinePlatform == OnlineSearchPlatform.QQ) {
+                                    OnlineBrowsePlatform.QQ
+                                } else {
+                                    OnlineBrowsePlatform.NETEASE
+                                }
+                                navController.navigateSafely(
+                                    Screen.OnlineCategoryPlaylists.createRoute(
+                                        platform = targetPlatform.name,
+                                        categoryKey = category.title,
+                                        title = category.title,
+                                        subtitle = category.subtitle
+                                    )
+                                )
                             }
                         )
                     }
                 }
 
-                item(key = "search_online_results") {
-                    OnlineSearchResultsPane(
-                        results = onlineSearchResults,
-                        searchQuery = searchQuery,
-                        isLoading = searchUiState.onlineSearchLoading,
-                        errorMessage = searchUiState.onlineSearchError,
-                        playerViewModel = playerViewModel,
-                        currentPlayingSongId = stablePlayerState.currentSong?.id,
-                        isPlaying = stablePlayerState.isPlaying,
-                        onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
-                        embedded = true
-                    )
+                // --- 状态 2：输入了搜索词（仅搜索在线音乐） ---
+                if (searchQuery.isNotBlank()) {
+                    item(key = "search_online_results") {
+                        OnlineSearchResultsPane(
+                            results = onlineSearchResults,
+                            searchQuery = searchQuery,
+                            isLoading = searchUiState.onlineSearchLoading,
+                            errorMessage = searchUiState.onlineSearchError,
+                            playerViewModel = playerViewModel,
+                            currentPlayingSongId = stablePlayerState.currentSong?.id,
+                            isPlaying = stablePlayerState.isPlaying,
+                            onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
+                            embedded = true
+                        )
+                    }
                 }
             }
         }
@@ -615,46 +628,55 @@ fun SearchPlatformCapsuleRow(
             OnlineSearchPlatform.KUWO
         )
     }
+    val haptic = LocalHapticFeedback.current
 
-    Row(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(42.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        platforms.forEach { platform ->
-            val isSelected = platform == currentPlatform
-            val backgroundColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                label = "capsuleBg"
-            )
-            val contentColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                label = "capsuleContent"
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            platforms.forEach { platform ->
+                val isSelected = platform == currentPlatform
+                val backgroundColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    label = "capsuleSegmentBg"
+                )
+                val contentColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "capsuleSegmentContent"
+                )
 
-            Surface(
-                onClick = { onPlatformSelected(platform) },
-                shape = CircleShape,
-                color = backgroundColor,
-                contentColor = contentColor,
-                modifier = Modifier.height(38.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(backgroundColor)
+                        .clickable {
+                            if (!isSelected) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPlatformSelected(platform)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    SearchPlatformIcon(
-                        platform = platform,
-                        tint = contentColor,
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = platform.label,
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
