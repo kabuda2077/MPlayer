@@ -508,7 +508,7 @@ fun SearchScreen(
 
 // 规范化间距系统：板块间距（较大，统一）与板块内间距（较小，统一）
 private val SearchSectionSpacing = 14.dp // 板块之间的统一间距
-private val SearchItemSpacing = 4.dp     // 板块内元素之间的统一间距
+private val SearchItemSpacing = 2.dp     // 板块内元素之间的统一间距
 
 @Composable
 fun SearchPlatformSwitcher(
@@ -602,11 +602,12 @@ private fun TrendingChip(
 ) {
     val isTop3 = rank <= 3
     Surface(
-        onClick = onClick,
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -819,9 +820,7 @@ private fun SearchStartContent(
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 42.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -854,10 +853,12 @@ private fun SearchStartContent(
                 ) {
                     history.forEach { historyItem ->
                         Surface(
-                            onClick = { onSuggestionClick(historyItem) },
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onSuggestionClick(historyItem) }
                         ) {
                             Row(
                                 modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 6.dp),
@@ -899,9 +900,7 @@ private fun SearchStartContent(
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 42.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
