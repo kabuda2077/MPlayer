@@ -416,7 +416,7 @@ fun SearchScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
-                            .padding(top = 8.dp, bottom = SearchItemSpacing)
+                            .padding(top = 6.dp, bottom = SearchTitleToContentSpacing)
                             .heightIn(min = 42.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -506,9 +506,11 @@ fun SearchScreen(
     }
 }
 
-// 规范化间距系统：板块间距（较大，统一）与板块内间距（较小，统一）
-private val SearchSectionSpacing = 14.dp // 板块之间的统一间距
-private val SearchItemSpacing = 2.dp     // 板块内元素之间的统一间距
+// Material 3 间距规范体系：基于 8.dp 栅格体系
+private val SearchSectionSpacing = 16.dp        // M3 Medium Spacing: 板块与板块之间的垂直间距
+private val SearchTitleToContentSpacing = 8.dp // M3 Small Spacing: 标题到内容之间的间距
+private val SearchChipSpacing = 6.dp           // M3 Compact Spacing: 胶囊芯片行距与列距
+private val SearchCardGridSpacing = 8.dp       // M3 Small Spacing: 分类彩色大卡片网格缝隙
 
 @Composable
 fun SearchPlatformSwitcher(
@@ -766,24 +768,24 @@ private fun SearchStartContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(SearchItemSpacing))
+            Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
             val terms = suggestions.take(10)
             val half = (terms.size + 1) / 2
             val row1 = terms.take(half)
             val row2 = terms.drop(half)
 
-            // 两行独立横滑，行间距统一为 SearchItemSpacing (8.dp)
+            // 两行独立横滑，行间距与列间距统一为 SearchChipSpacing (6.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                verticalArrangement = Arrangement.spacedBy(SearchChipSpacing)
             ) {
                 // 第一行独立横滑
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                    horizontalArrangement = Arrangement.spacedBy(SearchChipSpacing)
                 ) {
                     row1.forEachIndexed { i, term ->
                         TrendingChip(
@@ -799,7 +801,7 @@ private fun SearchStartContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                        horizontalArrangement = Arrangement.spacedBy(SearchChipSpacing)
                     ) {
                         row2.forEachIndexed { i, term ->
                             TrendingChip(
@@ -815,7 +817,7 @@ private fun SearchStartContent(
 
         // --- 2. 搜索历史（置于热门搜索下方） ---
         if (history.isNotEmpty()) {
-            // 板块间距统一为 SearchSectionSpacing (22.dp)
+            // 板块间距统一为 SearchSectionSpacing (16.dp)
             Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -844,11 +846,11 @@ private fun SearchStartContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(SearchItemSpacing))
+                Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing),
-                    verticalArrangement = Arrangement.spacedBy(SearchItemSpacing),
+                    horizontalArrangement = Arrangement.spacedBy(SearchChipSpacing),
+                    verticalArrangement = Arrangement.spacedBy(SearchChipSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     history.forEach { historyItem ->
@@ -895,7 +897,7 @@ private fun SearchStartContent(
         }
 
         // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
-        // 板块间距统一为 SearchSectionSpacing (22.dp)
+        // 板块间距统一为 SearchSectionSpacing (16.dp)
         Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -912,17 +914,17 @@ private fun SearchStartContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(SearchItemSpacing))
+            Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
             val categoryRows = remember { SEARCH_CATEGORIES.chunked(2) }
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                verticalArrangement = Arrangement.spacedBy(SearchCardGridSpacing)
             ) {
                 categoryRows.forEach { rowPair ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(SearchItemSpacing)
+                        horizontalArrangement = Arrangement.spacedBy(SearchCardGridSpacing)
                     ) {
                         rowPair.forEach { category ->
                             CategoryCard(
