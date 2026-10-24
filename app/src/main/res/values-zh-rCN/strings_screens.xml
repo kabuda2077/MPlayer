@@ -82,6 +82,11 @@
     <string name="search_history_clear_dialog_message">这将清除所有的搜索历史记录。</string>
     <string name="search_history_clear_confirm">清空</string>
     <string name="search_history_cancel">取消</string>
+    <string name="search_categories_title">探索分类</string>
+    <string name="search_scope_all">全部</string>
+    <string name="search_scope_library">资料库</string>
+    <string name="search_scope_online">在线</string>
+    <string name="search_no_library_results">资料库中未找到结果</string>
     <string name="search_popular_title">热门搜索</string>
     <string name="search_cd_search_icon">搜索</string>
     <string name="search_cd_clear_search_query">清除搜索</string>
