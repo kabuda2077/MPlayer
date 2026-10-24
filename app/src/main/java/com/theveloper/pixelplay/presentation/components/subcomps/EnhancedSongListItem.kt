@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -98,6 +99,7 @@ fun EnhancedSongListItem(
     isSelectionMode: Boolean = false,
     showMoreOptionsButton: Boolean = true,
     sourceLabel: String? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 13.dp, vertical = 12.dp),
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onClick: () -> Unit
@@ -191,7 +193,7 @@ fun EnhancedSongListItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 13.dp, vertical = 12.dp),
+                    .padding(contentPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if(showAlbumArt) {
@@ -277,7 +279,7 @@ fun EnhancedSongListItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 13.dp, vertical = 12.dp),
+                    .padding(contentPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showAlbumArt) {

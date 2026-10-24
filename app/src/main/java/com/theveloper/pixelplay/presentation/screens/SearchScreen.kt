@@ -1061,13 +1061,18 @@ private fun OnlineSearchResultRow(
     onSongMoreOptionsClick: (TransientOnlineSong) -> Unit
 ) {
     val song = item.song
-    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+    ) {
         EnhancedSongListItem(
             song = song,
             isPlaying = isPlaying,
             isCurrentSong = currentPlayingSongId == song.id,
-            albumArtSize = 48.dp,
-            customShape = RoundedCornerShape(18.dp),
+            albumArtSize = 42.dp,
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp),
+            customShape = RoundedCornerShape(14.dp),
             containerColorOverride = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f),
             onMoreOptionsClick = { onSongMoreOptionsClick(item.transientSong) },
             onClick = {
