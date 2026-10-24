@@ -120,12 +120,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-enum class SearchScope(val labelResId: Int) {
-    ALL(R.string.search_scope_all),
-    LIBRARY(R.string.search_scope_library),
-    ONLINE(R.string.search_scope_online)
-}
-
 private data class SearchCategoryItem(
     val title: String,
     val subtitle: String,
@@ -198,9 +192,6 @@ private data class SearchUiSlice(
     val onlineSearchPlatform: OnlineSearchPlatform = OnlineSearchPlatform.NETEASE,
     val onlineSearchLoading: Boolean = false,
     val onlineSearchError: String? = null,
-    val librarySearchResults: ImmutableList<SearchResultItem> = persistentListOf(),
-    val librarySearchLoading: Boolean = false,
-    val librarySearchError: String? = null,
     val popularSearchTerms: ImmutableList<String> = persistentListOf(),
     val searchHistory: ImmutableList<String> = persistentListOf()
 )
@@ -220,7 +211,6 @@ fun SearchScreen(
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
     var searchQuery by rememberSaveable { mutableStateOf(playerViewModel.searchQuery) }
-    var selectedScope by rememberSaveable { mutableStateOf(SearchScope.ALL) }
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
     val searchUiState by remember(playerViewModel) {
@@ -231,9 +221,6 @@ fun SearchScreen(
                     onlineSearchPlatform = uiState.onlineSearchPlatform,
                     onlineSearchLoading = uiState.onlineSearchLoading,
                     onlineSearchError = uiState.onlineSearchError,
-                    librarySearchResults = uiState.librarySearchResults,
-                    librarySearchLoading = uiState.librarySearchLoading,
-                    librarySearchError = uiState.librarySearchError,
                     popularSearchTerms = uiState.popularSearchTerms,
                     searchHistory = uiState.searchHistory
                 )
@@ -418,120 +405,42 @@ fun SearchScreen(
                 }
             }
 
-            // --- 状态 2：输入了搜索词（搜索结果分段过滤） ---
+            // --- 状态 2：输入了搜索词（仅搜索在线音乐） ---
             if (searchQuery.isNotBlank()) {
-                // Apple Music 风格的分段切换栏：[ 全部 ] [ 资料库 ] [ 在线 ]
-                item(key = "search_scope_selector") {
-                    SearchScopeSegmentedControl(
-                        selectedScope = selectedScope,
-                        onScopeSelected = { selectedScope = it },
+                item(key = "search_online_header") {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 18.dp, vertical = 6.dp)
-                    )
-                }
-
-                // 资料库部分（全部 或 资料库模式下显示）
-                if (selectedScope == SearchScope.ALL || selectedScope == SearchScope.LIBRARY) {
-                    val showLibrarySection = selectedScope == SearchScope.LIBRARY ||
-                        searchUiState.librarySearchResults.isNotEmpty() ||
-                        searchUiState.librarySearchLoading ||
-                        searchUiState.librarySearchError != null
-
-                    if (showLibrarySection) {
-                        item(key = "search_library_header") {
-                            Text(
-                                text = stringResource(R.string.search_scope_library),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 18.dp, top = 10.dp, bottom = 4.dp)
-                            )
-                        }
-                        item(key = "search_library_results") {
-                            when {
-                                searchUiState.librarySearchLoading && searchUiState.librarySearchResults.isEmpty() ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 24.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                                    }
-                                searchUiState.librarySearchError != null && searchUiState.librarySearchResults.isEmpty() ->
-                                    Text(
-                                        text = searchUiState.librarySearchError.orEmpty(),
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.padding(18.dp)
-                                    )
-                                searchUiState.librarySearchResults.isEmpty() && !searchUiState.librarySearchLoading ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 28.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.search_no_library_results),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                else -> SearchResultsList(
-                                    results = searchUiState.librarySearchResults,
-                                    searchQuery = searchQuery,
-                                    playerViewModel = playerViewModel,
-                                    onItemSelected = {
-                                        playerViewModel.recordSearchHistory(searchQuery)
-                                    },
-                                    currentPlayingSongId = stablePlayerState.currentSong?.id,
-                                    isPlaying = stablePlayerState.isPlaying,
-                                    onSongMoreOptionsClick = playerViewModel::selectSongForInfo,
-                                    navController = navController,
-                                    embedded = true
-                                )
+                            .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.search_scope_online),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        SearchPlatformSwitcher(
+                            currentPlatform = currentOnlinePlatform,
+                            onPlatformSelected = { platform ->
+                                playerViewModel.updateOnlineSearchPlatform(platform)
                             }
-                        }
-                    }
-                }
-
-                // 在线音乐部分（全部 或 在线模式下显示）
-                if (selectedScope == SearchScope.ALL || selectedScope == SearchScope.ONLINE) {
-                    item(key = "search_online_header") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.search_scope_online),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
-                            SearchPlatformSwitcher(
-                                currentPlatform = currentOnlinePlatform,
-                                onPlatformSelected = { platform ->
-                                    playerViewModel.updateOnlineSearchPlatform(platform)
-                                }
-                            )
-                        }
-                    }
-
-                    item(key = "search_online_results") {
-                        OnlineSearchResultsPane(
-                            results = onlineSearchResults,
-                            searchQuery = searchQuery,
-                            isLoading = searchUiState.onlineSearchLoading,
-                            errorMessage = searchUiState.onlineSearchError,
-                            playerViewModel = playerViewModel,
-                            currentPlayingSongId = stablePlayerState.currentSong?.id,
-                            isPlaying = stablePlayerState.isPlaying,
-                            onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
-                            embedded = true
                         )
                     }
+                }
+
+                item(key = "search_online_results") {
+                    OnlineSearchResultsPane(
+                        results = onlineSearchResults,
+                        searchQuery = searchQuery,
+                        isLoading = searchUiState.onlineSearchLoading,
+                        errorMessage = searchUiState.onlineSearchError,
+                        playerViewModel = playerViewModel,
+                        currentPlayingSongId = stablePlayerState.currentSong?.id,
+                        isPlaying = stablePlayerState.isPlaying,
+                        onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
+                        embedded = true
+                    )
                 }
             }
         }
@@ -586,54 +495,6 @@ fun SearchScreen(
             playerViewModel = playerViewModel,
             playlistViewModel = playlistViewModel
         )
-    }
-}
-
-@Composable
-private fun SearchScopeSegmentedControl(
-    selectedScope: SearchScope,
-    onScopeSelected: (SearchScope) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SearchScope.entries.forEach { scope ->
-            val isSelected = scope == selectedScope
-            val bgColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
-                label = "scope_bg"
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                label = "scope_text"
-            )
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(17.dp))
-                    .background(bgColor)
-                    .clickable { onScopeSelected(scope) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(scope.labelResId),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = textColor,
-                    maxLines = 1
-                )
-            }
-        }
     }
 }
 
@@ -1103,8 +964,8 @@ fun OnlineSearchResultsPane(
         isLoading && results.isEmpty() -> {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -1113,8 +974,8 @@ fun OnlineSearchResultsPane(
         errorMessage != null && results.isEmpty() -> {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

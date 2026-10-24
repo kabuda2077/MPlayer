@@ -166,30 +166,13 @@ class SearchStateHolder @Inject constructor(
                     try {
                         _onlineSearchLoading.value = true
                         _onlineSearchError.value = null
-                        val needsLibraryRefresh = normalizedQuery != lastLibraryQuery
-                        if (needsLibraryRefresh) {
-                            _librarySearchLoading.value = true
-                            _librarySearchError.value = null
-                        }
-                        val (onlineResult, libraryResult) = coroutineScope {
-                            val online = async(Dispatchers.IO) {
-                                onlineSearchRepository.searchSongs(
-                                    query = normalizedQuery,
-                                    platform = request.platform
-                                )
-                            }
-                            val library = if (needsLibraryRefresh) {
-                                async(Dispatchers.IO) {
-                                    runCatching {
-                                        musicRepository.searchAll(
-                                            normalizedQuery,
-                                            SearchFilterType.ALL,
-                                            StorageFilter.ALL
-                                        ).first()
-                                    }
-                                }
-                            } else null
-                            online.await() to library?.await()
+                        _librarySearchLoading.value = false
+                        _librarySearchError.value = null
+                        val onlineResult = withContext(Dispatchers.IO) {
+                            onlineSearchRepository.searchSongs(
+                                query = normalizedQuery,
+                                platform = request.platform
+                            )
                         }
                         if (request.requestId != latestSearchRequestId.get()) {
                             return@collectLatest
@@ -205,17 +188,6 @@ class SearchStateHolder @Inject constructor(
                                 _onlineSearchError.value = error.message
                             }
                         )
-                        libraryResult?.fold(
-                            onSuccess = { items ->
-                                _librarySearchResults.value = items.toImmutableList()
-                                _librarySearchError.value = null
-                                lastLibraryQuery = normalizedQuery
-                            },
-                            onFailure = { error ->
-                                _librarySearchResults.value = persistentListOf()
-                                _librarySearchError.value = error.message
-                            }
-                        )
                     } catch (_: CancellationException) {
                         // Superseded by a newer query; ignore.
                     } catch (e: Exception) {
@@ -223,7 +195,6 @@ class SearchStateHolder @Inject constructor(
                             Timber.e(e, "Error performing online search for query: $normalizedQuery")
                             _onlineSearchResults.value = persistentListOf()
                             _onlineSearchError.value = e.message
-                            _librarySearchError.value = e.message
                         }
                     } finally {
                         if (request.requestId == latestSearchRequestId.get()) {
