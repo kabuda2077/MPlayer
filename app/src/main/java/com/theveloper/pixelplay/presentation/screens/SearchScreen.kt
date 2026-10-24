@@ -507,8 +507,8 @@ fun SearchScreen(
 }
 
 // 规范化间距系统：板块间距（较大，统一）与板块内间距（较小，统一）
-private val SearchSectionSpacing = 22.dp // 板块之间的统一间距
-private val SearchItemSpacing = 8.dp     // 板块内元素之间的统一间距
+private val SearchSectionSpacing = 14.dp // 板块之间的统一间距
+private val SearchItemSpacing = 4.dp     // 板块内元素之间的统一间距
 
 @Composable
 fun SearchPlatformSwitcher(
@@ -741,7 +741,7 @@ private fun SearchStartContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .padding(top = 8.dp, bottom = 16.dp)
+            .padding(top = 6.dp, bottom = 16.dp)
     ) {
         // --- 1. 热门搜索（置于顶部，与在线页操作栏高度及按钮大小对齐） ---
         Column(modifier = Modifier.fillMaxWidth()) {
