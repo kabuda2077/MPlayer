@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +48,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -144,7 +147,7 @@ fun OnlineCategoryPlaylistsScreen(
                 .fillMaxSize()
                 .padding(top = statusBarPadding)
         ) {
-            // --- 顶部导航栏 ---
+            // --- 顶部导航栏：返回键旁边显示“探索”，消除与下方卡片标题重复 ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -161,26 +164,13 @@ fun OnlineCategoryPlaylistsScreen(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = uiState.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontFamily = GoogleSansRounded,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (uiState.subtitle.isNotBlank()) {
-                        Text(
-                            text = uiState.subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+                Text(
+                    text = "探索",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             // --- 歌单网格主体 ---
@@ -202,7 +192,7 @@ fun OnlineCategoryPlaylistsScreen(
                 // 1. 分类 Banner 与 平台切换器（跨两列）
                 item(span = { GridItemSpan(2) }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // 流光质感 Banner
+                        // 流光质感 Banner（包含分类名称与副标题）
                         val gradientBrush = remember(visualSpec.gradientColors) {
                             Brush.linearGradient(visualSpec.gradientColors)
                         }
@@ -252,18 +242,31 @@ fun OnlineCategoryPlaylistsScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // 平台切换 Segmented Switcher
+                        // 平台切换 Segmented Switcher（优化动画与防闪烁）
                         CategoryPlatformSegmentedControl(
                             currentPlatform = uiState.platform,
                             onPlatformChange = { viewModel.switchPlatform(it) }
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        // 若正在后台切换平台加载，显示一条极细的平滑进度线，而不是把整个页面清空跳动
+                        if (uiState.isLoading && uiState.playlists.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .clip(RoundedCornerShape(1.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = Color.Transparent
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
 
-                // 2. 加载状态
-                if (uiState.isLoading) {
+                // 2. 初始全屏加载状态（仅在没有任何歌单时展示）
+                if (uiState.isLoading && uiState.playlists.isEmpty()) {
                     item(span = { GridItemSpan(2) }) {
                         Box(
                             modifier = Modifier
@@ -286,7 +289,7 @@ fun OnlineCategoryPlaylistsScreen(
                             }
                         }
                     }
-                } else if (uiState.error != null) {
+                } else if (uiState.error != null && uiState.playlists.isEmpty()) {
                     // 3. 错误状态
                     item(span = { GridItemSpan(2) }) {
                         Box(
@@ -348,13 +351,16 @@ fun OnlineCategoryPlaylistsScreen(
                         }
                     }
                 } else {
-                    // 5. 歌单卡片列表
+                    // 5. 歌单卡片列表（加载新平台时保持平滑淡入，不产生高度塌陷）
                     items(
                         items = uiState.playlists,
                         key = { it.key }
                     ) { playlist ->
                         CategoryPlaylistCard(
                             playlist = playlist,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = if (uiState.isLoading) 0.65f else 1f
+                            },
                             onClick = {
                                 navController.navigateSafely(
                                     Screen.OnlineCollection.createRoute(
@@ -380,36 +386,44 @@ private fun CategoryPlatformSegmentedControl(
     onPlatformChange: (OnlineBrowsePlatform) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val platforms = listOf(OnlineBrowsePlatform.NETEASE, OnlineBrowsePlatform.QQ)
+    val platforms = remember { listOf(OnlineBrowsePlatform.NETEASE, OnlineBrowsePlatform.QQ) }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val activeTextColor = MaterialTheme.colorScheme.primary
+    val inactiveTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .height(42.dp)
+            .clip(RoundedCornerShape(21.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         platforms.forEach { platform ->
             val isSelected = platform == currentPlatform
-            val bgColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
-                animationSpec = tween(180),
+            val bgAlpha by animateColorAsState(
+                targetValue = if (isSelected) surfaceColor else surfaceColor.copy(alpha = 0f),
+                animationSpec = tween(150),
                 label = "platformBg_${platform.name}"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(180),
+                targetValue = if (isSelected) activeTextColor else inactiveTextColor,
+                animationSpec = tween(150),
                 label = "platformText_${platform.name}"
             )
 
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(bgColor)
-                    .clickable { onPlatformChange(platform) },
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(bgAlpha)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onPlatformChange(platform) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(

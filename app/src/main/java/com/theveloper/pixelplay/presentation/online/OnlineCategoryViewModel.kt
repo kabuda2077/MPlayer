@@ -65,8 +65,30 @@ class OnlineCategoryViewModel @Inject constructor(
     }
 
     fun switchPlatform(platform: OnlineBrowsePlatform) {
-        if (_uiState.value.platform == platform && _uiState.value.playlists.isNotEmpty()) return
-        _uiState.update { it.copy(platform = platform) }
+        if (_uiState.value.platform == platform) return
+
+        // 优先使用内存缓存，单次原子更新，完全无缝瞬切
+        val cached = platformCache[platform]
+        if (!cached.isNullOrEmpty()) {
+            _uiState.update {
+                it.copy(
+                    platform = platform,
+                    playlists = cached,
+                    isLoading = false,
+                    error = null
+                )
+            }
+            return
+        }
+
+        // 未缓存时标记加载，但保留当前列表高度，防止页面塌陷跳动
+        _uiState.update {
+            it.copy(
+                platform = platform,
+                isLoading = true,
+                error = null
+            )
+        }
         loadPlaylists(platform)
     }
 
@@ -79,7 +101,14 @@ class OnlineCategoryViewModel @Inject constructor(
             if (!force) {
                 val cached = platformCache[platform]
                 if (!cached.isNullOrEmpty()) {
-                    _uiState.update { it.copy(platform = platform, playlists = cached, isLoading = false, error = null) }
+                    _uiState.update {
+                        it.copy(
+                            platform = platform,
+                            playlists = cached,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                     return@launch
                 }
             }
@@ -94,7 +123,14 @@ class OnlineCategoryViewModel @Inject constructor(
                     }
                 }
                 platformCache[platform] = playlists
-                _uiState.update { it.copy(playlists = playlists, isLoading = false, error = null) }
+                _uiState.update {
+                    it.copy(
+                        platform = platform,
+                        playlists = playlists,
+                        isLoading = false,
+                        error = null
+                    )
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load category playlists for platform=%s, key=%s", platform, categoryKey)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载歌单失败，请重试") }
