@@ -702,7 +702,7 @@ private fun TrendingChip(
     val isTop3 = rank <= 3
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
@@ -946,21 +946,26 @@ private fun SearchStartContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // 箭头1缩减间距：标题与第一行热词之间
+            Spacer(modifier = Modifier.height(8.dp))
 
             val terms = suggestions.take(10)
             val half = (terms.size + 1) / 2
             val row1 = terms.take(half)
             val row2 = terms.drop(half)
 
+            // 两行独立滑动，不绑定在一起；箭头2缩减间距：两行之间为 6.dp
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // 第一行
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // 第一行独立横滑
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     row1.forEachIndexed { i, term ->
                         TrendingChip(
                             rank = i + 1,
@@ -969,9 +974,14 @@ private fun SearchStartContent(
                         )
                     }
                 }
-                // 第二行
+                // 第二行独立横滑
                 if (row2.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         row2.forEachIndexed { i, term ->
                             TrendingChip(
                                 rank = i + half + 1,
@@ -985,7 +995,8 @@ private fun SearchStartContent(
         }
 
         // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
-        Spacer(modifier = Modifier.height(20.dp))
+        // 箭头3缩减间距：第二行热词与探索分类之间
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = stringResource(R.string.search_categories_title),
