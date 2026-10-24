@@ -56,6 +56,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -533,25 +534,16 @@ fun SearchPlatformSwitcher(
             onClick = { expanded = true },
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            contentColor = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(42.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .height(42.dp)
-                    .padding(start = 14.dp, end = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = currentPlatform.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(3.dp))
-                Icon(
-                    imageVector = Icons.Rounded.ExpandMore,
+                SearchPlatformIcon(
+                    platform = currentPlatform,
                     contentDescription = "切换平台",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -566,6 +558,13 @@ fun SearchPlatformSwitcher(
             platforms.forEach { platform ->
                 val isSelected = platform == currentPlatform
                 DropdownMenuItem(
+                    leadingIcon = {
+                        SearchPlatformIcon(
+                            platform = platform,
+                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     text = {
                         Text(
                             text = platform.label,
@@ -592,6 +591,27 @@ fun SearchPlatformSwitcher(
             }
         }
     }
+}
+
+@Composable
+fun SearchPlatformIcon(
+    platform: OnlineSearchPlatform,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    tint: Color = LocalContentColor.current
+) {
+    val painter = when (platform) {
+        OnlineSearchPlatform.NETEASE -> painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_)
+        OnlineSearchPlatform.QQ -> painterResource(R.drawable.qq_music)
+        OnlineSearchPlatform.KUGOU -> painterResource(R.drawable.ic_kugou_music)
+        OnlineSearchPlatform.KUWO -> painterResource(R.drawable.ic_kuwo_music)
+    }
+    Icon(
+        painter = painter,
+        contentDescription = contentDescription,
+        tint = tint,
+        modifier = modifier
+    )
 }
 
 
