@@ -693,6 +693,43 @@ fun SearchPlatformSwitcher(
 
 
 @Composable
+private fun TrendingChip(
+    rank: Int,
+    term: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isTop3 = rank <= 3
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$rank",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = GoogleSansRounded,
+                fontWeight = FontWeight.Bold,
+                color = if (isTop3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = term,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isTop3) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
 private fun CategoryCard(
     category: SearchCategoryItem,
     onClick: () -> Unit,
@@ -912,36 +949,34 @@ private fun SearchStartContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             val terms = suggestions.take(10)
-            Row(
+            val half = (terms.size + 1) / 2
+            val row1 = terms.take(half)
+            val row2 = terms.drop(half)
+
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                terms.forEachIndexed { index, term ->
-                    Surface(
-                        onClick = { onSuggestionClick(term) },
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (index < 3) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = if (index < 3) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (index < 3) {
-                                Text(
-                                    text = "${index + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                            }
-                            Text(
-                                text = term,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (index < 3) FontWeight.SemiBold else FontWeight.Normal
+                // 第一行
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row1.forEachIndexed { i, term ->
+                        TrendingChip(
+                            rank = i + 1,
+                            term = term,
+                            onClick = { onSuggestionClick(term) }
+                        )
+                    }
+                }
+                // 第二行
+                if (row2.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row2.forEachIndexed { i, term ->
+                            TrendingChip(
+                                rank = i + half + 1,
+                                term = term,
+                                onClick = { onSuggestionClick(term) }
                             )
                         }
                     }
@@ -949,10 +984,8 @@ private fun SearchStartContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(26.dp))
-
         // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = stringResource(R.string.search_categories_title),
