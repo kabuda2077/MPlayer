@@ -246,9 +246,6 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
-        delay(180L)
-        searchInputFocusRequester.requestFocus()
-        keyboardController?.show()
     }
 
     LaunchedEffect(playerViewModel, keyboardController) {

@@ -85,8 +85,9 @@ import com.theveloper.pixelplay.data.model.RecommendationSectionKind
 import com.theveloper.pixelplay.data.model.RecommendationSongItem
 import com.theveloper.pixelplay.data.model.RemoteChartReference
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
-import com.theveloper.pixelplay.presentation.components.ExpressiveScrollBar
-import com.theveloper.pixelplay.ui.theme.LocalShowScrollbar
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import com.theveloper.pixelplay.presentation.components.LibraryHeaderHorizontalPadding
 import com.theveloper.pixelplay.presentation.components.LibraryHeaderScaffold
 import com.theveloper.pixelplay.presentation.components.MiniPlayerHeight
@@ -199,7 +200,6 @@ fun OnlineBrowseScreen(
 @Composable
 private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
-    val reserveScrollbarSpace = LocalShowScrollbar.current
     val heroShape = remember {
         AbsoluteSmoothCornerShape(
             cornerRadiusTL = 20.dp,
@@ -217,7 +217,7 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
             .fillMaxSize()
             .padding(
                 start = 14.dp,
-                end = if (reserveScrollbarSpace) 24.dp else 14.dp,
+                end = 14.dp,
                 top = 8.dp,
                 bottom = bottomContentPadding
             ),
@@ -421,8 +421,6 @@ private fun RecommendationPageContent(
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
     val chunkedPlaylistTiles = remember(playlistTiles) { playlistTiles.chunked(2) }
     val listState = rememberLazyListState()
-    val reserveScrollbarSpace = LocalShowScrollbar.current
-    val showScrollBar = reserveScrollbarSpace && (listState.canScrollForward || listState.canScrollBackward)
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 0. Action & Filter Row (Aligned with LibraryActionRow layout)
@@ -451,7 +449,7 @@ private fun RecommendationPageContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 14.dp,
-                    end = if (reserveScrollbarSpace) 24.dp else 14.dp,
+                    end = 14.dp,
                     top = 8.dp,
                     bottom = bottomContentPadding
                 ),
@@ -540,14 +538,7 @@ private fun RecommendationPageContent(
                 }
             }
 
-            if (showScrollBar) {
-                ExpressiveScrollBar(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp, top = 16.dp, bottom = bottomContentPadding),
-                    listState = listState
-                )
-            }
+
         }
     }
 }
@@ -719,32 +710,53 @@ private fun DailyRecommendationPager(
         }
 
         if (tiles.size > 1) {
-            val currentActualIndex = pagerState.currentPage.mod(tiles.size)
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(tiles.size) { index ->
-                    val isSelected = currentActualIndex == index
-                    val width by animateDpAsState(
-                        targetValue = if (isSelected) 18.dp else 6.dp,
-                        animationSpec = tween(300),
-                        label = "indicator_width"
-                    )
-                    val color = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+            var indicatorVisible by remember { mutableStateOf(true) }
 
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .height(6.dp)
-                            .width(width)
-                            .clip(CircleShape)
-                            .background(color)
-                    )
+            LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+                if (pagerState.isScrollInProgress) {
+                    indicatorVisible = true
+                } else {
+                    indicatorVisible = true
+                    delay(2000L)
+                    indicatorVisible = false
+                }
+            }
+
+            val indicatorAlpha by animateFloatAsState(
+                targetValue = if (indicatorVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = 350),
+                label = "indicator_alpha"
+            )
+
+            if (indicatorAlpha > 0f) {
+                val currentActualIndex = pagerState.currentPage.mod(tiles.size)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                        .graphicsLayer { alpha = indicatorAlpha },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(tiles.size) { index ->
+                        val isSelected = currentActualIndex == index
+                        val width by animateDpAsState(
+                            targetValue = if (isSelected) 18.dp else 6.dp,
+                            animationSpec = tween(300),
+                            label = "indicator_width"
+                        )
+                        val color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .height(6.dp)
+                                .width(width)
+                                .clip(CircleShape)
+                                .background(color)
+                        )
+                    }
                 }
             }
         }
