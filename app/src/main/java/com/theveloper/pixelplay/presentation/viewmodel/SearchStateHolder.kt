@@ -58,8 +58,7 @@ class SearchStateHolder @Inject constructor(
         val POPULAR_SEARCH_FALLBACKS = mapOf(
             OnlineSearchPlatform.NETEASE to listOf("晴天", "后来", "周杰伦", "如愿", "陈奕迅", "起风了"),
             OnlineSearchPlatform.QQ to listOf("晴天", "小幸运", "林俊杰", "演员", "邓紫棋", "一路生花"),
-            OnlineSearchPlatform.KUGOU to listOf("奢香夫人", "起风了", "凤凰传奇", "后来", "周深", "红日"),
-            OnlineSearchPlatform.KUWO to listOf("海阔天空", "后来", "陈奕迅", "晴天", "孙燕姿", "红豆")
+            OnlineSearchPlatform.KUGOU to listOf("奢香夫人", "起风了", "凤凰传奇", "后来", "周深", "红日")
         )
     }
 

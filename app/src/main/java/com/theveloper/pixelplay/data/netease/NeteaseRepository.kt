@@ -79,13 +79,6 @@ class NeteaseRepository @Inject constructor(
     private val _isLoggedInFlow = MutableStateFlow(false)
     val isLoggedInFlow: StateFlow<Boolean> = _isLoggedInFlow.asStateFlow()
 
-    private val inFlightSongUrlRequests = java.util.concurrent.ConcurrentHashMap<Long, CompletableDeferred<Result<String>>>()
-    private val lastSongUrlAttemptAtMs = java.util.concurrent.ConcurrentHashMap<Long, Long>()
-    private val songUrlRequestCooldownMs = 1500L
-    private val neteaseSongUrlRequestMutex = Mutex()
-    @Volatile
-    private var lastGlobalSongUrlRequestAtMs = 0L
-    private val globalSongUrlRequestIntervalMs = 1100L
 
     init {
         // Auto-load saved cookies on creation so API client is ready
@@ -524,74 +517,6 @@ class NeteaseRepository @Inject constructor(
         }
     }
 
-    // ─── Song URL Resolution ───────────────────────────────────────────
-
-    suspend fun getSongUrl(songId: Long, quality: String = "exhigh"): Result<String> {
-        val now = System.currentTimeMillis()
-        val lastAttempt = lastSongUrlAttemptAtMs[songId]
-        if (lastAttempt != null && now - lastAttempt < songUrlRequestCooldownMs) {
-            Timber.d("Skip Netease song URL retry due to cooldown: songId=$songId")
-            return Result.failure(IllegalStateException("Netease song URL request throttled"))
-        }
-        lastSongUrlAttemptAtMs[songId] = now
-
-        inFlightSongUrlRequests[songId]?.let {
-            return it.await()
-        }
-
-        val requestDeferred = CompletableDeferred<Result<String>>()
-        val existing = inFlightSongUrlRequests.putIfAbsent(songId, requestDeferred)
-        if (existing != null) {
-            return existing.await()
-        }
-
-        val result = withContext(Dispatchers.IO) {
-            runCatching {
-                val qualityFallbacks = linkedSetOf(quality, "higher", "standard")
-                var lastFailure: String? = null
-
-                for (level in qualityFallbacks) {
-                    val raw = requestSongUrl(songId, level)
-                    val root = JSONObject(raw)
-                    val code = root.optInt("code", -1)
-                    if (code != 200) {
-                        lastFailure = "API code=$code for level=$level"
-                        continue
-                    }
-
-                    val data = root.optJSONArray("data")
-                    val urlObj = data?.optJSONObject(0)
-                    val url = urlObj?.optString("url", "")
-                    if (!url.isNullOrBlank() && url != "null") {
-                        Timber.d("Resolved Netease URL for songId=$songId with level=$level")
-                        return@runCatching url
-                    }
-
-                    val freeTrialInfo = urlObj?.opt("freeTrialInfo")
-                    lastFailure = "Empty URL at level=$level, freeTrialInfo=$freeTrialInfo"
-                }
-
-                throw Exception("No URL available for song $songId ($lastFailure)")
-            }
-        }
-
-        requestDeferred.complete(result)
-        inFlightSongUrlRequests.remove(songId, requestDeferred)
-        return result
-    }
-
-    /**
-     * Make a single song URL request with global rate-limit guard.
-     */
-    private suspend fun requestSongUrl(songId: Long, level: String): String {
-        neteaseSongUrlRequestMutex.withLock {
-            val now = System.currentTimeMillis()
-            val waitMs = globalSongUrlRequestIntervalMs - (now - lastGlobalSongUrlRequestAtMs)
-            if (waitMs > 0) delay(waitMs)
-            lastGlobalSongUrlRequestAtMs = System.currentTimeMillis()
-        }
-        return api.getSongDownloadUrl(songId, level)
-    }
 
     // ─── Lyrics ────────────────────────────────────────────────────────
 

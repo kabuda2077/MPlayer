@@ -82,13 +82,6 @@ class QqMusicRepository @Inject constructor(
 
     private val _isLoggedInFlow = MutableStateFlow(false)
     val isLoggedInFlow: StateFlow<Boolean> = _isLoggedInFlow.asStateFlow()
-    private val inFlightSongUrlRequests = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<Result<String>>>()
-    private val lastSongUrlAttemptAtMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
-    private val songUrlRequestCooldownMs = 1500L
-    private val qqSongUrlRequestMutex = Mutex()
-    @Volatile
-    private var lastGlobalSongUrlRequestAtMs = 0L
-    private val globalSongUrlRequestIntervalMs = 1100L
 
     init {
         initFromSavedCookies()
@@ -200,84 +193,6 @@ class QqMusicRepository @Inject constructor(
         }
     }
 
-    suspend fun getSongUrl(songMid: String): Result<String> {
-        val now = System.currentTimeMillis()
-        val lastAttempt = lastSongUrlAttemptAtMs[songMid]
-        if (lastAttempt != null && now - lastAttempt < songUrlRequestCooldownMs) {
-            Timber.d("Skip QQ song URL retry due to cooldown: songMid=$songMid")
-            return Result.failure(IllegalStateException("QQ song URL request throttled"))
-        }
-        lastSongUrlAttemptAtMs[songMid] = now
-
-        inFlightSongUrlRequests[songMid]?.let {
-            return it.await()
-        }
-
-        val requestDeferred = CompletableDeferred<Result<String>>()
-        val existing = inFlightSongUrlRequests.putIfAbsent(songMid, requestDeferred)
-        if (existing != null) {
-            return existing.await()
-        }
-
-        val result = withContext(Dispatchers.IO) {
-            runCatching {
-                // Phase 1: Request without filename to get default M4A URL and discover media_mid.
-                val defaultPurl = requestPurl(songMid)
-
-                if (defaultPurl.isBlank()) {
-                    throw IllegalStateException("No playable URL for songMid=$songMid (empty purl)")
-                }
-
-                val defaultUrl = if (defaultPurl.startsWith("http")) defaultPurl
-                    else "https://ws.stream.qqmusic.qq.com/$defaultPurl"
-
-                // Extract media_mid from purl (format: "C400{mediaMid}.m4a?vkey=...")
-                val mediaMid = defaultPurl.substringBefore("?").drop(4).substringBefore(".")
-                if (mediaMid.isNotBlank()) {
-                    // Phase 2: Try MP3 320kbps with discovered media_mid.
-                    val mp3Filename = "M500${mediaMid}.mp3"
-                    val mp3Purl = requestPurl(songMid, filename = mp3Filename)
-                    if (mp3Purl.isNotBlank()) {
-                        Timber.d("Resolved QQ Music MP3 URL for songMid=$songMid")
-                        return@runCatching if (mp3Purl.startsWith("http")) mp3Purl
-                            else "https://ws.stream.qqmusic.qq.com/$mp3Purl"
-                    }
-                    Timber.d("MP3 unavailable for songMid=$songMid, falling back to M4A")
-                }
-
-                // Fallback: use the default M4A URL.
-                Timber.d("Resolved QQ Music M4A URL for songMid=$songMid")
-                defaultUrl
-            }
-        }
-
-        requestDeferred.complete(result)
-        inFlightSongUrlRequests.remove(songMid, requestDeferred)
-        return result
-    }
-
-    /**
-     * Make a single vkey request and return the purl string (empty if unavailable).
-     * Respects the global rate-limit mutex.
-     */
-    private suspend fun requestPurl(songMid: String, filename: String? = null): String {
-        qqSongUrlRequestMutex.withLock {
-            val now = System.currentTimeMillis()
-            val waitMs = globalSongUrlRequestIntervalMs - (now - lastGlobalSongUrlRequestAtMs)
-            if (waitMs > 0) delay(waitMs)
-            lastGlobalSongUrlRequestAtMs = System.currentTimeMillis()
-        }
-
-        val raw = api.getSongDownloadUrl(songMid, filename = filename)
-        val root = JSONObject(raw)
-        return root
-            .optJSONObject("req_0")
-            ?.optJSONObject("data")
-            ?.optJSONArray("midurlinfo")
-            ?.optJSONObject(0)
-            ?.optString("purl", "")
-            .orEmpty()
-    }
 
     suspend fun logout() {
         api.logout()

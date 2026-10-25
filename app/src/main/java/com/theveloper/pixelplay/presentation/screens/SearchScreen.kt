@@ -80,7 +80,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -639,7 +638,6 @@ fun SearchPlatformIcon(
         OnlineSearchPlatform.NETEASE -> painterResource(R.drawable.netease_cloud_music_logo_icon_206716__1_)
         OnlineSearchPlatform.QQ -> painterResource(R.drawable.qq_music)
         OnlineSearchPlatform.KUGOU -> painterResource(R.drawable.ic_kugou_music)
-        OnlineSearchPlatform.KUWO -> painterResource(R.drawable.ic_kuwo_music)
     }
     Icon(
         painter = painter,

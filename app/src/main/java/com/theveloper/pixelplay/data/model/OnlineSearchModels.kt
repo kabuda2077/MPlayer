@@ -9,8 +9,7 @@ enum class OnlineSearchPlatform(
 ) {
     NETEASE(PluginSource.NETEASE, "网易云"),
     QQ(PluginSource.QQ_MUSIC, "QQ"),
-    KUGOU(PluginSource.KUGOU, "酷狗"),
-    KUWO(PluginSource.KUWO, "酷我")
+    KUGOU(PluginSource.KUGOU, "酷狗")
 }
 
 @Immutable

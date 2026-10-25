@@ -111,15 +111,6 @@ class NeteaseApiService @Inject constructor() {
 
     // ─── Core Request Method ───────────────────────────────────────────
 
-    /** Visit music.163.com homepage to obtain __csrf cookie */
-    @Throws(IOException::class)
-    fun ensureWeapiSession() {
-        request(
-            url = "https://music.163.com/",
-            params = emptyMap(), mode = CryptoMode.API,
-            method = "GET", usePersistedCookies = true
-        )
-    }
 
     @Throws(IOException::class)
     fun request(
@@ -207,21 +198,6 @@ class NeteaseApiService @Inject constructor() {
 
     // ─── Authentication ────────────────────────────────────────────────
 
-    fun sendCaptcha(phone: String, ctcode: Int = 86): String {
-        val params = mapOf("cellphone" to phone, "ctcode" to ctcode.toString())
-        return request("https://interface.music.163.com/weapi/sms/captcha/sent", params, CryptoMode.WEAPI, "POST", usePersistedCookies = false)
-    }
-
-    fun loginByCaptcha(phone: String, captcha: String, ctcode: Int = 86): String {
-        val params = mutableMapOf<String, Any>(
-            "phone" to phone,
-            "countrycode" to ctcode.toString(),
-            "remember" to "true",
-            "type" to "1",
-            "captcha" to captcha
-        )
-        return callEApi("/w/login/cellphone", params, usePersistedCookies = false)
-    }
 
     // ─── User Info ─────────────────────────────────────────────────────
 
@@ -283,40 +259,6 @@ class NeteaseApiService @Inject constructor() {
         return request("https://music.163.com/api/v3/song/detail", params, CryptoMode.API, "POST", usePersistedCookies = true)
     }
 
-    // ─── Song Data ─────────────────────────────────────────────────────
-
-    /**
-     * Get song download/streaming URL.
-     * Uses EAPI encryption (like NeriPlayer).
-     * Will retry with session warm-up if needed.
-     */
-    fun getSongDownloadUrl(songId: Long, level: String = "exhigh"): String {
-        fun call(): String {
-            val encodeType = if (level == "lossless" || level == "jyeffect") "flac" else "mp3"
-            val params = mutableMapOf<String, Any>(
-                "ids" to "[$songId]",
-                "level" to level,
-                "encodeType" to encodeType
-            )
-            return callEApi("/song/enhance/player/url/v1", params, usePersistedCookies = true)
-        }
-
-        var resp = call()
-        return try {
-            val code = JSONObject(resp).optInt("code", -1)
-            if (code == 301 && hasLogin()) {
-                try {
-                    ensureWeapiSession()
-                } catch (e: Exception) {
-                    Timber.w(e, "$TAG: session warm-up failed, continuing with original response")
-                }
-                resp = call()
-            }
-            resp
-        } catch (_: Exception) {
-            resp
-        }
-    }
 
     // ─── Search ────────────────────────────────────────────────────────
 

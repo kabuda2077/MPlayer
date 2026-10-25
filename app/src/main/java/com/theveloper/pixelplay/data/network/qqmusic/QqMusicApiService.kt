@@ -142,20 +142,6 @@ class QqMusicApiService @Inject constructor(
         return avatarUrl
     }
 
-    /**
-     * Get user profile information including nickname.
-     */
-    suspend fun getUserProfile(): String = withContext(Dispatchers.IO) {
-        val uin = extractUin()
-        val gtk = getGTK()
-        Timber.d("getUserProfile: uin=$uin, gtk=$gtk")
-        val url = "https://c.y.qq.com/rsc/fcgi-bin/fcg_get_profile_homepage.fcg?" +
-                "format=json&inCharset=utf-8&outCharset=utf-8" +
-                "&cid=205360956&userid=$uin&reqfrom=1" +
-                "&g_tk=$gtk"
-
-        makeGetRequest(url)
-    }
 
     /**
      * Get playlist detail including all songs.
@@ -213,43 +199,6 @@ class QqMusicApiService @Inject constructor(
         makeGetRequest(url)
     }
 
-    // ─── Song Data ─────────────────────────────────────────────────────
-
-    suspend fun getSongDownloadUrl(songMid: String, songtype: Int = 0, filename: String? = null): String = withContext(Dispatchers.IO) {
-        val uin = extractUin()
-        val keyst = extractKeyst()
-        val param = mutableMapOf<String, Any>(
-            "guid" to "327783793guid",
-            "songmid" to listOf(songMid),
-            "songtype" to listOf(songtype),
-            "uin" to uin,
-            "loginflag" to 1,
-            "platform" to "20",
-            "xcdn" to 1
-        )
-        if (filename != null) {
-            param["filename"] = listOf(filename)
-        }
-        val payload = JSONObject(
-            mapOf(
-                "req_0" to mapOf(
-                    "module" to "music.vkey.GetEVkey",
-                    "method" to "GetUrl",
-                    "param" to param
-                ),
-                "comm" to mapOf(
-                    "uin" to uin,
-                    "format" to "json",
-                    "ct" to 19,
-                    "cv" to 1602,
-                    "authst" to keyst
-                )
-            )
-        )
-
-        // Keep host aligned with validated reverse-engineering pipeline.
-        makePostRequest("https://u6.y.qq.com/cgi-bin/musics.fcg", payload)
-    }
 
     suspend fun searchSongs(keyword: String, page: Int = 1, pageSize: Int = 20): List<SearchSongResult> = withContext(Dispatchers.IO) {
         val trimmed = keyword.trim()
