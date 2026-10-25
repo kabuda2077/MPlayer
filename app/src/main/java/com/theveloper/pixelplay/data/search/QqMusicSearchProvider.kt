@@ -15,8 +15,8 @@ class QqMusicSearchProvider @Inject constructor(
 
     override val platform: OnlineSearchPlatform = OnlineSearchPlatform.QQ
 
-    override suspend fun searchSongs(query: String, limit: Int): List<TransientOnlineSong> {
-        return qqMusicApiService.searchSongs(query, page = 1, pageSize = limit)
+    override suspend fun searchSongs(query: String, page: Int, limit: Int): List<TransientOnlineSong> {
+        return qqMusicApiService.searchSongs(query, page = page, pageSize = limit)
             .mapNotNull { item ->
                 val songMid = item.mid.ifBlank { item.qqSongId }.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 OnlineSongMapper.toTransient(

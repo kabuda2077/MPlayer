@@ -20,7 +20,7 @@ class KuwoSearchProvider @Inject constructor(
 
     override val platform: OnlineSearchPlatform = OnlineSearchPlatform.KUWO
 
-    override suspend fun searchSongs(query: String, limit: Int): List<TransientOnlineSong> {
+    override suspend fun searchSongs(query: String, page: Int, limit: Int): List<TransientOnlineSong> {
         val encodedKeyword = URLEncoder.encode(query, "UTF-8")
         val url = "http://search.kuwo.cn/r.s?client=kt&all=$encodedKeyword&pn=0&rn=$limit&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json&vermerge=1&mobi=1&issubtitle=1"
         val root = JSONObject(executeTextRequest(url, referer = "https://www.kuwo.cn/"))

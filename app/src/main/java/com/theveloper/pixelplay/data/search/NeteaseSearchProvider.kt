@@ -19,8 +19,9 @@ class NeteaseSearchProvider @Inject constructor(
 
     override val platform: OnlineSearchPlatform = OnlineSearchPlatform.NETEASE
 
-    override suspend fun searchSongs(query: String, limit: Int): List<TransientOnlineSong> {
-        return neteaseRepository.searchOnline(query, limit).getOrThrow()
+    override suspend fun searchSongs(query: String, page: Int, limit: Int): List<TransientOnlineSong> {
+        val offset = (page - 1).coerceAtLeast(0) * limit
+        return neteaseRepository.searchOnline(query, limit = limit, offset = offset).getOrThrow()
             .map { TransientOnlineSong.from(it, OnlineSearchPlatform.NETEASE) }
     }
 

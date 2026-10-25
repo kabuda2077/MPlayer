@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -391,7 +393,22 @@ fun SearchScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            val searchListState = rememberLazyListState()
+            val shouldLoadMore by remember {
+                derivedStateOf {
+                    val lastVisible = searchListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    val total = searchListState.layoutInfo.totalItemsCount
+                    total > 0 && lastVisible >= total - 2
+                }
+            }
+            LaunchedEffect(shouldLoadMore, searchQuery) {
+                if (shouldLoadMore && searchQuery.isNotBlank()) {
+                    playerViewModel.loadMoreOnlineSearchResults(searchQuery)
+                }
+            }
+
             LazyColumn(
+                state = searchListState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -453,6 +470,22 @@ fun SearchScreen(
                             onSongMoreOptionsClick = { song -> selectedOnlineSongForActions = song },
                             embedded = true
                         )
+                    }
+                    if (searchUiState.onlineSearchLoading && onlineSearchResults.isNotEmpty()) {
+                        item(key = "search_online_loading_more") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             }

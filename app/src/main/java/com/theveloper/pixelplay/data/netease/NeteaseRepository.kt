@@ -494,10 +494,10 @@ class NeteaseRepository @Inject constructor(
 
     // ─── Online Search ─────────────────────────────────────────────────
 
-    suspend fun searchOnline(keywords: String, limit: Int = 30): Result<List<Song>> {
+    suspend fun searchOnline(keywords: String, limit: Int = 30, offset: Int = 0): Result<List<Song>> {
         return withContext(Dispatchers.IO) {
             try {
-                val raw = api.searchSongs(keywords, limit)
+                val raw = api.searchSongs(keywords, limit, offset)
                 val root = JSONObject(raw)
                 val code = root.optInt("code", -1)
                 if (code != 200) {

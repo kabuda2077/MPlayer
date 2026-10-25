@@ -62,6 +62,12 @@ class PluginRuntime @Inject constructor(
     private val pendingPluginRequests = ConcurrentHashMap<String, CompletableDeferred<JSONObject>>()
     private val pendingHttpCalls = ConcurrentHashMap<String, okhttp3.Call>()
 
+    private val pluginHttpClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder()
+            .callTimeout(HTTP_REQUEST_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .build()
+    }
+
     private var jsContext: QuickJSContext? = null
     private var key: String = ""
     private var initDeferred: CompletableDeferred<Unit>? = null
@@ -322,10 +328,7 @@ class PluginRuntime @Inject constructor(
                     val body = bodyText.toRequestBody(mediaType.toMediaTypeOrNull())
                     builder.method(method, body)
                 }
-                val call = okHttpClient.newBuilder()
-                    .callTimeout(HTTP_REQUEST_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
-                    .build()
-                    .newCall(builder.build())
+                val call = pluginHttpClient.newCall(builder.build())
                 pendingHttpCalls[requestKey] = call
                 call.execute().use { response ->
                     val body = response.body

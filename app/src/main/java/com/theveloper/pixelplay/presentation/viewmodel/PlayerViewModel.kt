@@ -2528,6 +2528,10 @@ class PlayerViewModel @Inject constructor(
         searchStateHolder.performSearch(query)
     }
 
+    fun loadMoreOnlineSearchResults(query: String) {
+        searchStateHolder.loadMoreOnlineResults(query)
+    }
+
     fun recordSearchHistory(query: String) {
         searchStateHolder.recordSearchHistory(query)
     }

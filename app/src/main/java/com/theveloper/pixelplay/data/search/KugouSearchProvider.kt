@@ -20,9 +20,9 @@ class KugouSearchProvider @Inject constructor(
 
     override val platform: OnlineSearchPlatform = OnlineSearchPlatform.KUGOU
 
-    override suspend fun searchSongs(query: String, limit: Int): List<TransientOnlineSong> {
+    override suspend fun searchSongs(query: String, page: Int, limit: Int): List<TransientOnlineSong> {
         val encodedKeyword = URLEncoder.encode(query, "UTF-8")
-        val url = "http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$encodedKeyword&page=1&pagesize=$limit&showtype=1"
+        val url = "https://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$encodedKeyword&page=$page&pagesize=$limit&showtype=1"
         val root = JSONObject(executeTextRequest(url, referer = "https://www.kugou.com/"))
         val list = root.optJSONObject("data")?.optJSONArray("info") ?: JSONArray()
         return buildList {
@@ -56,7 +56,7 @@ class KugouSearchProvider @Inject constructor(
     override suspend fun loadPopularSearchTerms(limit: Int): List<String> {
         val root = JSONObject(
             executeTextRequest(
-                url = "http://gateway.kugou.com/api/v3/search/hot_tab?signature=ee44edb9d7155821412d220bcaf509dd&appid=1005&clientver=10026&plat=0",
+                url = "https://gateway.kugou.com/api/v3/search/hot_tab?signature=ee44edb9d7155821412d220bcaf509dd&appid=1005&clientver=10026&plat=0",
                 headers = mapOf(
                     "dfid" to "1ssiv93oVqMp27cirf2CvoF1",
                     "mid" to "156798703528610303473757548878786007104",

@@ -9,7 +9,7 @@ import com.theveloper.pixelplay.data.model.TransientOnlineSong
 interface OnlineSearchProvider {
     val platform: OnlineSearchPlatform
 
-    suspend fun searchSongs(query: String, limit: Int): List<TransientOnlineSong>
+    suspend fun searchSongs(query: String, page: Int = 1, limit: Int = 30): List<TransientOnlineSong>
 
     suspend fun loadPopularSearchTerms(limit: Int): List<String>
 }

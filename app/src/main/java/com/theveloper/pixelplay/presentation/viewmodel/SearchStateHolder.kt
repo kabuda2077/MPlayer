@@ -98,6 +98,12 @@ class SearchStateHolder @Inject constructor(
     private val _searchHistory = MutableStateFlow<ImmutableList<String>>(persistentListOf())
     val searchHistory = _searchHistory.asStateFlow()
 
+    @Volatile
+    private var currentOnlineSearchPage = 1
+    @Volatile
+    private var canLoadMoreOnline = true
+    private var loadMoreJob: Job? = null
+
     private val _unifiedState = MutableStateFlow(UnifiedSearchState())
     val unifiedState = _unifiedState.asStateFlow()
     private var lastLibraryQuery: String = ""
@@ -164,6 +170,9 @@ class SearchStateHolder @Inject constructor(
                     }
 
                     try {
+                        currentOnlineSearchPage = 1
+                        canLoadMoreOnline = true
+                        loadMoreJob?.cancel()
                         _onlineSearchLoading.value = true
                         _onlineSearchError.value = null
                         _librarySearchLoading.value = false
@@ -171,7 +180,8 @@ class SearchStateHolder @Inject constructor(
                         val onlineResult = withContext(Dispatchers.IO) {
                             onlineSearchRepository.searchSongs(
                                 query = normalizedQuery,
-                                platform = request.platform
+                                platform = request.platform,
+                                page = 1
                             )
                         }
                         if (request.requestId != latestSearchRequestId.get()) {
@@ -181,6 +191,7 @@ class SearchStateHolder @Inject constructor(
                             onSuccess = { items ->
                                 _onlineSearchResults.value = items.toImmutableList()
                                 _onlineSearchError.value = null
+                                canLoadMoreOnline = items.size >= 15
                             },
                             onFailure = { error ->
                                 Timber.e(error, "Error performing online search for query: $normalizedQuery")
@@ -204,6 +215,49 @@ class SearchStateHolder @Inject constructor(
                         }
                     }
                 }
+        }
+    }
+
+    fun loadMoreOnlineResults(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank() || _onlineSearchLoading.value || !canLoadMoreOnline) return
+        if (loadMoreJob?.isActive == true) return
+
+        val nextPage = currentOnlineSearchPage + 1
+        val platform = _onlineSearchPlatform.value
+
+        loadMoreJob = scope?.launch {
+            try {
+                _onlineSearchLoading.value = true
+                publishUnifiedState(trimmed)
+                val result = withContext(Dispatchers.IO) {
+                    onlineSearchRepository.searchSongs(
+                        query = trimmed,
+                        platform = platform,
+                        page = nextPage
+                    )
+                }
+                result.fold(
+                    onSuccess = { newItems ->
+                        if (newItems.isNotEmpty()) {
+                            currentOnlineSearchPage = nextPage
+                            val currentList = _onlineSearchResults.value
+                            val existingIds = currentList.map { it.song.id }.toSet()
+                            val deduplicated = newItems.filterNot { it.song.id in existingIds }
+                            _onlineSearchResults.value = (currentList + deduplicated).toImmutableList()
+                            canLoadMoreOnline = newItems.size >= 15
+                        } else {
+                            canLoadMoreOnline = false
+                        }
+                    },
+                    onFailure = {
+                        canLoadMoreOnline = false
+                    }
+                )
+            } finally {
+                _onlineSearchLoading.value = false
+                publishUnifiedState(trimmed)
+            }
         }
     }
 

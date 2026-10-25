@@ -143,6 +143,7 @@ class PluginPlatformCandidateResolver @Inject constructor(
                 val duration = item.optLong("dt", item.optLong("duration", song.duration))
                 matchCandidate(song, PluginSource.NETEASE, id, title, artist, album, duration)?.let(candidates::add)
             }
+            if (candidates.isNotEmpty()) break
         }
         return candidates
     }
@@ -163,6 +164,7 @@ class PluginPlatformCandidateResolver @Inject constructor(
                     songMid = item.mid.ifBlank { id }
                 )?.let(candidates::add)
             }
+            if (candidates.isNotEmpty()) break
         }
         return candidates
     }
@@ -171,7 +173,7 @@ class PluginPlatformCandidateResolver @Inject constructor(
         val candidates = mutableListOf<PluginPlatformCandidate>()
         for (keyword in searchKeywords(song)) {
             val encodedKeyword = URLEncoder.encode(keyword, "UTF-8")
-            val url = "http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$encodedKeyword&page=1&pagesize=10&showtype=1"
+            val url = "https://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$encodedKeyword&page=1&pagesize=10&showtype=1"
             val root = JSONObject(executeTextRequest(url))
             val list = root.optJSONObject("data")?.optJSONArray("info") ?: continue
             for (index in 0 until list.length()) {
@@ -192,6 +194,7 @@ class PluginPlatformCandidateResolver @Inject constructor(
                     hash = hash
                 )?.let(candidates::add)
             }
+            if (candidates.isNotEmpty()) break
         }
         return candidates
     }

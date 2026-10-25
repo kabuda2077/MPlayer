@@ -48,6 +48,7 @@ class OnlineSearchRepository @Inject constructor(
     suspend fun searchSongs(
         query: String,
         platform: OnlineSearchPlatform,
+        page: Int = 1,
         limit: Int = DEFAULT_LIMIT
     ): Result<List<OnlineSearchResultItem>> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext Result.success(emptyList())
@@ -57,7 +58,7 @@ class OnlineSearchRepository @Inject constructor(
         )
 
         runCatching {
-            provider.searchSongs(query, limit).map { song ->
+            provider.searchSongs(query, page = page, limit = limit).map { song ->
                 OnlineSearchResultItem(transientSong = song, platform = platform)
             }
         }.onFailure { throwable ->
