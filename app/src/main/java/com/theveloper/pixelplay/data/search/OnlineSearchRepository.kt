@@ -20,8 +20,7 @@ class OnlineSearchRepository @Inject constructor(
     private val providers: Map<OnlineSearchPlatform, OnlineSearchProvider> = listOf(
         NeteaseSearchProvider(neteaseRepository, okHttpClient),
         QqMusicSearchProvider(qqMusicApiService),
-        KugouSearchProvider(okHttpClient),
-        KuwoSearchProvider(okHttpClient)
+        KugouSearchProvider(okHttpClient)
     ).associateBy { it.platform }
 
     suspend fun loadPopularSearchTerms(

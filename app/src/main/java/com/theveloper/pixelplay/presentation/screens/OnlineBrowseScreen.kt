@@ -419,6 +419,7 @@ private fun RecommendationPageContent(
     }
 
     val bottomContentPadding = paddingValues.calculateBottomPadding() + MiniPlayerHeight + 36.dp
+    val chunkedPlaylistTiles = remember(playlistTiles) { playlistTiles.chunked(2) }
     val listState = rememberLazyListState()
     val reserveScrollbarSpace = LocalShowScrollbar.current
     val showScrollBar = reserveScrollbarSpace && (listState.canScrollForward || listState.canScrollBackward)
@@ -495,7 +496,7 @@ private fun RecommendationPageContent(
                     item(key = "playlist_section_title") {
                         RecommendationSectionTitle("推荐歌单")
                     }
-                    items(playlistTiles.chunked(2), key = { row -> row.joinToString { it.key } }) { row ->
+                    items(chunkedPlaylistTiles, key = { row -> "pl_row_${row.firstOrNull()?.key ?: row.hashCode()}" }) { row ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth()
