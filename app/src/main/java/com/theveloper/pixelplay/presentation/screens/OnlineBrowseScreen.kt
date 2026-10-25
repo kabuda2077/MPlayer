@@ -259,7 +259,7 @@ private fun OnlineBrowseShimmer(paddingValues: PaddingValues) {
                 .clip(heroShape)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Section Title Shimmer
         ShimmerBox(
@@ -451,14 +451,14 @@ private fun RecommendationPageContent(
                 contentPadding = PaddingValues(
                     start = 14.dp,
                     end = if (reserveScrollbarSpace) 24.dp else 14.dp,
-                    top = 16.dp,
+                    top = 8.dp,
                     bottom = bottomContentPadding
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // 1. Daily Recommendation Banner Carousel (Card format, swipe to switch platforms, no title)
                 if (dailyTiles.isNotEmpty()) {
-                    item(key = "daily_section_pager") {
+                    item(key = "daily_section_pager_${dailyTiles.size}") {
                         DailyRecommendationPager(
                             tiles = dailyTiles,
                             loadingPlayTileKey = loadingPlayTileKey,
@@ -687,7 +687,17 @@ private fun DailyRecommendationPager(
     onClick: (RecommendationTile) -> Unit,
     onPlayClick: (RecommendationTile) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { tiles.size })
+    if (tiles.isEmpty()) return
+
+    val isLooping = tiles.size > 1
+    val virtualMultiplier = 1000
+    val pageCount = if (isLooping) tiles.size * virtualMultiplier else tiles.size
+    val initialPage = if (isLooping) (virtualMultiplier / 2) * tiles.size else 0
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { pageCount }
+    )
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -697,7 +707,8 @@ private fun DailyRecommendationPager(
             modifier = Modifier.fillMaxWidth(),
             pageSpacing = 12.dp
         ) { pageIndex ->
-            val tile = tiles[pageIndex]
+            val actualIndex = if (isLooping) pageIndex.mod(tiles.size) else pageIndex
+            val tile = tiles.getOrNull(actualIndex) ?: return@HorizontalPager
             DailyHeroCard(
                 tile = tile,
                 isLoadingPlay = tile.key == loadingPlayTileKey,
@@ -707,22 +718,23 @@ private fun DailyRecommendationPager(
         }
 
         if (tiles.size > 1) {
+            val currentActualIndex = pagerState.currentPage.mod(tiles.size)
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = 10.dp),
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 repeat(tiles.size) { index ->
-                    val isSelected = pagerState.currentPage == index
+                    val isSelected = currentActualIndex == index
                     val width by animateDpAsState(
                         targetValue = if (isSelected) 18.dp else 6.dp,
                         animationSpec = tween(300),
                         label = "indicator_width"
                     )
                     val color = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
 
                     Box(
                         modifier = Modifier
@@ -1088,7 +1100,7 @@ private fun RecommendationSectionTitle(
             fontWeight = FontWeight.Bold
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.padding(top = 12.dp, bottom = 0.dp)
+        modifier = modifier.padding(top = 4.dp, bottom = 0.dp)
     )
 }
 

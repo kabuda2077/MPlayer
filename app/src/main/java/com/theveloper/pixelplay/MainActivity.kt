@@ -598,7 +598,7 @@ class MainActivity : ComponentActivity() {
         val commonNavItems = remember {
             persistentListOf(
                 BottomNavItem("Home", R.string.nav_bar_home, R.drawable.rounded_home_24, R.drawable.home_24_rounded_filled, Screen.Home),
-                BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_24, Screen.Search),
+                BottomNavItem("Search", R.string.nav_bar_search, R.drawable.rounded_search_24, R.drawable.rounded_search_filled_24, Screen.Search),
                 BottomNavItem("Online", R.string.nav_bar_online, R.drawable.rounded_library_music_24, R.drawable.round_library_music_24, Screen.OnlineLibrary),
                 BottomNavItem("Library", R.string.nav_bar_local_library, R.drawable.rounded_folder_24, R.drawable.rounded_folder_filled_24, Screen.LocalLibrary)
             )

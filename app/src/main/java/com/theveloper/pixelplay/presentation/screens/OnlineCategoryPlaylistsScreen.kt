@@ -1,12 +1,16 @@
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -62,7 +67,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -387,52 +394,81 @@ private fun CategoryPlatformSegmentedControl(
     modifier: Modifier = Modifier
 ) {
     val platforms = remember { listOf(OnlineBrowsePlatform.NETEASE, OnlineBrowsePlatform.QQ) }
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val activeTextColor = MaterialTheme.colorScheme.primary
-    val inactiveTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val haptic = LocalHapticFeedback.current
 
-    Row(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(42.dp)
-            .clip(RoundedCornerShape(21.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(42.dp),
+        shape = RoundedCornerShape(21.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
-        platforms.forEach { platform ->
-            val isSelected = platform == currentPlatform
-            val bgAlpha by animateColorAsState(
-                targetValue = if (isSelected) surfaceColor else surfaceColor.copy(alpha = 0f),
-                animationSpec = tween(150),
-                label = "platformBg_${platform.name}"
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (isSelected) activeTextColor else inactiveTextColor,
-                animationSpec = tween(150),
-                label = "platformText_${platform.name}"
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(3.dp)
+        ) {
+            val segmentWidth = maxWidth / platforms.size
+            val selectedIndex = platforms.indexOf(currentPlatform).coerceAtLeast(0)
+            val indicatorOffset by animateDpAsState(
+                targetValue = segmentWidth * selectedIndex,
+                animationSpec = spring(
+                    dampingRatio = 0.76f,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "categoryPlatformIndicatorOffset"
             )
 
+            // 1. Sliding indicator pill (平滑滑动的白色药丸滑块)
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .offset(x = indicatorOffset)
+                    .width(segmentWidth)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(bgAlpha)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onPlatformChange(platform) },
-                contentAlignment = Alignment.Center
+                    .background(MaterialTheme.colorScheme.surface)
+            )
+
+            // 2. Interactive text labels row
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (platform == OnlineBrowsePlatform.NETEASE) "网易云音乐" else "QQ 音乐",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontFamily = GoogleSansRounded,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = textColor
-                )
+                platforms.forEach { platform ->
+                    val isSelected = platform == currentPlatform
+                    val textColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        animationSpec = tween(durationMillis = 180),
+                        label = "categoryPlatformText_${platform.name}"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (!isSelected) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onPlatformChange(platform)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (platform == OnlineBrowsePlatform.NETEASE) "网易云音乐" else "QQ 音乐",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
         }
     }

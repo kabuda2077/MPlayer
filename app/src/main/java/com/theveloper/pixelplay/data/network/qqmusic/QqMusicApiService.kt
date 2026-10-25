@@ -213,74 +213,196 @@ class QqMusicApiService @Inject constructor(
     }
 
     suspend fun searchSongs(keyword: String, page: Int = 1, pageSize: Int = 20): List<SearchSongResult> = withContext(Dispatchers.IO) {
-        val clientResults = searchSongsFromClientSearch(keyword, page, pageSize)
-        if (clientResults.isNotEmpty()) {
-            return@withContext clientResults
+        val trimmed = keyword.trim()
+        if (trimmed.isBlank()) return@withContext emptyList()
+
+        val searchId = buildSearchId()
+        val comm = mutableMapOf<String, Any>(
+            "ct" to "11",
+            "cv" to "13020508",
+            "v" to "13020508",
+            "tmeAppID" to "qqmusic",
+            "format" to "json",
+            "inCharset" to "utf-8",
+            "outCharset" to "utf-8",
+            "uid" to "3931641530",
+            "QIMEI36" to "6c9d3cd110abca9b16311cee10001e717614"
+        )
+        val uin = extractUin()
+        val keyst = extractKeyst()
+        if (uin != "0" && keyst.isNotBlank()) {
+            comm["qq"] = uin
+            comm["authst"] = keyst
         }
 
-        // Fallback to legacy musicu endpoint if client search returned nothing
-        val searchId = buildSearchId()
         val payload = JSONObject(
             mapOf(
-                "comm" to mapOf(
-                    "ct" to 11,
-                    "cv" to "1003006",
-                    "v" to "1003006",
-                    "os_ver" to "15",
-                    "phonetype" to "24122RKC7C",
-                    "tmeAppID" to "qqmusiclight",
-                    "nettype" to "NETWORK_WIFI",
-                    "udid" to "0"
-                ),
+                "comm" to comm,
                 "request" to mapOf(
-                    "method" to "DoSearchForQQMusicLite",
                     "module" to "music.search.SearchCgiService",
+                    "method" to "DoSearchForQQMusicMobile",
                     "param" to mapOf(
-                        "search_id" to searchId,
-                        "remoteplace" to "search.android.keyboard",
-                        "query" to keyword,
+                        "searchid" to searchId,
+                        "query" to trimmed,
                         "search_type" to 0,
                         "num_per_page" to pageSize,
                         "page_num" to page,
-                        "highlight" to 0,
-                        "nqc_flag" to 0,
-                        "page_id" to 1,
+                        "highlight" to 1,
                         "grp" to 1
                     )
                 )
             )
         )
 
-        val response = runCatching { JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)) }.getOrNull()
-            ?: return@withContext emptyList()
-        val request = response.optJSONObject("request") ?: return@withContext emptyList()
-        val data = request.optJSONObject("data") ?: return@withContext emptyList()
-        val body = data.optJSONObject("body") ?: return@withContext emptyList()
-        val items = body.optJSONArray("item_song") ?: JSONArray()
-        buildList {
-            for (index in 0 until items.length()) {
-                val song = items.optJSONObject(index) ?: continue
-                val singers = song.optJSONArray("singer")
-                val artist = buildArtistName(singers)
-                val albumObject = song.optJSONObject("album")
-                val albumMid = song.optString("albummid")
-                    .ifBlank { albumObject?.optString("mid").orEmpty() }
-                    .ifBlank { albumObject?.optString("pmid").orEmpty() }
-                add(
-                    SearchSongResult(
-                        qqSongId = song.opt("id")?.toString().orEmpty(),
-                        mid = song.optString("mid"),
-                        title = song.optString("title"),
-                        artist = artist.ifBlank { "Unknown Artist" },
-                        album = albumObject?.optString("name").orEmpty(),
-                        albumArtUrl = albumMid
-                            .takeIf { it.isNotBlank() }
-                            ?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" },
-                        durationMs = song.optLong("interval", 0L) * 1000L
+        val results = runCatching {
+            val responseText = makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+            val response = JSONObject(responseText)
+            val request = response.optJSONObject("request")
+                ?: response.optJSONObject("music.search.SearchCgiService.DoSearchForQQMusicMobile")
+                ?: response
+            val data = request.optJSONObject("data") ?: return@runCatching emptyList()
+            val body = data.optJSONObject("body") ?: return@runCatching emptyList()
+            val items = body.optJSONArray("item_song") ?: JSONArray()
+            buildList {
+                for (index in 0 until items.length()) {
+                    val song = items.optJSONObject(index) ?: continue
+                    val songMid = song.optString("mid").ifBlank { song.optString("songmid") }
+                    val songId = song.opt("id")?.toString().orEmpty().ifBlank { song.opt("songid")?.toString().orEmpty() }
+                    if (songMid.isBlank() && songId.isBlank()) continue
+
+                    val rawTitle = song.optString("title").ifBlank { song.optString("name") }.ifBlank { song.optString("songname") }
+                    val title = cleanHighlightTags(rawTitle)
+                    val singers = song.optJSONArray("singer")
+                    val artist = cleanHighlightTags(buildArtistName(singers))
+
+                    val albumObject = song.optJSONObject("album")
+                    val albumName = cleanHighlightTags(albumObject?.optString("name") ?: song.optString("albumname").ifBlank { song.optString("album") })
+                    val albumMid = albumObject?.optString("mid").orEmpty()
+                        .ifBlank { song.optString("albummid") }
+                        .ifBlank { albumObject?.optString("pmid").orEmpty() }
+
+                    val albumArtUrl = albumMid.takeIf { it.isNotBlank() }
+                        ?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" }
+
+                    val durationSeconds = song.optLong("interval", 0L)
+                    val durationMs = durationSeconds * 1000L
+
+                    add(
+                        SearchSongResult(
+                            qqSongId = songId,
+                            mid = songMid,
+                            title = title,
+                            artist = artist.ifBlank { "Unknown Artist" },
+                            album = albumName,
+                            albumArtUrl = albumArtUrl,
+                            durationMs = durationMs
+                        )
+                    )
+                }
+            }
+        }.getOrElse { error ->
+            Timber.w(error, "QqMusicApiService: DoSearchForQQMusicMobile failed")
+            emptyList()
+        }
+
+        if (results.isNotEmpty()) {
+            return@withContext results
+        }
+
+        val adaptorResults = searchSongsFromAdaptor(trimmed, page, pageSize)
+        if (adaptorResults.isNotEmpty()) {
+            return@withContext adaptorResults
+        }
+
+        // Last-resort fallback to client search
+        searchSongsFromClientSearch(trimmed, page, pageSize)
+    }
+
+    private fun searchSongsFromAdaptor(keyword: String, page: Int, pageSize: Int): List<SearchSongResult> {
+        return runCatching {
+            val searchId = buildSearchId()
+            val comm = mapOf(
+                "ct" to "11",
+                "cv" to "13020508",
+                "v" to "13020508",
+                "tmeAppID" to "qqmusic",
+                "format" to "json",
+                "inCharset" to "utf-8",
+                "outCharset" to "utf-8",
+                "uid" to "3931641530",
+                "QIMEI36" to "6c9d3cd110abca9b16311cee10001e717614"
+            )
+            val methodKey = "music.adaptor.SearchAdaptor.do_search_v2"
+            val payload = JSONObject(
+                mapOf(
+                    "comm" to comm,
+                    methodKey to mapOf(
+                        "module" to "music.adaptor.SearchAdaptor",
+                        "method" to "do_search_v2",
+                        "param" to mapOf(
+                            "searchid" to searchId,
+                            "query" to keyword,
+                            "search_type" to 100,
+                            "page_num" to pageSize,
+                            "page_id" to page,
+                            "highlight" to 1,
+                            "grp" to 1
+                        )
                     )
                 )
+            )
+            val response = JSONObject(makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload))
+            val serviceObj = response.optJSONObject(methodKey) ?: return emptyList()
+            val data = serviceObj.optJSONObject("data") ?: return emptyList()
+            val body = data.optJSONObject("body") ?: return emptyList()
+            val itemSong = body.optJSONObject("item_song") ?: return emptyList()
+            val items = itemSong.optJSONArray("items") ?: return emptyList()
+            buildList {
+                for (index in 0 until items.length()) {
+                    val song = items.optJSONObject(index) ?: continue
+                    val songMid = song.optString("mid").ifBlank { song.optString("songmid") }
+                    val songId = song.opt("id")?.toString().orEmpty().ifBlank { song.opt("songid")?.toString().orEmpty() }
+                    if (songMid.isBlank() && songId.isBlank()) continue
+
+                    val rawTitle = song.optString("title").ifBlank { song.optString("name") }
+                    val title = cleanHighlightTags(rawTitle)
+                    val singers = song.optJSONArray("singer")
+                    val artist = cleanHighlightTags(buildArtistName(singers))
+
+                    val albumObject = song.optJSONObject("album")
+                    val albumName = cleanHighlightTags(albumObject?.optString("name").orEmpty())
+                    val albumMid = albumObject?.optString("mid").orEmpty()
+                        .ifBlank { song.optString("albummid") }
+
+                    val albumArtUrl = albumMid.takeIf { it.isNotBlank() }
+                        ?.let { "https://y.qq.com/music/photo_new/T002R300x300M000$it.jpg" }
+
+                    val durationSeconds = song.optLong("interval", 0L)
+                    val durationMs = durationSeconds * 1000L
+
+                    add(
+                        SearchSongResult(
+                            qqSongId = songId,
+                            mid = songMid,
+                            title = title,
+                            artist = artist.ifBlank { "Unknown Artist" },
+                            album = albumName,
+                            albumArtUrl = albumArtUrl,
+                            durationMs = durationMs
+                        )
+                    )
+                }
             }
+        }.getOrElse { error ->
+            Timber.w(error, "QqMusicApiService: searchSongsFromAdaptor fallback failed")
+            emptyList()
         }
+    }
+
+    private fun cleanHighlightTags(text: String): String {
+        if (!text.contains("<")) return text
+        return text.replace("<em>", "").replace("</em>", "")
+            .replace(Regex("<[^>]+>"), "")
     }
 
     private fun searchSongsFromClientSearch(keyword: String, page: Int, pageSize: Int): List<SearchSongResult> {
@@ -329,28 +451,37 @@ class QqMusicApiService @Inject constructor(
 
     suspend fun searchPlaylists(keyword: String, page: Int = 1, pageSize: Int = 30): String = withContext(Dispatchers.IO) {
         val searchId = buildSearchId()
+        val comm = mutableMapOf<String, Any>(
+            "ct" to "11",
+            "cv" to "13020508",
+            "v" to "13020508",
+            "tmeAppID" to "qqmusic",
+            "format" to "json",
+            "inCharset" to "utf-8",
+            "outCharset" to "utf-8",
+            "uid" to "3931641530",
+            "QIMEI36" to "6c9d3cd110abca9b16311cee10001e717614"
+        )
+        val uin = extractUin()
+        val keyst = extractKeyst()
+        if (uin != "0" && keyst.isNotBlank()) {
+            comm["qq"] = uin
+            comm["authst"] = keyst
+        }
         val payload = JSONObject(
             mapOf(
-                "comm" to mapOf(
-                    "ct" to 11,
-                    "cv" to "1003006",
-                    "v" to "1003006",
-                    "os_ver" to "15",
-                    "phonetype" to "24122RKC7C",
-                    "tmeAppID" to "qqmusiclight",
-                    "nettype" to "NETWORK_WIFI",
-                    "udid" to "0"
-                ),
+                "comm" to comm,
                 "request" to mapOf(
-                    "method" to "DoSearchForQQMusicLite",
                     "module" to "music.search.SearchCgiService",
+                    "method" to "DoSearchForQQMusicMobile",
                     "param" to mapOf(
                         "search_id" to searchId,
-                        "remoteplace" to "search.android.keyboard",
                         "query" to keyword,
                         "search_type" to 3,
                         "num_per_page" to pageSize,
-                        "page_num" to page
+                        "page_num" to page,
+                        "highlight" to 1,
+                        "grp" to 1
                     )
                 )
             )
@@ -560,8 +691,8 @@ class QqMusicApiService @Inject constructor(
         return buildList {
             for (index in 0 until singers.length()) {
                 val singer = singers.optJSONObject(index) ?: continue
-                val name = singer.optString("name")
-                if (name.isNotBlank()) add(name)
+                val name = singer.optString("name").ifBlank { singer.optString("title") }
+                if (name.isNotBlank()) add(cleanHighlightTags(name))
             }
         }.joinToString(" / ")
     }

@@ -4,12 +4,6 @@ package com.theveloper.pixelplay.presentation.screens
 
 import com.theveloper.pixelplay.presentation.navigation.navigateSafely
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -60,6 +54,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalContentColor
@@ -71,6 +66,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -99,6 +95,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -146,56 +143,56 @@ private val SEARCH_CATEGORIES = listOf(
         title = "华语流行",
         subtitle = "热歌与流行金曲",
         queryKeyword = "华语流行",
-        gradientColors = listOf(Color(0xFFE53935), Color(0xFFFF7043)),
+        gradientColors = listOf(Color(0xFFF43F5E), Color(0xFFFF8E6E)),
         icon = Icons.Rounded.MusicNote
     ),
     SearchCategoryItem(
         title = "欧美潮流",
         subtitle = "全球榜单先锋",
         queryKeyword = "欧美流行",
-        gradientColors = listOf(Color(0xFF7B1FA2), Color(0xFFBA68C8)),
+        gradientColors = listOf(Color(0xFF7C3AED), Color(0xFFA78BFA)),
         icon = Icons.Rounded.Headphones
     ),
     SearchCategoryItem(
         title = "摇滚力量",
         subtitle = "吉他与现场狂想",
         queryKeyword = "摇滚",
-        gradientColors = listOf(Color(0xFF263238), Color(0xFF455A64)),
+        gradientColors = listOf(Color(0xFF334155), Color(0xFF64748B)),
         icon = Icons.Rounded.GraphicEq
     ),
     SearchCategoryItem(
         title = "说唱嘻哈",
         subtitle = "节拍与街头律动",
         queryKeyword = "说唱",
-        gradientColors = listOf(Color(0xFFE65100), Color(0xFFFFB74D)),
+        gradientColors = listOf(Color(0xFFEA580C), Color(0xFFF59E0B)),
         icon = Icons.Rounded.Whatshot
     ),
     SearchCategoryItem(
         title = "轻松治愈",
         subtitle = "专注与静心睡眠",
         queryKeyword = "轻音乐",
-        gradientColors = listOf(Color(0xFF00695C), Color(0xFF4DB6AC)),
+        gradientColors = listOf(Color(0xFF0F766E), Color(0xFF2DD4BF)),
         icon = Icons.Rounded.NightsStay
     ),
     SearchCategoryItem(
         title = "经典怀旧",
         subtitle = "岁月的回响金曲",
         queryKeyword = "经典老歌",
-        gradientColors = listOf(Color(0xFFBF360C), Color(0xFF8D6E63)),
+        gradientColors = listOf(Color(0xFFC2410C), Color(0xFFF59E0B)),
         icon = Icons.Rounded.Radio
     ),
     SearchCategoryItem(
         title = "动漫游戏",
         subtitle = "二次元与原声大碟",
         queryKeyword = "ACG",
-        gradientColors = listOf(Color(0xFFAD1457), Color(0xFFF06292)),
+        gradientColors = listOf(Color(0xFFDB2777), Color(0xFFF472B6)),
         icon = Icons.Rounded.AutoAwesome
     ),
     SearchCategoryItem(
         title = "电音派对",
         subtitle = "低音冲击与舞池",
         queryKeyword = "电音",
-        gradientColors = listOf(Color(0xFF1565C0), Color(0xFF42A5F5)),
+        gradientColors = listOf(Color(0xFF1D4ED8), Color(0xFF60A5FA)),
         icon = Icons.Rounded.PlayArrow
     )
 )
@@ -309,21 +306,7 @@ fun SearchScreen(
     LibraryHeaderScaffold(
         gradientBrush = gradientBrush,
         headerContainerColor = headerContainerColor,
-        searchBarVisible = true,
-        searchQuery = searchQuery,
-        onSearchQueryChange = {
-            searchQuery = it
-            playerViewModel.updateSearchQuery(it)
-        },
-        onSearch = { query ->
-            keyboardController?.hide()
-            playerViewModel.recordSearchHistory(query)
-        },
-        onClearSearch = {
-            searchQuery = ""
-            playerViewModel.updateSearchQuery("")
-        },
-        searchInputModifier = Modifier.focusRequester(searchInputFocusRequester),
+        searchBarVisible = false,
         topBar = {
             TopAppBar(
                 title = {
@@ -369,28 +352,44 @@ fun SearchScreen(
         }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 当输入搜索词时，在顶部固定展示分段大胶囊平台切换栏，位置对齐在线页操作栏 (top = 6.dp, heightIn = 56.dp, 居中 42.dp 胶囊)
-            if (searchQuery.isNotBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            top = 6.dp,
-                            start = 10.dp,
-                            end = 10.dp
-                        )
-                        .heightIn(min = 58.dp)
-                        .padding(start = 4.dp, end = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    SearchPlatformCapsuleRow(
-                        currentPlatform = currentOnlinePlatform,
-                        onPlatformSelected = { platform ->
-                            playerViewModel.updateOnlineSearchPlatform(platform)
-                        }
-                    )
-                }
+            // 1. 位于圆弧顶部的搜索框与独立的平台切换按钮
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SearchScreenSearchBar(
+                    query = searchQuery,
+                    onQueryChange = {
+                        searchQuery = it
+                        playerViewModel.updateSearchQuery(it)
+                    },
+                    onSearch = { query ->
+                        keyboardController?.hide()
+                        playerViewModel.recordSearchHistory(query)
+                    },
+                    onClear = {
+                        searchQuery = ""
+                        playerViewModel.updateSearchQuery("")
+                    },
+                    inputModifier = Modifier.focusRequester(searchInputFocusRequester),
+                    modifier = Modifier.weight(1f)
+                )
+
+                SearchPlatformSwitcher(
+                    currentPlatform = currentOnlinePlatform,
+                    onPlatformSelected = { platform ->
+                        playerViewModel.updateOnlineSearchPlatform(platform)
+                    },
+                    modifier = Modifier.size(56.dp),
+                    buttonColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
             }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             LazyColumn(
                 modifier = Modifier
@@ -408,10 +407,6 @@ fun SearchScreen(
                         SearchStartContent(
                             history = searchUiState.searchHistory,
                             suggestions = searchUiState.popularSearchTerms,
-                            currentPlatform = currentOnlinePlatform,
-                            onPlatformSelected = { platform ->
-                                playerViewModel.updateOnlineSearchPlatform(platform)
-                            },
                             onSuggestionClick = { suggestion ->
                                 searchQuery = suggestion
                                 playerViewModel.updateSearchQuery(suggestion)
@@ -517,24 +512,24 @@ fun SearchScreen(
 }
 
 // Material 3 间距规范体系：基于 8.dp 栅格体系
-private val SearchSectionSpacing = 16.dp        // M3 Medium Spacing: 板块与板块之间的垂直间距
-private val SearchTitleToContentSpacing = 8.dp // M3 Small Spacing: 标题到内容之间的间距
-private val SearchChipSpacing = 6.dp           // M3 Compact Spacing: 胶囊芯片行距与列距
-private val SearchCardGridSpacing = 8.dp       // M3 Small Spacing: 分类彩色大卡片网格缝隙
+private val SearchSectionSpacing = 24.dp        // M3 Large Spacing: 板块与板块之间的垂直间距（拉大呼吸感）
+private val SearchTitleToContentSpacing = 10.dp // M3 Medium-Small Spacing: 标题到内容之间的间距
+private val SearchChipSpacing = 8.dp           // M3 Compact Spacing: 胶囊芯片行距与列距
+private val SearchCardGridSpacing = 10.dp      // M3 Small Spacing: 分类彩色大卡片网格缝隙
 
 @Composable
 fun SearchPlatformSwitcher(
     currentPlatform: OnlineSearchPlatform,
     onPlatformSelected: (OnlineSearchPlatform) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    buttonColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh
 ) {
     var expanded by remember { mutableStateOf(false) }
     val platforms = remember {
         listOf(
             OnlineSearchPlatform.NETEASE,
             OnlineSearchPlatform.QQ,
-            OnlineSearchPlatform.KUGOU,
-            OnlineSearchPlatform.KUWO
+            OnlineSearchPlatform.KUGOU
         )
     }
 
@@ -542,9 +537,9 @@ fun SearchPlatformSwitcher(
         Surface(
             onClick = { expanded = true },
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = buttonColor,
             contentColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(42.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -553,7 +548,8 @@ fun SearchPlatformSwitcher(
                 SearchPlatformIcon(
                     platform = currentPlatform,
                     contentDescription = "切换平台",
-                    modifier = Modifier.size(20.dp)
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -620,102 +616,168 @@ fun SearchPlatformIcon(
     )
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchPlatformCapsuleRow(
-    currentPlatform: OnlineSearchPlatform,
-    onPlatformSelected: (OnlineSearchPlatform) -> Unit,
-    modifier: Modifier = Modifier
+private fun SearchScreenSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+    inputModifier: Modifier = Modifier
 ) {
-    val platforms = remember {
-        listOf(
-            OnlineSearchPlatform.NETEASE,
-            OnlineSearchPlatform.QQ,
-            OnlineSearchPlatform.KUGOU,
-            OnlineSearchPlatform.KUWO
-        )
-    }
-    val haptic = LocalHapticFeedback.current
+    val inputFieldColors = SearchBarDefaults.inputFieldColors(
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        cursorColor = MaterialTheme.colorScheme.primary
+    )
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(4.dp)
-        ) {
-            val segmentWidth = maxWidth / platforms.size
-            val selectedIndex = platforms.indexOf(currentPlatform).coerceAtLeast(0)
-            val indicatorOffset by animateDpAsState(
-                targetValue = segmentWidth * selectedIndex,
-                animationSpec = spring(
-                    dampingRatio = 0.76f,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                label = "indicatorOffset"
-            )
-
-            // 1. Sliding indicator pill (平滑滑动的背景高亮药丸滑块)
-            Box(
-                modifier = Modifier
-                    .offset(x = indicatorOffset)
-                    .width(segmentWidth)
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-            )
-
-            // 2. Interactive text labels row
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                platforms.forEach { platform ->
-                    val isSelected = platform == currentPlatform
-                    val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                        animationSpec = tween(durationMillis = 200),
-                        label = "capsuleSegmentContent"
+    DockedSearchBar(
+        inputField = {
+            SearchBarDefaults.InputField(
+                modifier = inputModifier,
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = onSearch,
+                expanded = false,
+                onExpandedChange = {},
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.search_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                if (!isSelected) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onPlatformSelected(platform)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = platform.label,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontFamily = GoogleSansRounded,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 15.sp,
-                            color = contentColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = stringResource(R.string.search_cd_search_icon),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingIcon = {
+                    if (query.isNotBlank()) {
+                        IconButton(
+                            onClick = onClear,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = stringResource(R.string.search_cd_clear_search_query),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
-                }
-            }
-        }
-    }
+                },
+                colors = inputFieldColors
+            )
+        },
+        expanded = false,
+        onExpandedChange = {},
+        modifier = modifier
+            .clip(RoundedCornerShape(28.dp)),
+        colors = SearchBarDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            dividerColor = Color.Transparent,
+            inputFieldColors = inputFieldColors
+        ),
+        content = {}
+    )
 }
 
+private data class TrendingColorTheme(
+    val containerColor: Color,
+    val contentColor: Color,
+    val rankColor: Color
+)
+
+private val LightTrendingThemes = listOf(
+    TrendingColorTheme(
+        containerColor = Color(0xFFEBF2FC),
+        contentColor = Color(0xFF2C3E55),
+        rankColor = Color(0xFF2563EB)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFFE6F8F2),
+        contentColor = Color(0xFF1E4B3E),
+        rankColor = Color(0xFF059669)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFFFFF0F5),
+        contentColor = Color(0xFF5A2538),
+        rankColor = Color(0xFFE11D48)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFFF3EEFC),
+        contentColor = Color(0xFF3E2D5E),
+        rankColor = Color(0xFF7C3AED)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFFFFF5EB),
+        contentColor = Color(0xFF5A3E1E),
+        rankColor = Color(0xFFEA580C)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFFE6F7FA),
+        contentColor = Color(0xFF164E63),
+        rankColor = Color(0xFF0891B2)
+    )
+)
+
+private val DarkTrendingThemes = listOf(
+    TrendingColorTheme(
+        containerColor = Color(0xFF1B2838),
+        contentColor = Color(0xFFE2E8F0),
+        rankColor = Color(0xFF60A5FA)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFF142E26),
+        contentColor = Color(0xFFE6F4EA),
+        rankColor = Color(0xFF34D399)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFF331B26),
+        contentColor = Color(0xFFFCE7F3),
+        rankColor = Color(0xFFF472B6)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFF261C38),
+        contentColor = Color(0xFFF3E8FF),
+        rankColor = Color(0xFFA78BFA)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFF332316),
+        contentColor = Color(0xFFFEF3C7),
+        rankColor = Color(0xFFFBBF24)
+    ),
+    TrendingColorTheme(
+        containerColor = Color(0xFF132A32),
+        contentColor = Color(0xFFCFFAFE),
+        rankColor = Color(0xFF22D3EE)
+    )
+)
+
+// 热门搜索胶囊色彩分布序列：打散相邻芯片与上下两行间的对角关联，消除斜向条纹感，呈现自然随机的糖果色分布
+private val TRENDING_COLOR_SEQUENCE = intArrayOf(
+    0, // 1: 经典蓝
+    2, // 2: 玫瑰粉
+    1, // 3: 薄荷绿
+    4, // 4: 暖琥珀
+    3, // 5: 丁香紫
+    5, // 6: 碧海青
+    4, // 7: 暖琥珀
+    0, // 8: 经典蓝
+    2, // 9: 玫瑰粉
+    1  // 10: 薄荷绿
+)
 
 @Composable
 private fun TrendingChip(
@@ -724,31 +786,43 @@ private fun TrendingChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isTop3 = rank <= 3
+    val isDark = LocalPixelPlayDarkTheme.current
+    val themes = if (isDark) DarkTrendingThemes else LightTrendingThemes
+    val colorIndex = TRENDING_COLOR_SEQUENCE[(rank - 1).mod(TRENDING_COLOR_SEQUENCE.size)]
+    val theme = themes[colorIndex.mod(themes.size)]
+
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = theme.containerColor,
+        contentColor = theme.contentColor,
         modifier = modifier
             .clip(CircleShape)
             .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 17.dp, vertical = 10.5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$rank",
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = GoogleSansRounded,
-                fontWeight = FontWeight.Bold,
-                color = if (isTop3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.5.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)
+                ),
+                color = theme.rankColor,
+                modifier = Modifier.offset(y = 2.dp)
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = term,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isTop3) FontWeight.Medium else FontWeight.Normal,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)
+                ),
+                color = theme.contentColor,
                 maxLines = 1
             )
         }
@@ -769,48 +843,99 @@ private fun CategoryCard(
 
     Box(
         modifier = modifier
-            .height(86.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .height(96.dp)
+            .clip(RoundedCornerShape(20.dp))
             .background(gradientBrush)
             .clickable(onClick = onClick)
-            .padding(14.dp)
     ) {
-        Icon(
-            imageVector = category.icon,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.22f),
+        // 顶部微弱透光层（营造果冻/玻璃般通透光感）
+        Box(
             modifier = Modifier
-                .size(52.dp)
-                .align(Alignment.BottomEnd)
-                .graphicsLayer {
-                    rotationZ = -14f
-                    translationX = 10.dp.toPx()
-                    translationY = 12.dp.toPx()
-                }
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.16f),
+                            Color.Transparent
+                        )
+                    )
+                )
         )
 
-        Column(
+        Box(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth(0.82f)
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text(
-                text = category.title,
-                style = MaterialTheme.typography.titleMedium,
+            Icon(
+                imageVector = category.icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.22f),
+                modifier = Modifier
+                    .size(56.dp)
+                    .align(Alignment.BottomEnd)
+                    .graphicsLayer {
+                        rotationZ = -14f
+                        translationX = 12.dp.toPx()
+                        translationY = 14.dp.toPx()
+                    }
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth(0.82f)
+            ) {
+                Text(
+                    text = category.title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.5.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = category.subtitle,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp
+                    ),
+                    color = Color.White.copy(alpha = 0.88f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 40.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(
                 fontFamily = GoogleSansRounded,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(3.dp))
-            Text(
-                text = category.subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.85f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                platformStyle = PlatformTextStyle(includeFontPadding = false)
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        if (action != null) {
+            action()
         }
     }
 }
@@ -820,8 +945,6 @@ private fun CategoryCard(
 private fun SearchStartContent(
     history: List<String>,
     suggestions: List<String>,
-    currentPlatform: OnlineSearchPlatform,
-    onPlatformSelected: (OnlineSearchPlatform) -> Unit,
     onSuggestionClick: (String) -> Unit,
     onDeleteHistoryItem: (String) -> Unit,
     onClearHistory: () -> Unit,
@@ -865,30 +988,14 @@ private fun SearchStartContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(top = 6.dp, bottom = 16.dp)
+            .padding(horizontal = 14.dp)
+            .padding(top = 0.dp, bottom = 16.dp)
     ) {
-        // --- 1. 热门搜索（置于顶部，与在线页操作栏高度及按钮大小对齐） ---
+        // --- 1. 热门搜索（置于顶部，统一规范标题栏） ---
         Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 42.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.search_popular_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                SearchPlatformSwitcher(
-                    currentPlatform = currentPlatform,
-                    onPlatformSelected = onPlatformSelected
-                )
-            }
+            SearchSectionHeader(
+                title = stringResource(R.string.search_popular_title)
+            )
 
             Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
@@ -897,7 +1004,7 @@ private fun SearchStartContent(
             val row1 = terms.take(half)
             val row2 = terms.drop(half)
 
-            // 两行独立横滑，行间距与列间距统一为 SearchChipSpacing (6.dp)
+            // 两行独立横滑，行间距与列间距统一为 SearchChipSpacing (8.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(SearchChipSpacing)
@@ -937,69 +1044,66 @@ private fun SearchStartContent(
             }
         }
 
-        // --- 2. 搜索历史（置于热门搜索下方） ---
+        // --- 2. 搜索历史（置于热门搜索下方，单行展示，字号胶囊尺寸与热门一致） ---
         if (history.isNotEmpty()) {
-            // 板块间距统一为 SearchSectionSpacing (16.dp)
+            val displayedHistory = remember(history) { history.take(5) }
             Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_history_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontFamily = GoogleSansRounded,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    IconButton(
-                        onClick = { showClearDialog = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = stringResource(R.string.search_history_clear),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
-                        )
+                SearchSectionHeader(
+                    title = stringResource(R.string.search_history_title),
+                    action = {
+                        IconButton(
+                            onClick = { showClearDialog = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = stringResource(R.string.search_history_clear),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
-                }
+                )
 
                 Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(SearchChipSpacing),
-                    verticalArrangement = Arrangement.spacedBy(SearchChipSpacing),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(SearchChipSpacing)
                 ) {
-                    history.forEach { historyItem ->
+                    displayedHistory.forEach { historyItem ->
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .clickable { onSuggestionClick(historyItem) }
                         ) {
                             Row(
-                                modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 6.dp),
+                                modifier = Modifier.padding(start = 17.dp, top = 10.5.dp, bottom = 10.5.dp, end = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = historyItem,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Normal,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontSize = 15.sp,
+                                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                                    ),
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.widthIn(max = 180.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Box(
                                     modifier = Modifier
-                                        .size(18.dp)
+                                        .size(20.dp)
                                         .clip(CircleShape)
                                         .clickable { onDeleteHistoryItem(historyItem) },
                                     contentAlignment = Alignment.Center
@@ -1007,8 +1111,8 @@ private fun SearchStartContent(
                                     Icon(
                                         imageVector = Icons.Rounded.Close,
                                         contentDescription = stringResource(R.string.search_history_delete_single),
-                                        modifier = Modifier.size(12.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                                     )
                                 }
                             }
@@ -1018,23 +1122,14 @@ private fun SearchStartContent(
             }
         }
 
-        // --- 3. 探索分类（Apple Music / Spotify 风格彩色卡片） ---
-        // 板块间距统一为 SearchSectionSpacing (16.dp)
+        // --- 3. 探索分类（统一规范标题栏） ---
+        // 板块间距统一为 SearchSectionSpacing
         Spacer(modifier = Modifier.height(SearchSectionSpacing))
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.search_categories_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontFamily = GoogleSansRounded,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            SearchSectionHeader(
+                title = stringResource(R.string.search_categories_title)
+            )
 
             Spacer(modifier = Modifier.height(SearchTitleToContentSpacing))
 
@@ -1234,7 +1329,7 @@ private fun OnlineSearchResultRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .padding(horizontal = 14.dp, vertical = 3.dp)
     ) {
         EnhancedSongListItem(
             song = song,
