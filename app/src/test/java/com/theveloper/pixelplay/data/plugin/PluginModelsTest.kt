@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 
 class PluginModelsTest {
     @Test
-    fun mapsPixelPlayerUrisToPluginSources() {
+    fun mapsMPlayerUrisToPluginSources() {
         assertThat(MediaSourceClassifier.pluginSource("netease://123")).isEqualTo(PluginSource.NETEASE)
         assertThat(MediaSourceClassifier.pluginSource("qqmusic://abc")).isEqualTo(PluginSource.QQ_MUSIC)
         assertThat(MediaSourceClassifier.pluginSource("kugou://hash")).isEqualTo(PluginSource.KUGOU)

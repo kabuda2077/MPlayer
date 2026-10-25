@@ -470,7 +470,7 @@ object AppModule {
                 val originalRequest = chain.request()
                 val requestWithUserAgent = if (originalRequest.header("User-Agent").isNullOrBlank()) {
                     originalRequest.newBuilder()
-                        .header("User-Agent", "PixelPlayer/1.0 (Android; Music Player)")
+                        .header("User-Agent", "MPlayer/1.0 (Android; Music Player)")
                         .build()
                 } else {
                     originalRequest
