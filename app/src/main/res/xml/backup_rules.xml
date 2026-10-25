@@ -11,4 +11,7 @@
 
     <!-- Exclude DataStore preferences that may contain API keys/sensitive settings -->
     <exclude domain="file" path="datastore/settings.preferences_pb"/>
+
+    <!-- Exclude large online audio cache from backup -->
+    <exclude domain="file" path="online_audio_cache"/>
 </full-backup-content>

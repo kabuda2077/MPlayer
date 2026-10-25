@@ -33,8 +33,34 @@ class OnlineAudioCacheManager @Inject constructor(
 
     private val cleanupMutex = Mutex()
 
-    private val cacheDir: File
-        get() = File(context.filesDir, CACHE_DIR_NAME).also { if (!it.exists()) it.mkdirs() }
+    private val cacheDir: File by lazy {
+        val targetDir = File(context.cacheDir, CACHE_DIR_NAME)
+        migrateLegacyCacheDirIfNeeded(targetDir)
+        if (!targetDir.exists()) targetDir.mkdirs()
+        targetDir
+    }
+
+    private fun migrateLegacyCacheDirIfNeeded(targetDir: File) {
+        runCatching {
+            val legacyDir = File(context.filesDir, CACHE_DIR_NAME)
+            if (legacyDir.exists() && legacyDir.isDirectory) {
+                if (!targetDir.exists()) {
+                    if (legacyDir.renameTo(targetDir)) return
+                }
+                legacyDir.listFiles()?.forEach { file ->
+                    val dest = File(targetDir, file.name)
+                    if (!dest.exists()) {
+                        file.renameTo(dest)
+                    } else {
+                        file.delete()
+                    }
+                }
+                legacyDir.delete()
+            }
+        }.onFailure {
+            Timber.w(it, "Failed to migrate legacy audio cache from filesDir to cacheDir")
+        }
+    }
 
     suspend fun get(cacheKey: String): OnlineAudioCacheEntry? = withContext(Dispatchers.IO) {
         if (configuredCacheLimitMb <= 0) return@withContext null

@@ -321,6 +321,27 @@ class NeteaseApiService @Inject constructor() {
     // ─── Search ────────────────────────────────────────────────────────
 
     fun searchSongs(keyword: String, limit: Int = 30, offset: Int = 0): String {
+        val weApiResult = runCatching {
+            callWeApi(
+                path = "/cloudsearch/get/web",
+                params = mapOf(
+                    "s" to keyword,
+                    "type" to 1,
+                    "limit" to limit,
+                    "offset" to offset,
+                    "total" to true
+                ),
+                usePersistedCookies = hasLogin()
+            )
+        }.getOrNull()
+
+        if (!weApiResult.isNullOrBlank()) {
+            val root = runCatching { JSONObject(weApiResult) }.getOrNull()
+            if (root?.optInt("code", -1) == 200 && root.optJSONObject("result") != null) {
+                return weApiResult
+            }
+        }
+
         val params = mutableMapOf<String, Any>(
             "s" to keyword,
             "type" to "1",
@@ -345,14 +366,30 @@ class NeteaseApiService @Inject constructor() {
             mapOf("offset" to 0, "total" to "true", "limit" to 30, "csrf_token" to "", "afresh" to afresh)
         )
 
-    fun getPersonalizedPlaylists(limit: Int = 20): String =
-        request(
+    fun getPersonalizedPlaylists(limit: Int = 20): String {
+        val weApiResult = runCatching {
+            callWeApi(
+                path = "/personalized/playlist",
+                params = mapOf("limit" to limit, "total" to true, "n" to limit),
+                usePersistedCookies = true
+            )
+        }.getOrNull()
+
+        if (!weApiResult.isNullOrBlank()) {
+            val root = runCatching { JSONObject(weApiResult) }.getOrNull()
+            if (root?.optInt("code", -1) == 200 && root.optJSONArray("result") != null) {
+                return weApiResult
+            }
+        }
+
+        return request(
             url = "https://music.163.com/api/personalized",
             params = mapOf("limit" to limit, "total" to "true", "offset" to 0),
             mode = CryptoMode.API,
             method = "GET",
             usePersistedCookies = true
         )
+    }
 
     fun getPersonalizedNewSongs(limit: Int = 20): String =
         request(

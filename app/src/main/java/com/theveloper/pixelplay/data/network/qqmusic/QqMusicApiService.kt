@@ -165,6 +165,45 @@ class QqMusicApiService @Inject constructor(
         songBegin: Int = 0,
         songNum: Int = 1000
     ): String = withContext(Dispatchers.IO) {
+        // First try the modern mobile RPC endpoint via musicu.fcg
+        val rpcResult = runCatching {
+            val payload = JSONObject(
+                mapOf(
+                    "comm" to mapOf(
+                        "ct" to 11,
+                        "cv" to "1003006",
+                        "v" to "1003006",
+                        "os_ver" to "15",
+                        "phonetype" to "24122RKC7C",
+                        "tmeAppID" to "qqmusiclight",
+                        "nettype" to "NETWORK_WIFI",
+                        "udid" to "0"
+                    ),
+                    "request" to mapOf(
+                        "module" to "music.srfDissInfo.DissInfo",
+                        "method" to "CgiGetDiss",
+                        "param" to mapOf(
+                            "disstid" to playlistId,
+                            "tag" to 1,
+                            "userinfo" to 1,
+                            "song_begin" to songBegin,
+                            "song_num" to songNum
+                        )
+                    )
+                )
+            )
+            makePostRequest("https://u.y.qq.com/cgi-bin/musicu.fcg", payload)
+        }.getOrNull()
+
+        if (!rpcResult.isNullOrBlank()) {
+            val root = runCatching { JSONObject(rpcResult) }.getOrNull()
+            val code = root?.optInt("code", -1) ?: -1
+            val reqCode = root?.optJSONObject("request")?.optInt("code", -1) ?: -1
+            if (code == 0 && reqCode == 0) {
+                return@withContext rpcResult
+            }
+        }
+
         val gtk = getGTK()
         val url = "https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg?" +
                 "type=1&json=1&utf8=1&onlysong=0" +

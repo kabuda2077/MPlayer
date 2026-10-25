@@ -579,6 +579,7 @@ internal object RecommendationJson {
             data?.optJSONObject("body")?.optJSONArray("songlist"),
             data?.optJSONObject("body")?.optJSONArray("item_song"),
             data?.optJSONArray("songlist"),
+            data?.optJSONObject("dirinfo")?.optJSONArray("songlist"),
             root.optJSONArray("songlist")
         )
         val structured = arrays.flatMap { array ->
@@ -599,7 +600,9 @@ internal object RecommendationJson {
 
     fun parseQqPlaylistSongCount(raw: String): Int? {
         val root = JSONObject(raw)
-        val firstPlaylist = root.optJSONArray("cdlist")?.optJSONObject(0) ?: return null
+        val dirInfo = root.optJSONObject("request")?.optJSONObject("data")?.optJSONObject("dirinfo")
+            ?: root.optJSONObject("request")?.optJSONObject("data")
+        val firstPlaylist = root.optJSONArray("cdlist")?.optJSONObject(0) ?: dirInfo ?: return null
         return firstPositiveInt(
             firstPlaylist,
             keys = listOf("songnum", "song_num", "song_count", "total_song_num", "trackCount")
