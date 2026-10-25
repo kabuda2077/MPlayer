@@ -6,9 +6,9 @@
     <string name="topbar_cd_changelog">Changelog</string>
 
     <!-- BetaInfoBottomSheet -->
-    <string name="beta_sheet_version">Beta 0.7.0</string>
+    <string name="beta_sheet_version">v1.0</string>
     <string name="beta_sheet_letter">β</string>
-    <string name="beta_sheet_welcome_title">Welcome to MPlayer 0.7.0-beta</string>
+    <string name="beta_sheet_welcome_title">Welcome to MPlayer 1.0</string>
     <string name="beta_sheet_welcome_body">You\'re using a beta build that may contain bugs, crashes, or experimental features. Help us improve by reporting issues.</string>
     <string name="beta_sheet_expect_title">What to expect</string>
     <string name="beta_sheet_expect_1">Bugs, crashes, or incomplete features may occur unexpectedly.</string>

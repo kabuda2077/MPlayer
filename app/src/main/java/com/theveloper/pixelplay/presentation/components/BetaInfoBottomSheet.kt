@@ -90,11 +90,11 @@ fun BetaInfoBottomSheet(modifier: Modifier = Modifier) {
 
     val displayVersion = remember(versionName, versionStrTemplate) {
         val cleanVersion = versionName.substringBefore("-")
-        versionStrTemplate.replace(Regex("""\d+\.\d+\.\d+"""), cleanVersion)
+        versionStrTemplate.replace(Regex("""\d+\.\d+(?:\.\d+)?"""), cleanVersion)
     }
 
     val welcomeTitle = remember(versionName, welcomeTitleTemplate) {
-        welcomeTitleTemplate.replace(Regex("""\d+\.\d+\.\d+(?:-beta)?"""), versionName)
+        welcomeTitleTemplate.replace(Regex("""\d+\.\d+(?:\.\d+)?(?:-beta)?"""), versionName)
     }
 
     Box(
