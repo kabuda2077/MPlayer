@@ -1,6 +1,6 @@
 [versions]
 accompanistDrawablepainter = "0.37.3"
-agp = "9.2.1"
+agp = "9.4.1"
 googleGenai = "1.58.0"
 animation = "1.11.3"
 appcompat = "1.7.1"

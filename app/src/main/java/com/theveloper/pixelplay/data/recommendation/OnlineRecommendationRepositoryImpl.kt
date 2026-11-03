@@ -35,6 +35,24 @@ class OnlineRecommendationRepositoryImpl @Inject constructor(
     private val cache = ConcurrentHashMap<OnlineBrowsePlatform, CachedPage>()
     private val refreshMutexes = OnlineBrowsePlatform.entries.associateWith { Mutex() }
 
+    override fun warmupCache() {
+        OnlineBrowsePlatform.entries.forEach { platform ->
+            if (!cache.containsKey(platform)) {
+                cacheStore.read(platform)?.let {
+                    cache[platform] = CachedPage(it.page, it.storedAt)
+                }
+            }
+        }
+    }
+
+    override fun getCachedPage(platform: OnlineBrowsePlatform): RecommendationPage? {
+        val inMemory = cache[platform]?.page
+        if (inMemory != null) return inMemory
+        return cacheStore.read(platform)?.let {
+            CachedPage(it.page, it.storedAt).also { restored -> cache[platform] = restored }.page
+        }
+    }
+
     override suspend fun refresh(
         platform: OnlineBrowsePlatform,
         force: Boolean,

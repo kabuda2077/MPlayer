@@ -280,10 +280,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideImageLoader(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
     ): ImageLoader {
-        // Add interceptor for QQ Music images
-        val okHttpClient = OkHttpClient.Builder()
+        // Add interceptor for QQ Music images sharing the base client's connection pool & DNS
+        val imageOkHttpClient = okHttpClient.newBuilder()
             .addInterceptor { chain ->
                 val request = chain.request()
                 val url = request.url.toString()
@@ -302,7 +303,7 @@ object AppModule {
             .build()
 
         return ImageLoader.Builder(context)
-            .okHttpClient(okHttpClient)
+            .okHttpClient(imageOkHttpClient)
             .dispatcher(Dispatchers.Default) // Use CPU-bound dispatcher for decoding
             .allowHardware(true) // Re-enable hardware bitmaps for better performance
             .memoryCache {

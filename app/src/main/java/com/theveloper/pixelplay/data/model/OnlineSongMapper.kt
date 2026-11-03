@@ -46,10 +46,18 @@ object OnlineSongMapper {
         return TransientOnlineSong.from(song)
     }
 
-    private fun normalizeArtworkUrl(value: String?): String? =
-        value?.trim()?.takeIf(String::isNotBlank)?.let {
-            if (it.startsWith("http://", ignoreCase = true)) "https://${it.substring(7)}" else it
+    fun normalizeArtworkUrl(value: String?): String? {
+        val trimmed = value?.trim()?.takeIf(String::isNotBlank) ?: return null
+        val https = if (trimmed.startsWith("http://", ignoreCase = true)) "https://${trimmed.substring(7)}" else trimmed
+        if (https.contains("music.126.net") && !https.contains("param=")) {
+            return if (https.contains("?")) "$https&param=300y300" else "$https?param=300y300"
         }
+        if (https.contains("y.gtimg.cn") || https.contains("y.qq.com")) {
+            if (https.contains("R800x800")) return https.replace("R800x800", "R300x300")
+            if (https.contains("R500x500")) return https.replace("R500x500", "R300x300")
+        }
+        return https
+    }
 
     private fun stableId(value: String): Long =
         -kotlin.math.abs(value.lowercase(Locale.ROOT).hashCode().toLong()).coerceAtLeast(1L)

@@ -26,4 +26,25 @@ class OnlineSongMapperTest {
         assertThat(transient.song.albumArtUriString).isEqualTo("https://example.com/cover.jpg")
         assertThat(transient.song.artists.map { it.name }).containsExactly("Artist A", "Artist B").inOrder()
     }
+
+    @Test
+    fun normalizeArtworkUrl_appendsNeteaseThumbnailParam() {
+        val raw = "http://p1.music.126.net/abc/123.jpg"
+        val normalized = OnlineSongMapper.normalizeArtworkUrl(raw)
+        assertThat(normalized).isEqualTo("https://p1.music.126.net/abc/123.jpg?param=300y300")
+    }
+
+    @Test
+    fun normalizeArtworkUrl_preservesExistingNeteaseParam() {
+        val raw = "https://p1.music.126.net/abc/123.jpg?param=500y500"
+        val normalized = OnlineSongMapper.normalizeArtworkUrl(raw)
+        assertThat(normalized).isEqualTo("https://p1.music.126.net/abc/123.jpg?param=500y500")
+    }
+
+    @Test
+    fun normalizeArtworkUrl_downsamplesQqLargeArtwork() {
+        val raw = "http://y.gtimg.cn/music/photo_new/T002R800x800M000123.jpg"
+        val normalized = OnlineSongMapper.normalizeArtworkUrl(raw)
+        assertThat(normalized).isEqualTo("https://y.gtimg.cn/music/photo_new/T002R300x300M000123.jpg")
+    }
 }

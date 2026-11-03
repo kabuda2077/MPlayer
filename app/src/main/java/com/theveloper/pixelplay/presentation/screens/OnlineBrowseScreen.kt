@@ -2,8 +2,13 @@ package com.theveloper.pixelplay.presentation.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -429,6 +434,7 @@ private fun RecommendationPageContent(
             selectedPlatform = selectedPlatformFilter,
             onPlatformSelect = { selectedPlatformFilter = it },
             onRefresh = onRetry,
+            isRefreshing = loadingPlatforms.isNotEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
@@ -502,7 +508,6 @@ private fun RecommendationPageContent(
                             row.forEach { entry ->
                                 RecommendationTileCard(
                                     tile = entry,
-                                    playerViewModel = playerViewModel,
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     navigateToRecommendationTile(navController, entry)
@@ -549,6 +554,7 @@ private fun OnlineActionBar(
     selectedPlatform: OnlineBrowsePlatform?,
     onPlatformSelect: (OnlineBrowsePlatform?) -> Unit,
     onRefresh: () -> Unit,
+    isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -558,6 +564,18 @@ private fun OnlineActionBar(
         animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
         label = "refresh_rotation"
     )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "refresh_infinite")
+    val spinningAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "refresh_spin"
+    )
+    val rotationAngle = if (isRefreshing) spinningAngle else animatedRotation
 
     Row(
         modifier = modifier
@@ -665,7 +683,7 @@ private fun OnlineActionBar(
                     contentDescription = "刷新内容",
                     modifier = Modifier
                         .size(20.dp)
-                        .rotate(animatedRotation)
+                        .rotate(rotationAngle)
                 )
             }
         }
@@ -966,7 +984,6 @@ private fun navigateToRecommendationTile(
 @Composable
 private fun RecommendationTileCard(
     tile: RecommendationTile,
-    playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -994,21 +1011,7 @@ private fun RecommendationTileCard(
         is PendingDailyTile -> ""
     }
 
-    val albumColorSchemePairFlow = remember(artworkUri) {
-        playerViewModel.themeStateHolder.getAlbumColorSchemeFlow(artworkUri ?: "")
-    }
-    val albumColorSchemePair by albumColorSchemePairFlow.collectAsStateWithLifecycle()
-    val systemIsDark = LocalPixelPlayDarkTheme.current
-    val currentMaterialColorScheme = MaterialTheme.colorScheme
-
-    val itemDesignColorScheme = remember(albumColorSchemePair, systemIsDark, currentMaterialColorScheme) {
-        albumColorSchemePair?.let { pair ->
-            if (systemIsDark) pair.dark else pair.light
-        } ?: currentMaterialColorScheme
-    }
-
-    val gradientBaseColor = itemDesignColorScheme.primaryContainer
-    val onGradientColor = itemDesignColorScheme.onPrimaryContainer
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerLow
     val cardShape = RoundedCornerShape(20.dp)
 
     Card(
@@ -1017,12 +1020,12 @@ private fun RecommendationTileCard(
             .clip(cardShape)
             .clickable(onClick = onClick),
         shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = itemDesignColorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
-                .background(color = gradientBaseColor, shape = cardShape)
+                .background(color = cardColor, shape = cardShape)
                 .fillMaxWidth()
         ) {
             Box(
@@ -1053,13 +1056,13 @@ private fun RecommendationTileCard(
                     }
                 }
 
-                // Vertical gradient overlay at bottom of image to blend with gradientBaseColor
+                // Vertical gradient overlay at bottom of image to blend with cardColor
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, gradientBaseColor)
+                                colors = listOf(Color.Transparent, cardColor)
                             )
                         )
                 )
@@ -1084,7 +1087,7 @@ private fun RecommendationTileCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = onGradientColor,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1092,7 +1095,7 @@ private fun RecommendationTileCard(
                 Text(
                     text = songCountText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = onGradientColor.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

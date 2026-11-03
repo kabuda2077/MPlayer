@@ -63,6 +63,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     @Inject
     lateinit var onlineAudioCacheManager: dagger.Lazy<OnlineAudioCacheManager>
 
+    @Inject
+    lateinit var onlineRecommendationRepository: dagger.Lazy<com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository>
+
     private val startupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // AÑADE EL COMPANION OBJECT
@@ -126,6 +129,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
             if (onlineAudioCacheLimit != null) {
                 onlineAudioCacheManager.get().configuredCacheLimitMb = onlineAudioCacheLimit
                 onlineAudioCacheManager.get().cleanCacheIfNeeded()
+            }
+            runCatching {
+                onlineRecommendationRepository.get().warmupCache()
             }
         }
     }

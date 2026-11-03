@@ -157,6 +157,42 @@ class PlaybackStateHolder @Inject constructor(
             val snapshotMediaId = snapshot.currentMediaId
                 ?: snapshot.items.getOrNull(snapshot.currentIndex)?.mediaId
                 ?: return@launch
+
+            val currentItem = if (snapshot.currentMediaId != null) {
+                snapshot.items.find { it.mediaId == snapshot.currentMediaId }
+            } else {
+                snapshot.items.getOrNull(snapshot.currentIndex)
+            }
+
+            if (currentItem != null) {
+                val warmSong = Song(
+                    id = currentItem.mediaId,
+                    title = currentItem.title.orEmpty().ifBlank { "Unknown Title" },
+                    artist = currentItem.artist.orEmpty().ifBlank { "Unknown Artist" },
+                    artistId = 0L,
+                    album = currentItem.albumTitle.orEmpty(),
+                    albumId = 0L,
+                    path = currentItem.uri,
+                    contentUriString = currentItem.uri,
+                    albumArtUriString = currentItem.artworkUri,
+                    duration = currentItem.durationMs ?: 0L,
+                    mimeType = null,
+                    bitrate = null,
+                    sampleRate = null
+                )
+                _stablePlayerState.update { current ->
+                    if (current.currentSong == null) {
+                        current.copy(
+                            currentSong = warmSong,
+                            totalDuration = currentItem.durationMs ?: current.totalDuration,
+                            playWhenReady = false,
+                            repeatMode = snapshot.repeatMode,
+                            isShuffleEnabled = snapshot.shuffleEnabled
+                        )
+                    } else current
+                }
+            }
+
             val snapshotPositionMs = snapshot.currentPositionMs.coerceAtLeast(0L)
             if (snapshotPositionMs <= 0L) return@launch
             if (!rememberColdStartSnapshot(snapshotMediaId, snapshotPositionMs)) {

@@ -6,6 +6,7 @@ import com.theveloper.pixelplay.data.model.RecommendationAuthState
 import com.theveloper.pixelplay.data.model.RecommendationPage
 import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,7 @@ class OnlineBrowseViewModelTest {
     fun refreshPublishesEachPlatformAsSoonAsItCompletes() = runTest(dispatcher) {
         val netease = CompletableDeferred<Result<RecommendationPage>>()
         val qq = CompletableDeferred<Result<RecommendationPage>>()
-        val repository = mockk<OnlineRecommendationRepository>()
+        val repository = createRepository()
         coEvery { repository.refresh(OnlineBrowsePlatform.NETEASE, false, any()) } coAnswers { netease.await() }
         coEvery { repository.refresh(OnlineBrowsePlatform.QQ, false, any()) } coAnswers { qq.await() }
         val viewModel = OnlineBrowseViewModel(repository)
@@ -62,7 +63,7 @@ class OnlineBrowseViewModelTest {
         val completion = CompletableDeferred<Result<RecommendationPage>>()
         val partial = page(OnlineBrowsePlatform.QQ).copy(fetchedAt = 2L)
         val final = partial.copy(fetchedAt = 3L)
-        val repository = mockk<OnlineRecommendationRepository>()
+        val repository = createRepository()
         coEvery { repository.refresh(OnlineBrowsePlatform.NETEASE, false, any()) } returns
             Result.success(page(OnlineBrowsePlatform.NETEASE))
         coEvery { repository.refresh(OnlineBrowsePlatform.QQ, false, any()) } coAnswers {
@@ -83,7 +84,7 @@ class OnlineBrowseViewModelTest {
 
     @Test
     fun platformFailureIsExposedEvenWhenOtherPlatformSucceeds() = runTest(dispatcher) {
-        val repository = mockk<OnlineRecommendationRepository>()
+        val repository = createRepository()
         coEvery { repository.refresh(OnlineBrowsePlatform.NETEASE, false, any()) } returns
             Result.success(page(OnlineBrowsePlatform.NETEASE))
         coEvery { repository.refresh(OnlineBrowsePlatform.QQ, false, any()) } returns
@@ -98,7 +99,7 @@ class OnlineBrowseViewModelTest {
 
     @Test
     fun cancelledRefreshCannotOverwriteNewRefresh() = runTest(dispatcher) {
-        val repository = mockk<OnlineRecommendationRepository>()
+        val repository = createRepository()
         val oldCompletion = CompletableDeferred<Result<RecommendationPage>>()
         coEvery { repository.refresh(any(), false, any()) } coAnswers {
             val platform = firstArg<OnlineBrowsePlatform>()
@@ -118,6 +119,25 @@ class OnlineBrowseViewModelTest {
 
         assertThat(viewModel.uiState.value.pages.map { it.fetchedAt }).containsExactly(4L, 4L)
         assertThat(viewModel.uiState.value.isLoading).isFalse()
+    }
+
+    @Test
+    fun initialUiStateIncludesCachedPagesBeforeRefreshCompletes() = runTest(dispatcher) {
+        val cachedPage = page(OnlineBrowsePlatform.NETEASE).copy(fetchedAt = 10L)
+        val repository = createRepository()
+        every { repository.getCachedPage(OnlineBrowsePlatform.NETEASE) } returns cachedPage
+        coEvery { repository.refresh(any(), any(), any()) } coAnswers {
+            CompletableDeferred<Result<RecommendationPage>>().await()
+        }
+
+        val viewModel = OnlineBrowseViewModel(repository)
+        assertThat(viewModel.uiState.value.pages).containsExactly(cachedPage)
+    }
+
+    private fun createRepository(): OnlineRecommendationRepository {
+        val repository = mockk<OnlineRecommendationRepository>()
+        every { repository.getCachedPage(any()) } returns null
+        return repository
     }
 
     private fun page(platform: OnlineBrowsePlatform) = RecommendationPage(

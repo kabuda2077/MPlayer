@@ -135,7 +135,7 @@ internal fun rememberSheetThemeState(
     val albumColorScheme = rememberBatchAnimatedColorScheme(rawAlbumColorScheme)
     val miniPlayerScheme = rememberBatchAnimatedColorScheme(rawMiniPlayerScheme)
 
-    val miniAppearProgress = remember { Animatable(0f) }
+    val miniAppearProgress = remember { Animatable(if (currentSong != null) 1f else 0f) }
     LaunchedEffect(currentSong?.id) {
         if (currentSong == null) {
             miniAppearProgress.snapTo(0f)

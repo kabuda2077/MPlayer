@@ -1,15 +1,20 @@
 package com.theveloper.pixelplay.presentation.online
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.ImageLoader
+import coil.request.ImageRequest
 import com.theveloper.pixelplay.data.model.OnlineBrowsePlatform
 import com.theveloper.pixelplay.data.model.RecommendationPage
 import com.theveloper.pixelplay.data.model.RecommendationSectionKind
 import com.theveloper.pixelplay.data.model.RecommendationSongItem
+import com.theveloper.pixelplay.data.model.RemoteChartReference
 import com.theveloper.pixelplay.data.model.RemotePlaylistReference
 import com.theveloper.pixelplay.data.recommendation.OnlineRecommendationRepository
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,15 +40,22 @@ data class OnlineBrowseUiState(
 
 @HiltViewModel
 class OnlineBrowseViewModel @Inject constructor(
-    private val repository: OnlineRecommendationRepository
+    private val repository: OnlineRecommendationRepository,
+    @ApplicationContext private val context: Context? = null,
+    private val imageLoader: dagger.Lazy<ImageLoader>? = null
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(OnlineBrowseUiState())
+    private val platforms = OnlineBrowsePlatform.entries.toList()
+    private val _uiState = MutableStateFlow(
+        OnlineBrowseUiState(
+            pages = platforms.mapNotNull { repository.getCachedPage(it) }
+        )
+    )
     val uiState: StateFlow<OnlineBrowseUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
-    private val platforms = OnlineBrowsePlatform.entries.toList()
 
     init {
-        refresh()
+        _uiState.value.pages.forEach(::preloadArtwork)
+        refresh(force = false)
     }
 
     fun refresh(force: Boolean = false) {
@@ -149,11 +161,39 @@ class OnlineBrowseViewModel @Inject constructor(
     }
 
     private fun publishPage(page: RecommendationPage) {
+        preloadArtwork(page)
         _uiState.update { state ->
             state.copy(
                 pages = (state.pages.filterNot { it.platform == page.platform } + page)
                     .sortedBy { platforms.indexOf(it.platform) }
             )
+        }
+    }
+
+    private fun preloadArtwork(page: RecommendationPage) {
+        val appContext = context ?: return
+        val loader = imageLoader?.get() ?: return
+        val urls = page.sections.flatMap { section ->
+            when (section.kind) {
+                RecommendationSectionKind.DAILY_SONGS,
+                RecommendationSectionKind.NEW_SONGS -> {
+                    section.items.filterIsInstance<RecommendationSongItem>().mapNotNull { it.artworkUri }
+                }
+                RecommendationSectionKind.RECOMMENDED_PLAYLISTS -> {
+                    section.items.filterIsInstance<RemotePlaylistReference>().mapNotNull { it.artworkUri }
+                }
+                RecommendationSectionKind.CHART_ENTRY -> {
+                    section.items.filterIsInstance<RemoteChartReference>().mapNotNull { it.previewArtworkUris.firstOrNull() ?: it.artworkUri }
+                }
+            }
+        }.filter { it.isNotBlank() }.distinct().take(10)
+
+        urls.forEach { url ->
+            val req = ImageRequest.Builder(appContext)
+                .data(url)
+                .size(300, 300)
+                .build()
+            loader.enqueue(req)
         }
     }
 }

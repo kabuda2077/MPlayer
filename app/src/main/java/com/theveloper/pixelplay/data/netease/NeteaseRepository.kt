@@ -645,14 +645,8 @@ class NeteaseRepository @Inject constructor(
         )
     }
 
-    private fun normalizeArtworkUrl(value: String?): String? {
-        val trimmed = value?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        return if (trimmed.startsWith("http://", ignoreCase = true)) {
-            "https://${trimmed.removePrefix("http://")}"
-        } else {
-            trimmed
-        }
-    }
+    private fun normalizeArtworkUrl(value: String?): String? =
+        com.theveloper.pixelplay.data.model.OnlineSongMapper.normalizeArtworkUrl(value)
 
     private suspend fun syncUnifiedLibrarySongsFromNetease() =
         cloudLibraryProjector.projectNetease()

@@ -878,7 +878,7 @@ class MainActivity : ComponentActivity() {
                             playerViewModel.stablePlayerState
                                 .map { it.currentSong?.id != null }
                                 .distinctUntilChanged()
-                        }.collectAsStateWithLifecycle(initialValue = false)
+                        }.collectAsStateWithLifecycle(initialValue = playerViewModel.stablePlayerState.value.currentSong?.id != null)
                         val routesWithHiddenMiniPlayer = remember { setOf(Screen.NavBarCrRad.route) }
                         val shouldHideMiniPlayer by remember(currentRoute) {
                             derivedStateOf { currentRoute in routesWithHiddenMiniPlayer }

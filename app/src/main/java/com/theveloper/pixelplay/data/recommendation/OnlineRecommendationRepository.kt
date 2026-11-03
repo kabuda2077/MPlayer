@@ -24,6 +24,10 @@ interface OnlineRecommendationProvider {
 }
 
 interface OnlineRecommendationRepository {
+    fun warmupCache() {}
+
+    fun getCachedPage(platform: OnlineBrowsePlatform): RecommendationPage? = null
+
     suspend fun refresh(
         platform: OnlineBrowsePlatform,
         force: Boolean = false,
